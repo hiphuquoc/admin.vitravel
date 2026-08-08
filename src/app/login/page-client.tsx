@@ -19,8 +19,8 @@ export default function LoginPage() {
   const next =
     base && rawNext.startsWith(base) ? rawNext.slice(base.length) || '/' : rawNext;
 
-  const [email, setEmail] = useState('admin@vitravel.dev');
-  const [password, setPassword] = useState('111111');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [showPw, setShowPw] = useState(false);
   const [remember, setRemember] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -111,7 +111,7 @@ export default function LoginPage() {
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="admin@vitravel.dev"
+              placeholder="email@domain.com"
             />
 
             <div style={{ position: 'relative' }}>
@@ -124,7 +124,7 @@ export default function LoginPage() {
                 minLength={6}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder="••••••••"
+                placeholder="Nhập mật khẩu"
               />
               <button
                 type="button"
@@ -157,8 +157,6 @@ export default function LoginPage() {
               Vào hệ thống
             </Button>
           </form>
-
-          <p className="login__footer">Tài khoản: admin@vitravel.dev · mật khẩu: 111111</p>
         </motion.div>
       </section>
     </div>

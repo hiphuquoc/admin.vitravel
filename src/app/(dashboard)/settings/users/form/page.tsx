@@ -72,13 +72,13 @@ function FormInner() {
   const metaQuery = useQuery({
     queryKey: ['users-meta'],
     queryFn: () => usersApi.meta(),
-    enabled: can('users.view'),
+    enabled: canManage,
   });
 
   const detailQuery = useQuery({
     queryKey: ['users', id],
     queryFn: () => usersApi.get(id!),
-    enabled: !!id && can('users.view'),
+    enabled: !!id && canManage,
   });
 
   useEffect(() => {
@@ -154,13 +154,13 @@ function FormInner() {
   const set = <K extends keyof FormState>(key: K, value: FormState[K]) =>
     setForm((p) => ({ ...p, [key]: value }));
 
-  if (!can('users.view')) {
+  if (!canManage) {
     return (
       <div>
         <PageHeader eyebrow="Cài đặt" title={isNew ? 'Thêm người dùng' : 'Sửa người dùng'} />
         <EmptyState
-          title="Không có quyền truy cập"
-          description="Bạn cần quyền xem người dùng để truy cập trang này."
+          title="Không có quyền chỉnh sửa"
+          description="Chỉ quản trị hệ thống mới tạo / sửa tài khoản trong mục Người dùng. Hồ sơ cá nhân: Tài khoản → Hồ sơ của tôi."
         />
       </div>
     );

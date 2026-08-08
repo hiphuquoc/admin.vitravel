@@ -23,8 +23,10 @@ import {
 import type { UserListItem } from '@/lib/types';
 
 export default function UsersPage() {
-  const { can } = useAuth();
+  const { can, user } = useAuth();
   const qc = useQueryClient();
+  const canView = can('users.view');
+  const canManage = can('users.manage');
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState('');
   const [role, setRole] = useState('');
@@ -34,7 +36,7 @@ export default function UsersPage() {
   const metaQuery = useQuery({
     queryKey: ['users-meta'],
     queryFn: () => usersApi.meta(),
-    enabled: can('users.view'),
+    enabled: canView,
   });
 
   const listKey = useMemo(
@@ -52,7 +54,7 @@ export default function UsersPage() {
         page,
         per_page: perPage,
       }),
-    enabled: can('users.view'),
+    enabled: canView,
   });
 
   const remove = useMutation({
@@ -64,13 +66,13 @@ export default function UsersPage() {
     onError: (err: Error) => toast.error(err.message),
   });
 
-  if (!can('users.view')) {
+  if (!canView) {
     return (
       <div>
         <PageHeader eyebrow="Cài đặt" title="Người dùng" />
         <EmptyState
           title="Không có quyền truy cập"
-          description="Bạn cần quyền xem danh sách người dùng để truy cập trang này."
+          description="Chỉ quản trị hệ thống mới quản lý danh sách người dùng. Bạn có thể cập nhật hồ sơ tại Tài khoản → Hồ sơ của tôi."
         />
       </div>
     );
@@ -87,7 +89,7 @@ export default function UsersPage() {
         title="Người dùng"
         description="Quản lý tài khoản admin, vai trò hệ thống và phân quyền theo dự án."
         actions={
-          can('users.manage') ? (
+          canManage ? (
             <HeadActions
               primary={
                 <HeadCta
@@ -167,7 +169,7 @@ export default function UsersPage() {
               title="Chưa có người dùng"
               description="Thêm tài khoản để cấp quyền truy cập admin."
               action={
-                can('users.manage') ? (
+                canManage ? (
                   <Link href="/settings/users/form/">
                     <Button>
                       <Plus size={16} />
@@ -180,44 +182,47 @@ export default function UsersPage() {
           ) : undefined
         }
       >
-        {items.map((row: UserListItem) => (
-          <EntityRow key={row.id}>
-            <EntityMain
-              title={row.name}
-              href={`/settings/users/form/?id=${row.id}`}
-              badges={
-                <>
-                  <Badge tone={row.is_super_admin ? 'primary' : 'neutral'}>
-                    {row.role_label || row.role}
-                  </Badge>
-                  <Badge tone={row.is_active ? 'success' : 'neutral'}>
-                    {row.is_active ? 'Đang hoạt động' : 'Vô hiệu'}
-                  </Badge>
-                </>
-              }
-              facts={
-                <>
-                  <EntityFact label="Email">{row.email}</EntityFact>
-                  {(row.projects ?? []).map((p) => (
-                    <EntityFact key={p.id} label={p.name}>
-                      {p.role || '—'}
-                    </EntityFact>
-                  ))}
-                </>
-              }
-            />
-            <EntityActions
-              editHref={`/settings/users/form/?id=${row.id}`}
-              onDelete={
-                can('users.manage')
-                  ? () => {
-                      if (confirm(`Xóa người dùng "${row.name}"?`)) remove.mutate(row.id);
-                    }
-                  : undefined
-              }
-            />
-          </EntityRow>
-        ))}
+        {items.map((row: UserListItem) => {
+          const editHref = canManage ? `/settings/users/form/?id=${row.id}` : undefined;
+          return (
+            <EntityRow key={row.id}>
+              <EntityMain
+                title={row.name}
+                href={editHref}
+                badges={
+                  <>
+                    <Badge tone={row.is_super_admin ? 'primary' : 'neutral'}>
+                      {row.role_label || row.role}
+                    </Badge>
+                    <Badge tone={row.is_active ? 'success' : 'neutral'}>
+                      {row.is_active ? 'Đang hoạt động' : 'Vô hiệu'}
+                    </Badge>
+                  </>
+                }
+                facts={
+                  <>
+                    <EntityFact label="Email">{row.email}</EntityFact>
+                    {(row.projects ?? []).map((p) => (
+                      <EntityFact key={p.id} label={p.name}>
+                        {p.role || '—'}
+                      </EntityFact>
+                    ))}
+                  </>
+                }
+              />
+              <EntityActions
+                editHref={editHref}
+                onDelete={
+                  canManage && row.id !== user?.id
+                    ? () => {
+                        if (confirm(`Xóa người dùng "${row.name}"?`)) remove.mutate(row.id);
+                      }
+                    : undefined
+                }
+              />
+            </EntityRow>
+          );
+        })}
       </EntityList>
     </div>
   );
