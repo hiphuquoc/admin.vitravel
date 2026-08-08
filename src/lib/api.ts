@@ -1,0 +1,179 @@
+import type { ApiErrorBody, ApiSuccessBody } from './types';
+
+const TOKEN_KEY = 'vt_admin_token';
+const USER_KEY = 'vt_admin_user';
+const PROJECT_KEY = 'vt_admin_project_code';
+
+export function getBasePath(): string {
+  return (process.env.NEXT_PUBLIC_BASE_PATH || '').replace(/\/$/, '');
+}
+
+export function getApiBase(): string {
+  return process.env.NEXT_PUBLIC_API_BASE || '/api/v1/admin';
+}
+
+export function adminPath(path = '/'): string {
+  const base = getBasePath();
+  let clean = path.startsWith('/') ? path : `/${path}`;
+  if (clean !== '/' && !clean.endsWith('/') && !clean.includes('?') && !clean.includes('#')) {
+    clean = `${clean}/`;
+  }
+  if (!base) {
+    return clean;
+  }
+  return `${base}${clean === '/' ? '/' : clean}`;
+}
+
+export function getToken(): string | null {
+  if (typeof window === 'undefined') return null;
+  return localStorage.getItem(TOKEN_KEY);
+}
+
+export function getProjectCode(): string | null {
+  if (typeof window === 'undefined') return null;
+  return localStorage.getItem(PROJECT_KEY);
+}
+
+export function setProjectCode(code: string | null): void {
+  if (typeof window === 'undefined') return;
+  if (!code) {
+    localStorage.removeItem(PROJECT_KEY);
+    return;
+  }
+  localStorage.setItem(PROJECT_KEY, code);
+}
+
+export function setSession(token: string, user: unknown): void {
+  localStorage.setItem(TOKEN_KEY, token);
+  localStorage.setItem(USER_KEY, JSON.stringify(user));
+}
+
+export function clearSession(): void {
+  localStorage.removeItem(TOKEN_KEY);
+  localStorage.removeItem(USER_KEY);
+  localStorage.removeItem(PROJECT_KEY);
+}
+
+export function getStoredUser<T = unknown>(): T | null {
+  if (typeof window === 'undefined') return null;
+  const raw = localStorage.getItem(USER_KEY);
+  if (!raw) return null;
+  try {
+    return JSON.parse(raw) as T;
+  } catch {
+    return null;
+  }
+}
+
+export class ApiClientError extends Error {
+  code: string;
+  status: number;
+  details?: unknown;
+
+  constructor(message: string, code: string, status: number, details?: unknown) {
+    super(message);
+    this.name = 'ApiClientError';
+    this.code = code;
+    this.status = status;
+    this.details = details;
+  }
+}
+
+type RequestOptions = {
+  method?: string;
+  body?: unknown;
+  query?: Record<string, string | number | boolean | undefined | null>;
+  auth?: boolean;
+  signal?: AbortSignal;
+  /** Skip JSON Content-Type (FormData uploads). */
+  formData?: boolean;
+};
+
+function buildQuery(query?: RequestOptions['query']): string {
+  if (!query) return '';
+  const params = new URLSearchParams();
+  Object.entries(query).forEach(([key, value]) => {
+    if (value === undefined || value === null || value === '') return;
+    params.set(key, String(value));
+  });
+  const qs = params.toString();
+  return qs ? `?${qs}` : '';
+}
+
+export async function apiRequest<T>(path: string, options: RequestOptions = {}): Promise<T> {
+  const { method = 'GET', body, query, auth = true, signal, formData = false } = options;
+  const headers: Record<string, string> = {
+    Accept: 'application/json',
+  };
+
+  if (body !== undefined && !formData && !(body instanceof FormData)) {
+    headers['Content-Type'] = 'application/json';
+  }
+
+  if (auth) {
+    const token = getToken();
+    if (token) headers.Authorization = `Bearer ${token}`;
+    const projectCode = getProjectCode();
+    if (projectCode) headers['X-Project-Code'] = projectCode;
+  }
+
+  const url = `${getApiBase()}${path}${buildQuery(query)}`;
+
+  let res: Response;
+  try {
+    res = await fetch(url, {
+      method,
+      headers,
+      body:
+        body === undefined
+          ? undefined
+          : body instanceof FormData || formData
+            ? (body as BodyInit)
+            : JSON.stringify(body),
+      signal,
+    });
+  } catch {
+    throw new ApiClientError(
+      `Không kết nối được API (${getApiBase()}). Kiểm tra Laravel đang chạy, hoặc npm run dev còn sống.`,
+      'NETWORK_ERROR',
+      0,
+    );
+  }
+
+  const raw = await res.text();
+  let json: ApiSuccessBody<T> | ApiErrorBody | null = null;
+  try {
+    json = raw ? (JSON.parse(raw) as ApiSuccessBody<T> | ApiErrorBody) : null;
+  } catch {
+    const hint = raw.trim().startsWith('<')
+      ? ' Máy chủ trả HTML (lỗi PHP / trang 500). Xem storage/logs/laravel.log.'
+      : '';
+    throw new ApiClientError(
+      res.status === 404
+        ? 'Không tìm thấy API. Kiểm tra route /api/v1/admin.'
+        : `Phản hồi máy chủ không hợp lệ (HTTP ${res.status}).${hint}`,
+      'INVALID_RESPONSE',
+      res.status,
+    );
+  }
+
+  if (!res.ok || !json || !('success' in json) || json.success === false) {
+    const err = (json as ApiErrorBody)?.error;
+    if (auth && res.status === 401 && typeof window !== 'undefined') {
+      clearSession();
+      const loginPath = adminPath('/login/');
+      if (!window.location.pathname.includes('/login')) {
+        const next = window.location.pathname + window.location.search;
+        window.location.href = `${loginPath}?next=${encodeURIComponent(next)}`;
+      }
+    }
+    throw new ApiClientError(
+      err?.message || (res.status >= 500 ? 'Lỗi máy chủ. Thử lại sau.' : 'Đã xảy ra lỗi.'),
+      err?.code || 'ERROR',
+      res.status,
+      err?.details,
+    );
+  }
+
+  return (json as ApiSuccessBody<T>).data;
+}

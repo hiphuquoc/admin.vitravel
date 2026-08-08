@@ -1,0 +1,184 @@
+// Design tokens — Admin Console
+// Light = :root | Dark = [data-theme='dark']
+//
+// Dark: giữ brand leaf-green; thang primary KHÔNG đảo hoàn toàn
+// (50–300 = tint tối, 500 = CTA đủ đậm cho chữ sáng, 700–900 = chữ/điểm nhấn sáng).
+
+:root {
+  /* Brand — forest leaf */
+  --admin-primary-50: #f5f8ec;
+  --admin-primary-100: #e9efd6;
+  --admin-primary-200: #d3e0b2;
+  --admin-primary-300: #b5cb86;
+  --admin-primary-400: #93b25e;
+  --admin-primary-500: #6b8f3f;
+  --admin-primary-600: #567834;
+  --admin-primary-700: #455f2c;
+  --admin-primary-800: #3a4e27;
+  --admin-primary-900: #324323;
+
+  --admin-on-primary: #ffffff;
+
+  --admin-accent-500: #d9704f;
+  --admin-accent-600: #c15d3d;
+  --admin-accent-soft: #fdf3ef;
+
+  /* Surfaces — light */
+  --admin-ink: #1c2118;
+  --admin-ink-soft: #4a4f44;
+  --admin-muted: #6f7568;
+  --admin-line: #e2e5da;
+  --admin-line-strong: #c9cebf;
+  --admin-page: #eef0e8;
+  --admin-page-soft: #f6f7f2;
+  --admin-surface: #ffffff;
+  --admin-surface-raised: #ffffff;
+  --admin-surface-tint: #f3f5ec;
+  --admin-topbar-bg: rgba(246, 247, 242, 0.86);
+  --admin-sidebar: #1a2116;
+  --admin-sidebar-soft: #242c1e;
+  --admin-sidebar-line: rgba(255, 255, 255, 0.08);
+  --admin-sidebar-text: rgba(255, 255, 255, 0.72);
+  --admin-sidebar-text-strong: #ffffff;
+  --admin-sidebar-active: rgba(107, 143, 63, 0.22);
+  --admin-overlay: rgba(18, 22, 16, 0.48);
+  --admin-scrub: rgba(28, 33, 24, 0.04);
+
+  --admin-success: #3d8b55;
+  --admin-success-soft: #e8f5ec;
+  --admin-warning: #b8872c;
+  --admin-warning-soft: #fff6e5;
+  --admin-danger: #c44a3a;
+  --admin-danger-soft: #fdecea;
+  --admin-info: #3a6ea5;
+  --admin-info-soft: #e8f1fa;
+
+  --admin-font-sans: 'Be Vietnam Pro', 'Nunito', system-ui, sans-serif;
+  --admin-font-display: 'Fraunces', Georgia, serif;
+
+  /* Scale khớp public (html 106.25% → 1rem ≈ 17px) + hơi rộng hơn cho admin */
+  --admin-fs-xs: 0.75rem;
+  --admin-fs-sm: 0.875rem;
+  --admin-fs-base: 0.95rem;
+  --admin-fs-md: 1.125rem;
+  --admin-fs-lg: 1.3125rem;
+  --admin-fs-xl: clamp(1.55rem, 1.35rem + 0.7vw, 1.9rem);
+  --admin-fs-2xl: clamp(1.85rem, 1.55rem + 1vw, 2.35rem);
+  --admin-fs-3xl: clamp(2.15rem, 1.75rem + 1.4vw, 2.75rem);
+  --admin-fs-kicker: 0.78rem;
+  --admin-lh-tight: 1.25;
+  --admin-lh-snug: 1.45;
+  --admin-lh-body: 1.75;
+  --admin-fw-regular: 400;
+  --admin-fw-medium: 500;
+  --admin-fw-semibold: 600;
+  --admin-fw-bold: 700;
+  --admin-fw-extrabold: 800;
+  --admin-tracking-tight: -0.02em;
+  --admin-tracking-wide: 0.12em;
+  --admin-tracking-kicker: 0.14em;
+
+  --admin-space-1: 0.25rem;
+  --admin-space-2: 0.5rem;
+  --admin-space-3: 0.75rem;
+  --admin-space-4: 1rem;
+  --admin-space-5: 1.25rem;
+  --admin-space-6: 1.5rem;
+  --admin-space-7: 1.75rem;
+  --admin-space-8: 2rem;
+  --admin-space-10: 2.5rem;
+  --admin-space-12: 3rem;
+  --admin-space-16: 4rem;
+
+  --admin-sidebar-w: 17.5rem;
+  --admin-sidebar-w-collapsed: 4.75rem;
+  --admin-topbar-h: 4.5rem;
+  --admin-content-max: 78rem;
+  --admin-gutter: 1.5rem;
+
+  --admin-radius-sm: 0.5rem;
+  --admin-radius-md: 0.75rem;
+  --admin-radius-lg: 1rem;
+  --admin-radius-xl: 1.25rem;
+
+  --admin-shadow-sm: 0 1px 2px rgba(28, 33, 24, 0.05);
+  --admin-shadow-md: 0 8px 24px rgba(28, 33, 24, 0.07);
+  --admin-shadow-lg: 0 18px 48px rgba(28, 33, 24, 0.12);
+  --admin-shadow-focus: 0 0 0 3px rgba(107, 143, 63, 0.2);
+
+  --admin-ease: cubic-bezier(0.22, 1, 0.36, 1);
+  --admin-dur-fast: 140ms;
+  --admin-dur: 220ms;
+  --admin-dur-slow: 380ms;
+
+  --admin-control-h: 3.15rem;
+  --admin-control-h-sm: 2.65rem;
+  --admin-hit: 2.85rem;
+
+  color-scheme: light;
+}
+
+[data-theme='dark'] {
+  /*
+   * Dark hierarchy (dễ quét thông tin):
+   * page < surface < raised | ink > ink-soft > muted | line rõ vừa phải
+   * CTA primary-500 đủ đậm để chữ --admin-on-primary đọc được
+   */
+  --admin-primary-50: #12180f;
+  --admin-primary-100: #1a2215;
+  --admin-primary-200: #25301c;
+  --admin-primary-300: #354828;
+  --admin-primary-400: #4f6d32;
+  --admin-primary-500: #6b8f3f; /* neo brand — CTA */
+  --admin-primary-600: #87ad52; /* hover CTA (sáng hơn nền tối) */
+  --admin-primary-700: #b4cc88; /* link / text nhấn */
+  --admin-primary-800: #d2e0b4;
+  --admin-primary-900: #eef5df;
+
+  --admin-on-primary: #ffffff;
+
+  --admin-accent-500: #e08968;
+  --admin-accent-600: #d9704f;
+  --admin-accent-soft: #2a1c16;
+
+  /* Elevation ladder — tách lớp rõ */
+  --admin-page: #0c0f0b;
+  --admin-page-soft: #121610;
+  --admin-surface: #171c14;
+  --admin-surface-raised: #1f261b;
+  --admin-surface-tint: #1b2118;
+  --admin-topbar-bg: rgba(12, 15, 11, 0.88);
+
+  --admin-ink: #f1f3ec;
+  --admin-ink-soft: #c9d0bf;
+  --admin-muted: #9aa392;
+  --admin-line: #2a3226;
+  --admin-line-strong: #3d4836;
+
+  --admin-sidebar: #0a0d09;
+  --admin-sidebar-soft: #10150e;
+  --admin-sidebar-line: rgba(255, 255, 255, 0.08);
+  --admin-sidebar-text: rgba(241, 243, 236, 0.7);
+  --admin-sidebar-text-strong: #f7f9f2;
+  --admin-sidebar-active: rgba(107, 143, 63, 0.28);
+
+  --admin-overlay: rgba(0, 0, 0, 0.55);
+  --admin-scrub: rgba(255, 255, 255, 0.035);
+
+  /* Status — chữ sáng + nền soft đủ tách */
+  --admin-success: #7dca94;
+  --admin-success-soft: #14261b;
+  --admin-warning: #e2b65c;
+  --admin-warning-soft: #2a2212;
+  --admin-danger: #e8897c;
+  --admin-danger-soft: #2a1614;
+  --admin-info: #7eb3dc;
+  --admin-info-soft: #142230;
+
+  --admin-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.45);
+  --admin-shadow-md: 0 10px 28px rgba(0, 0, 0, 0.42);
+  --admin-shadow-lg: 0 22px 52px rgba(0, 0, 0, 0.55);
+  --admin-shadow-focus: 0 0 0 3px rgba(135, 173, 82, 0.35);
+
+  color-scheme: dark;
+}

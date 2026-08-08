@@ -1,0 +1,33 @@
+# Dependencies
+node_modules/
+
+# Next.js
+.next/
+out/
+
+# Env / secrets (keep *.example tracked)
+.env
+.env*.local
+!.env.local.example
+
+# TypeScript / tooling
+*.tsbuildinfo
+next-env.d.ts
+
+# Logs & debug
+npm-debug.log*
+yan-debug.log*
+yan-error.log*
+.pnpm-debug.log*
+
+# OS / IDE
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Test / coverage
+coverage/
+.turbo/

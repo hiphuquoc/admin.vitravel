@@ -1,0 +1,259 @@
+'use client';
+
+import { useEffect, useId, useRef, useState, type ChangeEvent } from 'react';
+import { ImagePlus, Loader2, Pencil, Trash2 } from 'lucide-react';
+import clsx from 'clsx';
+import { useQuery } from '@tanstack/react-query';
+import toast from '@/lib/toast';
+import { mediaApi } from '@/lib/services';
+import type { MediaFolder, MediaImage } from '@/lib/types';
+import { useStructureLocked } from '@/hooks/useStructureLock';
+
+export type ImageFieldState = {
+  media: MediaImage | null;
+  remove: boolean;
+};
+
+type ImageFieldProps = {
+  /** Label hiển thị trên dropzone (khi nhiều ảnh trong cùng card). */
+  label?: string;
+  /** a11y name for the control */
+  ariaLabel?: string;
+  folder: MediaFolder;
+  /** SEO slug trang/entity — tạo URL thân thiện (vd. tour-phu-quoc-cover.webp). */
+  slug?: string | null;
+  /** Vai trò file: cover | banner | avatar | gallery | … */
+  role?: string | null;
+  aspectRatio?: string;
+  variant?: 'thumb' | 'card' | 'lg' | 'full';
+  value: ImageFieldState;
+  onChange: (next: ImageFieldState) => void;
+  className?: string;
+  disabled?: boolean;
+  /** Mặc định true — ảnh là tài nguyên dùng chung, khóa khi sửa bản dịch. */
+  structure?: boolean;
+};
+
+export function ImageField({
+  label,
+  ariaLabel,
+  folder,
+  slug,
+  role,
+  aspectRatio = '3 / 2',
+  variant = 'card',
+  value,
+  onChange,
+  className,
+  disabled,
+  structure = true,
+}: ImageFieldProps) {
+  const a11y = ariaLabel || label || 'Ảnh';
+  const inputId = useId();
+  const inputRef = useRef<HTMLInputElement>(null);
+  const abortRef = useRef<AbortController | null>(null);
+  const [dragOver, setDragOver] = useState(false);
+  const [localPreview, setLocalPreview] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const locked = useStructureLocked();
+  const isDisabled = !!disabled || (structure && locked);
+
+  const metaQuery = useQuery({
+    queryKey: ['media-meta'],
+    queryFn: () => mediaApi.meta(),
+    staleTime: 60_000,
+  });
+
+  const maxKb = metaQuery.data?.max_upload_kb ?? 5120;
+  const displayUrl =
+    localPreview ||
+    (!value.remove
+      ? value.media?.url_lg || value.media?.url || value.media?.url_thumb || null
+      : null);
+  const hasImage = !!displayUrl;
+
+  useEffect(() => {
+    return () => {
+      abortRef.current?.abort();
+      if (localPreview?.startsWith('blob:')) URL.revokeObjectURL(localPreview);
+    };
+  }, [localPreview]);
+
+  const clearLocal = () => {
+    if (localPreview?.startsWith('blob:')) URL.revokeObjectURL(localPreview);
+    setLocalPreview(null);
+  };
+
+  const pickFile = (file: File | undefined | null) => {
+    if (isDisabled || uploading) return;
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      toast.error('Vui lòng chọn file ảnh (JPG, PNG, WebP, GIF).');
+      return;
+    }
+    if (file.size > maxKb * 1024) {
+      toast.error(`Ảnh vượt quá ${maxKb}KB. Chọn ảnh nhỏ hơn.`);
+      return;
+    }
+
+    abortRef.current?.abort();
+    const ctrl = new AbortController();
+    abortRef.current = ctrl;
+
+    clearLocal();
+    const blobUrl = URL.createObjectURL(file);
+    setLocalPreview(blobUrl);
+    setUploading(true);
+    setProgress(0);
+
+    mediaApi
+      .upload(file, {
+        folder,
+        variant,
+        slug,
+        role,
+        signal: ctrl.signal,
+        onProgress: setProgress,
+      })
+      .then((media) => {
+        clearLocal();
+        setUploading(false);
+        setProgress(100);
+        onChange({ media, remove: false });
+        toast.success('Đã tối ưu và tải ảnh lên');
+      })
+      .catch((err: Error) => {
+        if (err.message === 'Đã huỷ upload.') return;
+        clearLocal();
+        setUploading(false);
+        setProgress(0);
+        toast.error(err.message || 'Upload thất bại');
+      });
+  };
+
+  const onInputChange = (e: ChangeEvent<HTMLInputElement>) => {
+    pickFile(e.target.files?.[0]);
+    e.target.value = '';
+  };
+
+  const remove = () => {
+    if (isDisabled) return;
+    abortRef.current?.abort();
+    clearLocal();
+    setUploading(false);
+    setProgress(0);
+    onChange({ media: null, remove: true });
+  };
+
+  const openPicker = () => {
+    if (isDisabled || uploading) return;
+    inputRef.current?.click();
+  };
+
+  return (
+    <div className={clsx('ui-image-field', isDisabled && 'ui-image-field--disabled', className)}>
+      {label ? <div className="ui-image-field__label">{label}</div> : null}
+      <div
+        className={clsx(
+          'ui-image-field__area',
+          hasImage && 'ui-image-field__area--has',
+          dragOver && 'ui-image-field__area--drag',
+          uploading && 'ui-image-field__area--busy',
+          isDisabled && 'ui-image-field__area--disabled',
+        )}
+        onDragEnter={(e) => {
+          if (isDisabled) return;
+          e.preventDefault();
+          setDragOver(true);
+        }}
+        onDragOver={(e) => {
+          if (isDisabled) return;
+          e.preventDefault();
+          setDragOver(true);
+        }}
+        onDragLeave={(e) => {
+          e.preventDefault();
+          setDragOver(false);
+        }}
+        onDrop={(e) => {
+          e.preventDefault();
+          setDragOver(false);
+          pickFile(e.dataTransfer.files?.[0]);
+        }}
+      >
+        <input
+          ref={inputRef}
+          id={inputId}
+          type="file"
+          accept="image/jpeg,image/png,image/webp,image/gif"
+          className="ui-image-field__input"
+          aria-label={a11y}
+          disabled={isDisabled}
+          onChange={onInputChange}
+        />
+
+        {hasImage ? (
+          <div className="ui-image-field__preview" style={{ aspectRatio }}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={displayUrl!} alt={value.media?.alt || a11y} />
+            {uploading ? (
+              <div className="ui-image-field__progress">
+                <div className="ui-image-field__progress-bar" style={{ width: `${progress}%` }} />
+                <span>
+                  <Loader2 size={14} className="ui-spin" /> Đang tối ưu… {progress}%
+                </span>
+              </div>
+            ) : isDisabled ? null : (
+              <div className="ui-image-field__overlay">
+                <button type="button" className="ui-image-field__action" onClick={openPicker}>
+                  <Pencil size={15} />
+                  Thay đổi
+                </button>
+                <button
+                  type="button"
+                  className="ui-image-field__action ui-image-field__action--danger"
+                  onClick={remove}
+                >
+                  <Trash2 size={15} />
+                  Xóa
+                </button>
+              </div>
+            )}
+          </div>
+        ) : (
+          <button
+            type="button"
+            className="ui-image-field__dropzone"
+            style={{ aspectRatio }}
+            onClick={openPicker}
+            disabled={uploading || isDisabled}
+            aria-label={a11y}
+          >
+            <span className="ui-image-field__drop-icon" aria-hidden>
+              {uploading ? <Loader2 size={18} className="ui-spin" /> : <ImagePlus size={18} />}
+            </span>
+            <span className="ui-image-field__drop-title">
+              {uploading
+                ? `Đang tải… ${progress}%`
+                : isDisabled
+                  ? 'Ảnh khóa (bản dịch)'
+                  : 'Kéo thả hoặc chọn ảnh'}
+            </span>
+            <span className="ui-image-field__drop-sub">
+              {uploading
+                ? 'Đang tối ưu WebP…'
+                : isDisabled
+                  ? 'Chỉnh ở ngôn ngữ mặc định'
+                  : 'JPG, PNG, WebP'}
+            </span>
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+export function emptyImageField(media: MediaImage | null = null): ImageFieldState {
+  return { media, remove: false };
+}
