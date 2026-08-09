@@ -19,12 +19,28 @@ const nextConfig: NextConfig = {
   },
   env: {
     NEXT_PUBLIC_BASE_PATH: basePath,
+    NEXT_PUBLIC_API_BASE:
+      process.env.NEXT_PUBLIC_API_BASE ||
+      (process.env.ADMIN_API_ORIGIN
+        ? `${process.env.ADMIN_API_ORIGIN.replace(/\/$/, '')}/api/v1/admin`
+        : '') ||
+      (process.env.NEXT_PUBLIC_SITE_ORIGIN
+        ? `${process.env.NEXT_PUBLIC_SITE_ORIGIN.replace(/\/$/, '')}/api/v1/admin`
+        : ''),
     NEXT_PUBLIC_SITE_ORIGIN:
       process.env.NEXT_PUBLIC_SITE_ORIGIN || process.env.ADMIN_API_ORIGIN || '',
   },
   async rewrites() {
     if (isProdBuild) return [];
-    const origin = (process.env.ADMIN_API_ORIGIN || 'https://vitravel.dev').replace(/\/$/, '');
+    const origin = (
+      process.env.ADMIN_API_ORIGIN ||
+      process.env.NEXT_PUBLIC_SITE_ORIGIN ||
+      ''
+    ).replace(/\/$/, '');
+    if (!origin) {
+      // Dev không set origin → không rewrite; dùng NEXT_PUBLIC_API_BASE absolute.
+      return [];
+    }
     return [
       {
         source: '/api/:path*',

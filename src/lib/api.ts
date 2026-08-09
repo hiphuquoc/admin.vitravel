@@ -9,7 +9,10 @@ export function getBasePath(): string {
 }
 
 export function getApiBase(): string {
-  return process.env.NEXT_PUBLIC_API_BASE || '/api/v1/admin';
+  const fromEnv = (process.env.NEXT_PUBLIC_API_BASE || '').replace(/\/$/, '');
+  if (fromEnv) return fromEnv;
+  // Dev fallback relative (Next rewrite). Production build phải có NEXT_PUBLIC_API_BASE.
+  return '/api/v1/admin';
 }
 
 export function adminPath(path = '/'): string {
