@@ -135,11 +135,17 @@ export async function apiRequest<T>(path: string, options: RequestOptions = {}):
             : JSON.stringify(body),
       signal,
     });
-  } catch {
+  } catch (err) {
+    const base = getApiBase();
+    const hint =
+      typeof window !== 'undefined' && base.startsWith('http') && !base.includes(window.location.host)
+        ? ' Thường do CORS: thêm origin admin vào Laravel CORS_ALLOWED_ORIGINS / ADMIN_APP_URL, rồi php artisan config:cache.'
+        : ' Kiểm tra Laravel đang chạy, hoặc npm run dev còn sống.';
     throw new ApiClientError(
-      `Không kết nối được API (${getApiBase()}). Kiểm tra Laravel đang chạy, hoặc npm run dev còn sống.`,
+      `Không kết nối được API (${base}).${hint}`,
       'NETWORK_ERROR',
       0,
+      err instanceof Error ? err.message : err,
     );
   }
 

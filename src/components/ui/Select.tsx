@@ -175,6 +175,7 @@ export function Select({
           )}
           aria-haspopup="listbox"
           aria-expanded={open}
+          aria-label={label || placeholder || 'Chọn'}
           disabled={disabled}
           onClick={() => setOpen((v) => !v)}
         >

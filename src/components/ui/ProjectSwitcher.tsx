@@ -24,9 +24,8 @@ export function ProjectSwitcher() {
   }));
 
   return (
-    <div className="project-switch">
+    <div className="project-switch" aria-label="Chọn dự án">
       <Select
-        label="Dự án"
         options={options}
         value={current?.code ?? ''}
         searchable={projects.length > 5}
