@@ -52,6 +52,7 @@ export function ImageField({
   const inputId = useId();
   const inputRef = useRef<HTMLInputElement>(null);
   const abortRef = useRef<AbortController | null>(null);
+  const previewUrlRef = useRef<string | null>(null);
   const [dragOver, setDragOver] = useState(false);
   const [localPreview, setLocalPreview] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
@@ -73,15 +74,22 @@ export function ImageField({
       : null);
   const hasImage = !!displayUrl;
 
+  // Chỉ huỷ XHR / revoke blob khi unmount — không phụ thuộc localPreview
+  // (đổi preview trước đây abort nhầm upload vừa bắt đầu → kẹt "Đang tối ưu 0%").
   useEffect(() => {
     return () => {
       abortRef.current?.abort();
-      if (localPreview?.startsWith('blob:')) URL.revokeObjectURL(localPreview);
+      if (previewUrlRef.current?.startsWith('blob:')) {
+        URL.revokeObjectURL(previewUrlRef.current);
+      }
     };
-  }, [localPreview]);
+  }, []);
 
   const clearLocal = () => {
-    if (localPreview?.startsWith('blob:')) URL.revokeObjectURL(localPreview);
+    if (previewUrlRef.current?.startsWith('blob:')) {
+      URL.revokeObjectURL(previewUrlRef.current);
+    }
+    previewUrlRef.current = null;
     setLocalPreview(null);
   };
 
@@ -103,6 +111,7 @@ export function ImageField({
 
     clearLocal();
     const blobUrl = URL.createObjectURL(file);
+    previewUrlRef.current = blobUrl;
     setLocalPreview(blobUrl);
     setUploading(true);
     setProgress(0);
@@ -117,6 +126,7 @@ export function ImageField({
         onProgress: setProgress,
       })
       .then((media) => {
+        if (abortRef.current !== ctrl) return;
         clearLocal();
         setUploading(false);
         setProgress(100);
@@ -124,10 +134,12 @@ export function ImageField({
         toast.success('Đã tối ưu và tải ảnh lên');
       })
       .catch((err: Error) => {
-        if (err.message === 'Đã huỷ upload.') return;
+        // Upload cũ bị thay bằng lần chọn mới — bỏ qua.
+        if (abortRef.current !== ctrl) return;
         clearLocal();
         setUploading(false);
         setProgress(0);
+        if (err.message === 'Đã huỷ upload.') return;
         toast.error(err.message || 'Upload thất bại');
       });
   };
@@ -140,6 +152,7 @@ export function ImageField({
   const remove = () => {
     if (isDisabled) return;
     abortRef.current?.abort();
+    abortRef.current = null;
     clearLocal();
     setUploading(false);
     setProgress(0);
@@ -201,7 +214,7 @@ export function ImageField({
               <div className="ui-image-field__progress">
                 <div className="ui-image-field__progress-bar" style={{ width: `${progress}%` }} />
                 <span>
-                  <Loader2 size={14} className="ui-spin" /> Đang tối ưu… {progress}%
+                  <Loader2 size={14} className="ui-spin" /> Đang tải lên… {progress}%
                 </span>
               </div>
             ) : isDisabled ? null : (
@@ -242,7 +255,7 @@ export function ImageField({
             </span>
             <span className="ui-image-field__drop-sub">
               {uploading
-                ? 'Đang tối ưu WebP…'
+                ? 'Máy chủ đang tối ưu WebP…'
                 : isDisabled
                   ? 'Chỉnh ở ngôn ngữ mặc định'
                   : 'JPG, PNG, WebP'}

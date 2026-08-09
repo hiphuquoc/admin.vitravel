@@ -46,6 +46,7 @@ export function VideoField({
   const inputId = useId();
   const inputRef = useRef<HTMLInputElement>(null);
   const abortRef = useRef<AbortController | null>(null);
+  const previewUrlRef = useRef<string | null>(null);
   const [dragOver, setDragOver] = useState(false);
   const [localPreview, setLocalPreview] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
@@ -65,15 +66,21 @@ export function VideoField({
   const hasVideo = !!displayUrl;
   const fileMeta = !value.remove ? value.media : null;
 
+  // Chỉ abort/revoke khi unmount — tránh huỷ XHR khi set preview blob.
   useEffect(() => {
     return () => {
       abortRef.current?.abort();
-      if (localPreview?.startsWith('blob:')) URL.revokeObjectURL(localPreview);
+      if (previewUrlRef.current?.startsWith('blob:')) {
+        URL.revokeObjectURL(previewUrlRef.current);
+      }
     };
-  }, [localPreview]);
+  }, []);
 
   const clearLocal = () => {
-    if (localPreview?.startsWith('blob:')) URL.revokeObjectURL(localPreview);
+    if (previewUrlRef.current?.startsWith('blob:')) {
+      URL.revokeObjectURL(previewUrlRef.current);
+    }
+    previewUrlRef.current = null;
     setLocalPreview(null);
   };
 
@@ -98,6 +105,7 @@ export function VideoField({
 
     clearLocal();
     const blobUrl = URL.createObjectURL(file);
+    previewUrlRef.current = blobUrl;
     setLocalPreview(blobUrl);
     setUploading(true);
     setProgress(0);
@@ -109,6 +117,7 @@ export function VideoField({
         onProgress: setProgress,
       })
       .then((media) => {
+        if (abortRef.current !== ctrl) return;
         clearLocal();
         setUploading(false);
         setProgress(100);
@@ -116,10 +125,11 @@ export function VideoField({
         toast.success('Đã tải video lên');
       })
       .catch((err: Error) => {
-        if (err.message === 'Đã huỷ upload.') return;
+        if (abortRef.current !== ctrl) return;
         clearLocal();
         setUploading(false);
         setProgress(0);
+        if (err.message === 'Đã huỷ upload.') return;
         toast.error(err.message || 'Upload thất bại');
       });
   };
@@ -132,6 +142,7 @@ export function VideoField({
   const remove = () => {
     if (isDisabled) return;
     abortRef.current?.abort();
+    abortRef.current = null;
     clearLocal();
     setUploading(false);
     setProgress(0);

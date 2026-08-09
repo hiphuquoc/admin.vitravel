@@ -13,19 +13,33 @@ nohup: ignoring input
    - Environments: .env.local
 
  ✓ Starting...
- ✓ Ready in 4.3s
+ ✓ Ready in 2.6s
  ○ Compiling / ...
- ✓ Compiled / in 9.9s (901 modules)
- GET / 200 in 12430ms
+ ✓ Compiled / in 1961ms (887 modules)
+ GET / 200 in 3372ms
  ○ Compiling /login ...
- ✓ Compiled /login in 5.1s (1719 modules)
- GET /login?next=%2F 200 in 5673ms
- ✓ Compiled in 9.1s (1625 modules)
- GET /login?next=%2F 200 in 1023ms
- ✓ Compiled in 3.9s (1611 modules)
- ✓ Compiled in 6.6s (1625 modules)
- GET /login?next=%2F 200 in 1322ms
- ✓ Compiled in 6.1s (1625 modules)
- GET /login?next=%2F 200 in 712ms
- ✓ Compiled in 4.7s (1625 modules)
- GET /login?next=%2F 200 in 553ms
+ ✓ Compiled /login in 2s (1717 modules)
+ GET /login?next=%2F 200 in 2226ms
+ GET / 200 in 96ms
+ GET / 200 in 67ms
+ ○ Compiling /tours/packages ...
+ ✓ Compiled /tours/packages in 1792ms (1742 modules)
+ GET /tours/packages/ 200 in 2001ms
+ ○ Compiling /tours/packages/form ...
+ ✓ Compiled /tours/packages/form in 1517ms (1817 modules)
+ GET /tours/packages/form/?id=108 200 in 1828ms
+ ⚠ Found a change in next.config.ts. Restarting the server to apply the changes...
+   ▲ Next.js 15.5.22
+   - Local:        http://localhost:3100
+   - Network:      http://0.0.0.0:3100
+   - Environments: .env.local
+
+ ✓ Starting...
+ ✓ Ready in 7.4s
+ ○ Compiling /tours/packages/form ...
+ ✓ Compiled /tours/packages/form in 10.1s (991 modules)
+ GET /tours/packages/form/?id=108 200 in 11750ms
+ ○ Compiling /tours/packages ...
+ ✓ Compiled /tours/packages in 2.8s (994 modules)
+ GET /tours/packages/ 200 in 3085ms
+ ✓ Compiled in 3.1s (994 modules)
