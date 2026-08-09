@@ -3,12 +3,15 @@
 import { FormEvent, useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { motion } from 'framer-motion';
-import { Eye, EyeOff, LogIn } from 'lucide-react';
+import { Eye, EyeOff } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
 import { ApiClientError, getBasePath } from '@/lib/api';
 import { useAppRouter } from '@/hooks/useAppRouter';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Field';
+
+const APP_NAME = process.env.NEXT_PUBLIC_APP_NAME || 'ViTravel Admin';
+const APP_TAGLINE = process.env.NEXT_PUBLIC_APP_TAGLINE || 'Hài lòng hơn cả mong đợi';
 
 export default function LoginPage() {
   const { login, user, ready } = useAuth();
@@ -49,59 +52,44 @@ export default function LoginPage() {
 
   return (
     <div className="login">
-      <section className="login__visual">
-        <div className="login__orb login__orb--1" />
-        <div className="login__orb login__orb--2" />
+      <div className="login__atmosphere" aria-hidden>
+        <span className="login__glow login__glow--a" />
+        <span className="login__glow login__glow--b" />
+        <span className="login__lines" />
+        <span className="login__ring login__ring--lg" />
+        <span className="login__ring login__ring--md" />
+        <span className="login__ring login__ring--sm" />
+        <span className="login__ring login__ring--tr" />
+        <span className="login__grain" />
+      </div>
 
-        <div className="login__brand">
-          <div className="login__mark">V</div>
-          <div>
-            <div className="login__name">ViTravel</div>
-            <div className="login__tag">Hài lòng hơn cả mong đợi</div>
+      <motion.main
+        className="login__stage"
+        initial={{ opacity: 0, y: 14 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
+      >
+        <header className="login__brand">
+          <div className="login__mark" aria-hidden>
+            V
           </div>
-        </div>
-
-        <motion.div
-          className="login__hero"
-          initial={{ opacity: 0, y: 18 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
-        >
-          <h1>Điều hành hành trình với sự tinh tế của thương hiệu.</h1>
-          <p>
-            Console quản trị mới — nhanh, realtime, chuẩn API — sẵn sàng tách thành hệ thống dùng
-            chung cho mọi site trên nền tảng.
-          </p>
-        </motion.div>
-
-        <div className="login__stats">
-          <div>
-            <strong>Tour</strong>
-            <span>Gói · Danh mục · Chủ đề</span>
+          <div className="login__brand-text">
+            <h1 className="login__name">{APP_NAME}</h1>
+            {APP_TAGLINE ? <p className="login__tagline">{APP_TAGLINE}</p> : null}
           </div>
-          <div>
-            <strong>API</strong>
-            <span>v1/admin · Bearer</span>
-          </div>
-          <div>
-            <strong>UX</strong>
-            <span>Rõ · Tròn · Mượt</span>
-          </div>
-        </div>
-      </section>
+        </header>
 
-      <section className="login__panel">
-        <motion.div
-          className="login__card"
-          initial={{ opacity: 0, y: 16 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.45, delay: 0.08, ease: [0.22, 1, 0.36, 1] }}
-        >
-          <h2 className="login__card-title">Đăng nhập</h2>
-          <p className="login__card-desc">Truy cập khu vực quản trị ViTravel Admin Console.</p>
+        <section className="login__card" aria-labelledby="login-heading">
+          <h2 id="login-heading" className="login__heading">
+            Đăng nhập
+          </h2>
 
-          <form className="login__form" onSubmit={onSubmit}>
-            {error ? <div className="login__error">{error}</div> : null}
+          <form className="login__form" onSubmit={onSubmit} noValidate>
+            {error ? (
+              <div className="login__error" role="alert">
+                {error}
+              </div>
+            ) : null}
 
             <Input
               label="Email"
@@ -109,12 +97,13 @@ export default function LoginPage() {
               name="email"
               autoComplete="username"
               required
+              autoFocus
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="email@domain.com"
+              placeholder="you@company.com"
             />
 
-            <div style={{ position: 'relative' }}>
+            <div className="login__password">
               <Input
                 label="Mật khẩu"
                 type={showPw ? 'text' : 'password'}
@@ -124,41 +113,35 @@ export default function LoginPage() {
                 minLength={6}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder="Nhập mật khẩu"
+                placeholder="••••••••"
               />
               <button
                 type="button"
+                className="login__reveal"
                 onClick={() => setShowPw((v) => !v)}
                 aria-label={showPw ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'}
-                style={{
-                  position: 'absolute',
-                  right: '0.85rem',
-                  top: '2.55rem',
-                  color: 'var(--admin-muted)',
-                }}
               >
-                {showPw ? <EyeOff size={18} /> : <Eye size={18} />}
+                {showPw ? <EyeOff size={18} strokeWidth={2} /> : <Eye size={18} strokeWidth={2} />}
               </button>
             </div>
 
-            <div className="login__row">
-              <label className="login__remember">
-                <input
-                  type="checkbox"
-                  checked={remember}
-                  onChange={(e) => setRemember(e.target.checked)}
-                />
-                Ghi nhớ phiên
-              </label>
-            </div>
+            <label className="login__remember">
+              <input
+                type="checkbox"
+                checked={remember}
+                onChange={(e) => setRemember(e.target.checked)}
+              />
+              <span>Ghi nhớ phiên trên thiết bị này</span>
+            </label>
 
             <Button type="submit" block loading={loading}>
-              <LogIn size={18} />
-              Vào hệ thống
+              Đăng nhập
             </Button>
           </form>
-        </motion.div>
-      </section>
+        </section>
+
+        <p className="login__footnote">Khu vực nội bộ · Chỉ dành cho nhân sự được cấp quyền</p>
+      </motion.main>
     </div>
   );
 }

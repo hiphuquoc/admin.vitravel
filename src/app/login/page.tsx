@@ -3,6 +3,7 @@ import LoginPage from './page-client';
 
 export const metadata = {
   title: 'Đăng nhập',
+  description: 'Đăng nhập hệ thống quản trị ViTravel.',
 };
 
 export default function Page() {
