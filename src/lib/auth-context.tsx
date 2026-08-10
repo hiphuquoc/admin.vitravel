@@ -39,6 +39,7 @@ type AuthState = {
   ready: boolean;
   projects: AdminProject[];
   projectCode: string | null;
+  serviceClusters: AdminProject['service_clusters'];
   setActiveProject: (code: string) => void;
   login: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
@@ -98,7 +99,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const data = await authApi.login(email, password);
       const merged = mergeUser(data.user, data.projects ?? []);
       setSession(data.token, merged);
-      applyProjects(merged, data.projects?.[0]?.code);
+      const code = pickProjectCode(merged.projects ?? [], data.projects?.[0]?.code);
+      setProjectCode(code);
+      setProjectCodeState(code);
+      try {
+        const me = await authApi.me();
+        setSession(data.token, me);
+        applyProjects(me, code);
+      } catch {
+        applyProjects(merged, code);
+      }
     },
     [applyProjects],
   );
@@ -114,10 +124,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setProjectCodeState(null);
   }, []);
 
-  const setActiveProject = useCallback((code: string) => {
-    setProjectCode(code);
-    setProjectCodeState(code);
-  }, []);
+  const setActiveProject = useCallback(
+    (code: string) => {
+      setProjectCode(code);
+      setProjectCodeState(code);
+      void authApi
+        .me()
+        .then((me) => {
+          const token = getToken();
+          if (token) setSession(token, me);
+          applyProjects(me, code);
+        })
+        .catch(() => {
+          /* keep local project switch even if me fails */
+        });
+    },
+    [applyProjects],
+  );
 
   const can = useCallback(
     (permission: string) => checkPermission(user, permission, projectCode),
@@ -130,6 +153,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       ready,
       projects: user?.projects ?? [],
       projectCode,
+      serviceClusters: user?.current_project?.service_clusters,
       setActiveProject,
       login,
       logout,

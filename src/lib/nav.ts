@@ -48,7 +48,7 @@ export type NavGroup = {
   items: NavItem[];
 };
 
-/** Cụm dịch vụ — khớp `config/services_catalog.php`. */
+/** Cụm dịch vụ — khớp `config/services_catalog.php` + seed dự án (train ↔ ferry). */
 export const SERVICE_CLUSTERS = [
   {
     key: 'train',
@@ -56,6 +56,13 @@ export const SERVICE_CLUSTERS = [
     label: 'Vé tàu hỏa',
     hubKey: 'trains_hub',
     icon: TrainFront,
+  },
+  {
+    key: 'ferry',
+    title: 'Tàu / Xe',
+    label: 'Vé tàu cao tốc & xe khách',
+    hubKey: 'ferries_hub',
+    icon: Ship,
   },
   {
     key: 'flight',
@@ -92,6 +99,7 @@ export const LISTING_HUB_KEYS = [
   'tours_hub',
   'cruises_hub',
   'trains_hub',
+  'ferries_hub',
   'flights_hub',
   'stays_hub',
   'experiences_hub',
@@ -101,6 +109,15 @@ export const LISTING_HUB_KEYS = [
 
 export type ServiceClusterKey = (typeof SERVICE_CLUSTERS)[number]['key'];
 
+export type ProjectServiceCluster = {
+  code: string;
+  nav_label?: string;
+  label?: string;
+  icon?: string;
+  hub_key?: string | null;
+  sort?: number;
+};
+
 /** Nhãn dài (vé / sản phẩm) — form & mô tả. */
 export function serviceClusterLabel(key: string | null | undefined): string {
   return SERVICE_CLUSTERS.find((c) => c.key === key)?.label || key || 'Dịch vụ';
@@ -109,6 +126,72 @@ export function serviceClusterLabel(key: string | null | undefined): string {
 /** Tên ngắn group — dùng cho menu: Danh mục / Chi tiết / Hub [loại]. */
 export function serviceClusterTitle(key: string | null | undefined): string {
   return SERVICE_CLUSTERS.find((c) => c.key === key)?.title || key || 'Dịch vụ';
+}
+
+/** Cụm dịch vụ active theo seed dự án (fallback: toàn bộ catalog trừ alias đối lập). */
+export function activeServiceClusters(
+  projectClusters?: ProjectServiceCluster[] | null,
+): (typeof SERVICE_CLUSTERS)[number][] {
+  const codes = (projectClusters || [])
+    .map((c) => c.code)
+    .filter((code): code is string => typeof code === 'string' && code !== '');
+
+  if (codes.length === 0) {
+    return SERVICE_CLUSTERS.filter((c) => c.key !== 'ferry') as unknown as (typeof SERVICE_CLUSTERS)[number][];
+  }
+
+  const set = new Set(codes);
+  return SERVICE_CLUSTERS.filter((c) => set.has(c.key)) as unknown as (typeof SERVICE_CLUSTERS)[number][];
+}
+
+/** Lọc nhóm menu dịch vụ theo cụm của dự án hiện tại. */
+export function filterNavGroupsByServiceClusters(
+  groups: NavGroup[],
+  projectClusters?: ProjectServiceCluster[] | null,
+): NavGroup[] {
+  const active = new Set(activeServiceClusters(projectClusters).map((c) => c.key));
+  return groups
+    .map((group) => {
+      if (!group.key.startsWith('svc-')) return group;
+      const code = group.key.slice(4);
+      if (!active.has(code as ServiceClusterKey)) return null;
+
+      const seed = (projectClusters || []).find((c) => c.code === code);
+      if (!seed) return group;
+
+      const title = seed.nav_label || seed.label || group.title;
+      return {
+        ...group,
+        title,
+        items: group.items.map((item) => {
+          if (item.label.startsWith('Chi tiết ')) {
+            return { ...item, label: `Chi tiết ${title}` };
+          }
+          if (item.label.startsWith('Danh mục ')) {
+            return { ...item, label: `Danh mục ${title}` };
+          }
+          if (item.label.startsWith('Hub ')) {
+            return { ...item, label: `Hub ${title}` };
+          }
+          return item;
+        }),
+      };
+    })
+    .filter(Boolean) as NavGroup[];
+}
+
+/** Alias train↔ferry khi URL cũ không khớp seed dự án. */
+export function resolveProjectServiceCluster(
+  requested: string | null | undefined,
+  projectClusters?: ProjectServiceCluster[] | null,
+): string {
+  const codes = (projectClusters || []).map((c) => c.code).filter(Boolean);
+  const req = (requested || '').trim();
+  if (req && codes.includes(req)) return req;
+  if (req === 'train' && codes.includes('ferry')) return 'ferry';
+  if (req === 'ferry' && codes.includes('train')) return 'train';
+  if (codes.length > 0) return codes[0];
+  return req || 'train';
 }
 
 /** Nhãn menu chuẩn cho listing hub theo hubKey. */

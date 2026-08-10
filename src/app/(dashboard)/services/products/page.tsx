@@ -1,15 +1,28 @@
 'use client';
 
-import { Suspense } from 'react';
+import { Suspense, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { servicesApi } from '@/lib/services';
 import { Badge } from '@/components/ui/Page';
 import { ResourceListPage } from '@/components/admin/ResourceListPage';
-import { serviceClusterTitle } from '@/lib/nav';
+import { resolveProjectServiceCluster, serviceClusterTitle } from '@/lib/nav';
+import { useAuth } from '@/lib/auth-context';
+import { useAppRouter } from '@/hooks/useAppRouter';
 
 function Inner() {
   const search = useSearchParams();
-  const cluster = search.get('cluster') || '';
+  const router = useAppRouter();
+  const { serviceClusters } = useAuth();
+  const requested = search.get('cluster') || '';
+  const cluster = resolveProjectServiceCluster(requested, serviceClusters);
+
+  useEffect(() => {
+    if (!requested || requested === cluster) return;
+    const next = new URLSearchParams(search.toString());
+    next.set('cluster', cluster);
+    router.replace(`/services/products/?${next.toString()}`);
+  }, [requested, cluster, router, search]);
+
   const kind = serviceClusterTitle(cluster);
 
   return (

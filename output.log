@@ -30,3 +30,11 @@ nohup: ignoring input
 
  ✓ Starting...
  ✓ Ready in 2.8s
+ ⚠ Found a change in next.config.ts. Restarting the server to apply the changes...
+   ▲ Next.js 15.5.22
+   - Local:        http://localhost:3100
+   - Network:      http://0.0.0.0:3100
+   - Environments: .env.local
+
+ ✓ Starting...
+ ✓ Ready in 2.8s

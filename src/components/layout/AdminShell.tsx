@@ -7,7 +7,7 @@ import { ChevronRight, LogOut, Menu, UserRound } from 'lucide-react';
 import { Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import clsx from 'clsx';
 import { useAuth } from '@/lib/auth-context';
-import { NAV_GROUPS, isNavActive, type NavItem } from '@/lib/nav';
+import { NAV_GROUPS, filterNavGroupsByServiceClusters, isNavActive, type NavItem } from '@/lib/nav';
 import { navAllowed } from '@/lib/permissions';
 import { ThemeSwitcher } from '@/components/ui/ThemeSwitcher';
 import { ProjectSwitcher } from '@/components/ui/ProjectSwitcher';
@@ -20,7 +20,12 @@ import { AiFormTranslateProvider } from '@/hooks/useAiFormTranslate';
 import { AiFilledFieldsProvider } from '@/hooks/useAiFilledFields';
 import { MediaUploadBusyProvider } from '@/hooks/useMediaUploadBusy';
 
-function buildCrumbs(pathname: string, hasId: boolean, searchParams: URLSearchParams) {
+function buildCrumbs(
+  pathname: string,
+  hasId: boolean,
+  searchParams: URLSearchParams,
+  groups = NAV_GROUPS,
+) {
   const crumbs: { label: string; href?: string }[] = [{ label: 'Admin', href: '/' }];
 
   if (pathname.startsWith('/account')) {
@@ -29,7 +34,7 @@ function buildCrumbs(pathname: string, hasId: boolean, searchParams: URLSearchPa
     return crumbs;
   }
 
-  for (const group of NAV_GROUPS) {
+  for (const group of groups) {
     for (const item of group.items) {
       if (isNavActive(pathname, item, searchParams)) {
         crumbs.push({ label: group.title });
@@ -47,7 +52,7 @@ function buildCrumbs(pathname: string, hasId: boolean, searchParams: URLSearchPa
 }
 
 function ShellInner({ children }: { children: ReactNode }) {
-  const { user, logout, can, projectCode } = useAuth();
+  const { user, logout, can, projectCode, serviceClusters } = useAuth();
   const pathname = usePathname();
   const search = useSearchParams();
   const router = useAppRouter();
@@ -56,20 +61,27 @@ function ShellInner({ children }: { children: ReactNode }) {
   const navRef = useRef<HTMLElement>(null);
   const progress = useBlockingProgress();
 
-  const visibleGroups = useMemo(() => {
-    return NAV_GROUPS.map((group) => ({
-      ...group,
-      items: group.items.filter((item) => {
-        if (item.action === 'clear-html-cache') {
-          return can('settings.update');
-        }
-        const path = item.match || item.href.split('?')[0] || item.href;
-        return navAllowed(path, user, projectCode);
-      }),
-    })).filter((group) => group.items.length > 0);
-  }, [user, projectCode, can]);
+  const projectNavGroups = useMemo(
+    () => filterNavGroupsByServiceClusters(NAV_GROUPS, serviceClusters),
+    [serviceClusters],
+  );
 
-  const crumbs = buildCrumbs(pathname, !!search.get('id'), search);
+  const visibleGroups = useMemo(() => {
+    return projectNavGroups
+      .map((group) => ({
+        ...group,
+        items: group.items.filter((item) => {
+          if (item.action === 'clear-html-cache') {
+            return can('settings.update');
+          }
+          const path = item.match || item.href.split('?')[0] || item.href;
+          return navAllowed(path, user, projectCode);
+        }),
+      }))
+      .filter((group) => group.items.length > 0);
+  }, [user, projectCode, can, projectNavGroups]);
+
+  const crumbs = buildCrumbs(pathname, !!search.get('id'), search, projectNavGroups);
   const pageTitle = crumbs[crumbs.length - 1]?.label || 'Admin';
 
   const searchKey = search.toString();

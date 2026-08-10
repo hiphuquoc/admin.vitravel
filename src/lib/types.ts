@@ -48,6 +48,14 @@ export type AdminProject = {
   domains?: { domain: string; is_primary: boolean }[];
   role?: string;
   permissions?: string[];
+  service_clusters?: {
+    code: string;
+    nav_label?: string;
+    label?: string;
+    icon?: string;
+    hub_key?: string | null;
+    sort?: number;
+  }[];
 };
 
 export type UserProjectAssignment = {
