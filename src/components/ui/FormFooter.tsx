@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/Button';
 import { AiTranslatePageButton } from '@/components/ui/AiTranslatePageButton';
 import { useFormActionsLocked } from '@/hooks/useStructureLock';
 import { useMediaUploadBusy } from '@/hooks/useMediaUploadBusy';
+import { useStableViewHref } from '@/hooks/useStableViewHref';
 import toast from '@/lib/toast';
 
 type FormFooterProps = {
@@ -43,6 +44,7 @@ export function FormFooter({
   const actionsLocked = useFormActionsLocked();
   const mediaBusy = useMediaUploadBusy();
   const rootRef = useRef<HTMLDivElement>(null);
+  const stableViewHref = useStableViewHref(viewHref);
   const blocked = actionsLocked || mediaBusy || submitDisabled;
 
   // Khóa submit + class veil trên <form> cha khi trang cha thiếu locale / đang upload media.
@@ -90,9 +92,9 @@ export function FormFooter({
             </Button>
           </Link>
         ) : null}
-        {viewHref && !actionsLocked ? (
+        {stableViewHref ? (
           <a
-            href={viewHref}
+            href={stableViewHref}
             target="_blank"
             rel="noopener noreferrer"
             className="ui-btn ui-btn--secondary ui-form-footer__view"
@@ -101,7 +103,11 @@ export function FormFooter({
             onClick={(e) => {
               if (mediaBusy || loading) {
                 e.preventDefault();
-                toast.error('Đang tải ảnh/video — chờ xong rồi mở trang.');
+                toast.error(
+                  mediaBusy
+                    ? 'Đang tải ảnh/video — chờ xong rồi mở trang.'
+                    : 'Đang lưu — chờ xong rồi mở trang.',
+                );
               }
             }}
           >

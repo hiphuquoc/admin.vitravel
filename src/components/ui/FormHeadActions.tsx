@@ -3,6 +3,7 @@
 import { ArrowLeft } from 'lucide-react';
 import { HeadActions, HeadSecondary } from '@/components/ui/HeadActions';
 import { ViewPublicButton } from '@/components/ui/ViewPublicButton';
+import { useStableViewHref } from '@/hooks/useStableViewHref';
 
 /**
  * Header actions chuẩn cho form chỉnh sửa — dùng chung mọi trang.
@@ -19,10 +20,12 @@ export function FormHeadActions({
   viewHref?: string | null;
   className?: string;
 }) {
+  const stableViewHref = useStableViewHref(viewHref);
+
   return (
     <HeadActions
       className={className}
-      primary={viewHref ? <ViewPublicButton href={viewHref} /> : undefined}
+      primary={stableViewHref ? <ViewPublicButton href={stableViewHref} /> : undefined}
       secondary={
         <HeadSecondary
           href={backHref}

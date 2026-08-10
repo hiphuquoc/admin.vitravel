@@ -2,6 +2,7 @@
 
 import { Eye } from 'lucide-react';
 import { HeadCta } from '@/components/ui/HeadActions';
+import { useStableViewHref } from '@/hooks/useStableViewHref';
 
 /** CatHead CTA — mở trang public (tab mới). */
 export function ViewPublicButton({
@@ -15,11 +16,12 @@ export function ViewPublicButton({
   subtitle?: string;
   className?: string;
 }) {
-  if (!href) return null;
+  const stableHref = useStableViewHref(href);
+  if (!stableHref) return null;
 
   return (
     <HeadCta
-      href={href}
+      href={stableHref}
       external
       icon={Eye}
       title={title}

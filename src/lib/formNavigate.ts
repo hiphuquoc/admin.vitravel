@@ -1,4 +1,5 @@
 import { getBasePath } from '@/lib/api';
+import { DEFAULT_LOCALE } from '@/lib/locale';
 
 type RouterLike = {
   replace: (href: string, options?: { scroll?: boolean }) => void;
@@ -16,17 +17,27 @@ function stripBase(pathname: string): string {
   return path;
 }
 
+/**
+ * Chuẩn hoá query form để so sánh — `?id=1` ≡ `?id=1&locale=vi` (locale mặc định).
+ * Tránh router.replace sau Lưu chỉ vì gắn thêm locale → Suspense/nav progress làm nút Xem biến mất.
+ */
+function normalizeFormSearch(search: string): string {
+  const params = new URLSearchParams(search.startsWith('?') ? search.slice(1) : search);
+  const locale = (params.get('locale') || DEFAULT_LOCALE).toLowerCase() || DEFAULT_LOCALE;
+  params.set('locale', locale);
+  const sorted = [...params.entries()].sort(([a], [b]) => a.localeCompare(b));
+  return new URLSearchParams(sorted).toString();
+}
+
 function urlKey(pathname: string, search: string): string {
   const path = stripBase(pathname);
-  const params = new URLSearchParams(search.startsWith('?') ? search.slice(1) : search);
-  const sorted = [...params.entries()].sort(([a], [b]) => a.localeCompare(b));
-  const qs = new URLSearchParams(sorted).toString();
+  const qs = normalizeFormSearch(search);
   return qs ? `${path}?${qs}` : path;
 }
 
 /**
  * router.replace cho form save — không nhảy scroll lên đầu trang.
- * Bỏ qua navigation nếu URL không đổi.
+ * Bỏ qua navigation nếu URL không đổi (kể cả chỉ thêm locale mặc định).
  */
 export function replaceFormUrl(router: RouterLike, href: string): void {
   if (typeof window === 'undefined') {
