@@ -6,7 +6,7 @@ import { Check, ChevronDown, Search } from 'lucide-react';
 import clsx from 'clsx';
 import { Field } from '@/components/ui/FieldShell';
 import { FieldLockIcon } from '@/components/ui/FieldShell';
-import { useFloatingPanel } from '@/hooks/useFloatingPanel';
+import { useFloatingPanel, type FloatingPanelOptions } from '@/hooks/useFloatingPanel';
 
 export type SelectOption = {
   value: string | number;
@@ -28,6 +28,11 @@ type SelectProps = {
   onChange?: (value: string) => void;
   /** Native-like event for gradual migration */
   onChangeEvent?: (e: { target: { value: string; name?: string } }) => void;
+  /** Độ rộng tối thiểu drawer — không kẹt theo trigger hẹp (header). */
+  panelMinWidth?: number;
+  /** Căn drawer theo cạnh trigger. */
+  panelAlign?: FloatingPanelOptions['align'];
+  preferredMaxHeight?: number;
 };
 
 export function Select({
@@ -44,6 +49,9 @@ export function Select({
   className,
   onChange,
   onChangeEvent,
+  panelMinWidth,
+  panelAlign,
+  preferredMaxHeight = 280,
 }: SelectProps) {
   const id = useId();
   const rootRef = useRef<HTMLDivElement>(null);
@@ -52,7 +60,11 @@ export function Select({
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
   const [mounted, setMounted] = useState(false);
-  const panelStyle = useFloatingPanel(open, triggerRef);
+  const panelStyle = useFloatingPanel(open, triggerRef, {
+    preferredMaxHeight,
+    minWidth: panelMinWidth,
+    align: panelAlign,
+  });
 
   useEffect(() => setMounted(true), []);
 

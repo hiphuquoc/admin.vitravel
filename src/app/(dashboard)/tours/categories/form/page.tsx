@@ -321,7 +321,6 @@ function CategoryFormInner() {
 
         <FormFooter
           cancelHref="/tours/categories/"
-          submitLabel="Lưu chủ đề"
           loading={save.isPending}
           viewHref={publicPageUrl(
             detailQuery.data?.seo?.slug_full,

@@ -228,7 +228,6 @@ export default function HomeContentPage() {
             ))}
           </FormSection>
           <FormFooter
-            submitLabel="Lưu trang chủ"
             loading={save.isPending}
             viewHref={publicPageUrl('/', locale)}
           />

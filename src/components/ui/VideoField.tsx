@@ -8,6 +8,7 @@ import toast from '@/lib/toast';
 import { mediaApi } from '@/lib/services';
 import type { MediaImage } from '@/lib/types';
 import { useStructureLocked } from '@/hooks/useStructureLock';
+import { useReportMediaUpload } from '@/hooks/useMediaUploadBusy';
 
 export type VideoFieldState = {
   media: MediaImage | null;
@@ -53,6 +54,7 @@ export function VideoField({
   const [progress, setProgress] = useState(0);
   const locked = useStructureLocked();
   const isDisabled = !!disabled || (structure && locked);
+  useReportMediaUpload(uploading);
 
   const metaQuery = useQuery({
     queryKey: ['media-video-meta'],
@@ -122,7 +124,7 @@ export function VideoField({
         setUploading(false);
         setProgress(100);
         onChange({ media, remove: false });
-        toast.success('Đã tải video lên');
+        toast.success('Video đã sẵn sàng — nhấn Lưu để gắn vào nội dung');
       })
       .catch((err: Error) => {
         if (abortRef.current !== ctrl) return;

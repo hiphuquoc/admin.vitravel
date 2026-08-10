@@ -31,6 +31,9 @@ export function ProjectSwitcher() {
         searchable={projects.length > 5}
         placeholder="Chọn dự án…"
         className="project-switch__select-field"
+        panelMinWidth={288}
+        panelAlign="end"
+        preferredMaxHeight={320}
         onChange={(code) => {
           if (!code || code === projectCode) return;
           setActiveProject(code);

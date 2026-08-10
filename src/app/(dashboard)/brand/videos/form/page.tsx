@@ -518,7 +518,6 @@ function FormInner() {
 
           <FormFooter
             cancelHref="/brand/videos/"
-            submitLabel="Lưu video"
             loading={save.isPending}
           />
         </div>

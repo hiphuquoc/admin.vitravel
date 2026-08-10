@@ -346,7 +346,6 @@ function FormInner() {
 
         <FormFooter
           cancelHref="/settings/users/"
-          submitLabel={isNew ? 'Tạo người dùng' : 'Lưu người dùng'}
           loading={save.isPending}
           showAiTranslate={false}
           submitDisabled={!canManage}

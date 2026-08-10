@@ -3,7 +3,6 @@
 import { FormEvent, Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft } from 'lucide-react';
 import toast from '@/lib/toast';
 import { homeSlidesApi } from '@/lib/services';
 import { useEditLocale } from '@/hooks/useEditLocale';
@@ -18,7 +17,7 @@ import { FormSection } from '@/components/ui/FormSection';
 import { LocaleSwitcher } from '@/components/ui/LocaleSwitcher';
 import { emptyImageField, ImageField, type ImageFieldState } from '@/components/ui/ImageField';
 import { FormFooter } from '@/components/ui/FormFooter';
-import { HeadActions, HeadSecondary } from '@/components/ui/HeadActions';
+import { FormHeadActions } from '@/components/ui/FormHeadActions';
 import { publicPageUrl } from '@/lib/publicUrl';
 import { replaceFormUrl } from '@/lib/formNavigate';
 import type { LocaleOption } from '@/lib/locale';
@@ -152,24 +151,18 @@ function FormInner() {
 
   return (
     <StructureLockProvider locked={structureLocked}>
-    <div>
+      <div>
         <PageHeader
           eyebrow="Nội dung"
-        title={isNew ? 'Thêm slide' : 'Sửa slide'}
-        id={isNew ? null : id}
-        actions={
-          <HeadActions
-            secondary={
-              <HeadSecondary
-                href="/content/slides/"
-                icon={ArrowLeft}
-                title="Quay lại"
-                subtitle="Danh sách"
-              />
-            }
-          />
-        }
-      />
+          title={isNew ? 'Thêm slide' : 'Sửa slide'}
+          id={isNew ? null : id}
+          actions={
+            <FormHeadActions
+              backHref="/content/slides/"
+              viewHref={publicPageUrl('/', locale)}
+            />
+          }
+        />
       <LocaleSwitcher
         languages={meta?.languages ?? []}
         value={locale}
@@ -251,7 +244,6 @@ function FormInner() {
 
           <FormFooter
             cancelHref="/content/slides/"
-            submitLabel="Lưu"
             loading={save.isPending}
             viewHref={publicPageUrl('/', locale)}
           />

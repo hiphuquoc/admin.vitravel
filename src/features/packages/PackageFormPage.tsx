@@ -4,7 +4,6 @@ import { FormEvent, Suspense, useEffect, useMemo, useRef, useState } from 'react
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
-  ArrowLeft,
   CalendarDays,
   CircleHelp,
   FileText,
@@ -38,8 +37,7 @@ import { Repeater } from '@/components/ui/Repeater';
 import { emptyImageField, ImageField, type ImageFieldState } from '@/components/ui/ImageField';
 import { FormMediaAside, FormThumbCard } from '@/components/ui/FormMediaAside';
 import { FormFooter } from '@/components/ui/FormFooter';
-import { HeadActions, HeadSecondary } from '@/components/ui/HeadActions';
-import { ViewPublicButton } from '@/components/ui/ViewPublicButton';
+import { FormHeadActions } from '@/components/ui/FormHeadActions';
 import { publicPageUrl } from '@/lib/publicUrl';
 import { replaceFormUrl } from '@/lib/formNavigate';
 
@@ -162,7 +160,6 @@ const COPY: Record<
     addDesc: string;
     codeLabel: string;
     featuredLabel: string;
-    saveLabel: string;
     createdMsg: string;
     savedMsg: string;
     queryKey: string;
@@ -176,7 +173,6 @@ const COPY: Record<
     addDesc: 'Tạo sản phẩm tour mới.',
     codeLabel: 'Mã tour',
     featuredLabel: 'Tour nổi bật',
-    saveLabel: 'Lưu chi tiết Tour',
     createdMsg: 'Đã tạo chi tiết Tour',
     savedMsg: 'Đã lưu chi tiết Tour',
     queryKey: 'packages',
@@ -189,7 +185,6 @@ const COPY: Record<
     addDesc: 'Tạo sản phẩm du thuyền mới.',
     codeLabel: 'Mã du thuyền',
     featuredLabel: 'Du thuyền nổi bật',
-    saveLabel: 'Lưu chi tiết Du thuyền',
     createdMsg: 'Đã tạo chi tiết Du thuyền',
     savedMsg: 'Đã lưu chi tiết Du thuyền',
     queryKey: 'cruise-packages',
@@ -496,24 +491,13 @@ function PackageFormInner({ kind }: { kind: PackageType }) {
         id={isNew ? null : id}
         description={isNew ? copy.addDesc : undefined}
         actions={
-          <HeadActions
-            primary={
-              <ViewPublicButton
-                href={publicPageUrl(
-                  detailQuery.data?.seo?.slug_full,
-                  locale,
-                  defaultLocale,
-                )}
-              />
-            }
-            secondary={
-              <HeadSecondary
-                href={copy.listHref}
-                icon={ArrowLeft}
-                title="Quay lại"
-                subtitle="Về danh sách"
-              />
-            }
+          <FormHeadActions
+            backHref={copy.listHref}
+            viewHref={publicPageUrl(
+              detailQuery.data?.seo?.slug_full,
+              locale,
+              defaultLocale,
+            )}
           />
         }
       />
@@ -952,7 +936,6 @@ function PackageFormInner({ kind }: { kind: PackageType }) {
 
         <FormFooter
           cancelHref={copy.listHref}
-          submitLabel={copy.saveLabel}
           loading={save.isPending}
           viewHref={publicPageUrl(
             detailQuery.data?.seo?.slug_full,

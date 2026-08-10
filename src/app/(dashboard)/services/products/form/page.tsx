@@ -378,7 +378,6 @@ function FormInner() {
                 ? `/services/products/?cluster=${form.cluster}`
                 : '/services/products/'
             }
-            submitLabel={`Lưu chi tiết ${kind}`}
             loading={save.isPending}
             viewHref={publicPageUrl(
               detailQuery.data?.seo?.slug_full,

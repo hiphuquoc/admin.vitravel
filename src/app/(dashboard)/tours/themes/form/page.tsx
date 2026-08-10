@@ -236,7 +236,6 @@ function ThemeFormInner() {
 
         <FormFooter
           cancelHref="/tours/themes/"
-          submitLabel="Lưu chủ đề"
           loading={save.isPending}
         />
       </form>

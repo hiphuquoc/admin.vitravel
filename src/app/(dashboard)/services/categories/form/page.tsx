@@ -293,7 +293,6 @@ function FormInner() {
                 ? `/services/categories/?cluster=${form.cluster}`
                 : '/services/categories/'
             }
-            submitLabel={`Lưu danh mục ${kind}`}
             loading={save.isPending}
             viewHref={publicPageUrl(
               detailQuery.data?.seo?.slug_full,

@@ -18,6 +18,7 @@ import { useBlockingProgress } from '@/components/ui/BlockingProgress';
 import { clearHtmlCacheWithProgress } from '@/lib/clearHtmlCache';
 import { AiFormTranslateProvider } from '@/hooks/useAiFormTranslate';
 import { AiFilledFieldsProvider } from '@/hooks/useAiFilledFields';
+import { MediaUploadBusyProvider } from '@/hooks/useMediaUploadBusy';
 
 function buildCrumbs(pathname: string, hasId: boolean, searchParams: URLSearchParams) {
   const crumbs: { label: string; href?: string }[] = [{ label: 'Admin', href: '/' }];
@@ -266,7 +267,9 @@ export function AdminShell({ children }: { children: ReactNode }) {
     <Suspense fallback={<PageLoader variant="screen" />}>
       <AiFormTranslateProvider>
         <AiFilledFieldsProvider>
-          <ShellInner>{children}</ShellInner>
+          <MediaUploadBusyProvider>
+            <ShellInner>{children}</ShellInner>
+          </MediaUploadBusyProvider>
         </AiFilledFieldsProvider>
       </AiFormTranslateProvider>
     </Suspense>

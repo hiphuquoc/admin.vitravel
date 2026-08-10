@@ -173,7 +173,6 @@ export default function CompanyPage() {
             />
           </FormSection>
           <FormFooter
-            submitLabel="Lưu"
             loading={save.isPending}
             viewHref={publicPageUrl('about', locale)}
           />

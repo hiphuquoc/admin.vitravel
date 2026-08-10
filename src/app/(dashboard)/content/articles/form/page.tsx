@@ -267,7 +267,6 @@ function FormInner() {
 
           <FormFooter
             cancelHref="/content/articles/"
-            submitLabel="Lưu chi tiết Blog"
             loading={save.isPending}
             viewHref={publicPageUrl(
               (detailQuery.data as { seo?: { slug_full?: string } } | undefined)?.seo?.slug_full,

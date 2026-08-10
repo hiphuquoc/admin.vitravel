@@ -15,8 +15,16 @@ export function HeadActions({
   secondary?: ReactNode;
   className?: string;
 }) {
+  const hasPrimary = !!primary;
+
   return (
-    <div className={clsx('ui-head-actions', className)}>
+    <div
+      className={clsx(
+        'ui-head-actions',
+        !hasPrimary && 'ui-head-actions--secondary-only',
+        className,
+      )}
+    >
       {primary}
       {secondary ? <div className="ui-head-actions__secondary">{secondary}</div> : null}
     </div>

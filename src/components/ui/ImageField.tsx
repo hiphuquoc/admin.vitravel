@@ -8,6 +8,7 @@ import toast from '@/lib/toast';
 import { mediaApi } from '@/lib/services';
 import type { MediaFolder, MediaImage } from '@/lib/types';
 import { useStructureLocked } from '@/hooks/useStructureLock';
+import { useReportMediaUpload } from '@/hooks/useMediaUploadBusy';
 
 export type ImageFieldState = {
   media: MediaImage | null;
@@ -59,6 +60,7 @@ export function ImageField({
   const [progress, setProgress] = useState(0);
   const locked = useStructureLocked();
   const isDisabled = !!disabled || (structure && locked);
+  useReportMediaUpload(uploading);
 
   const metaQuery = useQuery({
     queryKey: ['media-meta'],
@@ -131,7 +133,7 @@ export function ImageField({
         setUploading(false);
         setProgress(100);
         onChange({ media, remove: false });
-        toast.success('Đã tối ưu và tải ảnh lên');
+        toast.success('Ảnh đã sẵn sàng — nhấn Lưu để gắn vào nội dung');
       })
       .catch((err: Error) => {
         // Upload cũ bị thay bằng lần chọn mới — bỏ qua.
@@ -214,7 +216,7 @@ export function ImageField({
               <div className="ui-image-field__progress">
                 <div className="ui-image-field__progress-bar" style={{ width: `${progress}%` }} />
                 <span>
-                  <Loader2 size={14} className="ui-spin" /> Đang tải lên… {progress}%
+                  <Loader2 size={14} className="ui-spin" /> Đang tải ảnh… {progress}%
                 </span>
               </div>
             ) : isDisabled ? null : (
@@ -255,7 +257,7 @@ export function ImageField({
             </span>
             <span className="ui-image-field__drop-sub">
               {uploading
-                ? 'Máy chủ đang tối ưu WebP…'
+                ? 'Chưa gắn vào nội dung — chờ xong rồi nhấn Lưu'
                 : isDisabled
                   ? 'Chỉnh ở ngôn ngữ mặc định'
                   : 'JPG, PNG, WebP'}

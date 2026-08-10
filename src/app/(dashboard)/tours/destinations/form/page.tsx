@@ -373,7 +373,6 @@ function FormInner() {
 
           <FormFooter
             cancelHref="/tours/destinations/"
-            submitLabel="Lưu danh mục Tour"
             loading={save.isPending}
             viewHref={publicPageUrl(
               detailQuery.data?.seo?.slug_full,

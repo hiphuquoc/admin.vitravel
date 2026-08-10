@@ -4,7 +4,6 @@ import type { Dispatch, ReactNode, SetStateAction } from 'react';
 import { FormEvent, Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft } from 'lucide-react';
 import toast from '@/lib/toast';
 import { languagesApi } from '@/lib/services';
 import { useEditLocale } from '@/hooks/useEditLocale';
@@ -18,7 +17,7 @@ import { SeoBox, type SeoParentOption } from '@/components/ui/SeoBox';
 import { LocaleSwitcher } from '@/components/ui/LocaleSwitcher';
 import { StructureNotice } from '@/components/ui/StructureNotice';
 import { FormFooter } from '@/components/ui/FormFooter';
-import { HeadActions, HeadSecondary } from '@/components/ui/HeadActions';
+import { FormHeadActions } from '@/components/ui/FormHeadActions';
 import { publicPageUrl } from '@/lib/publicUrl';
 import { replaceFormUrl } from '@/lib/formNavigate';
 import { asLocaleOptions, DEFAULT_LOCALE, isDefaultLocale, type LocaleOption } from '@/lib/locale';
@@ -257,15 +256,13 @@ function Inner(props: Props) {
           title={isNew ? props.titleNew : props.titleEdit}
           id={isNew ? null : id}
           actions={
-            <HeadActions
-              secondary={
-                <HeadSecondary
-                  href={props.listHref}
-                  icon={ArrowLeft}
-                  title="Quay lại"
-                  subtitle="Về danh sách"
-                />
-              }
+            <FormHeadActions
+              backHref={props.listHref}
+              viewHref={publicPageUrl(
+                (detailQuery.data?.seo as { slug_full?: string } | undefined)?.slug_full,
+                locale,
+                defaultLocale,
+              )}
             />
           }
         />
@@ -320,7 +317,6 @@ function Inner(props: Props) {
 
             <FormFooter
               cancelHref={props.listHref}
-              submitLabel="Lưu"
               loading={save.isPending}
               viewHref={publicPageUrl(
                 (detailQuery.data?.seo as { slug_full?: string } | undefined)?.slug_full,

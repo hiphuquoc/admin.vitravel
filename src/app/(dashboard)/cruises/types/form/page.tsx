@@ -293,7 +293,6 @@ function CruiseTypeFormInner() {
 
         <FormFooter
           cancelHref="/cruises/types/"
-          submitLabel="Lưu danh mục Du thuyền"
           loading={save.isPending}
           viewHref={publicPageUrl(
             detailQuery.data?.seo?.slug_full,

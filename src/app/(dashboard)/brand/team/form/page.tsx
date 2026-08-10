@@ -646,7 +646,6 @@ function FormInner() {
 
           <FormFooter
             cancelHref="/brand/team/"
-            submitLabel="Lưu thành viên"
             loading={save.isPending}
             viewHref={publicPageUrl(
               (detailQuery.data as { seo?: { slug_full?: string } } | undefined)?.seo?.slug_full,

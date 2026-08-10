@@ -217,7 +217,6 @@ export default function ListingHubForm() {
             </FormSection>
 
             <FormFooter
-              submitLabel={`Lưu ${label}`}
               loading={save.isPending}
               viewHref={publicPageUrl(
                 (query.data as { slug_full?: string } | undefined)?.slug_full,

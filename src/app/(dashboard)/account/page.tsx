@@ -146,7 +146,6 @@ export default function AccountPage() {
 
         <FormFooter
           cancelHref="/"
-          submitLabel="Lưu hồ sơ"
           loading={save.isPending}
           showAiTranslate={false}
         />

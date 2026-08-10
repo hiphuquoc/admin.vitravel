@@ -328,7 +328,7 @@ export default function SiteSettingsPage() {
             />
           </FormSection>
 
-          <FormFooter submitLabel="Lưu thông tin dự án" loading={save.isPending} showAiTranslate={false} />
+          <FormFooter loading={save.isPending} showAiTranslate={false} />
         </form>
       </div>
     </StructureLockProvider>

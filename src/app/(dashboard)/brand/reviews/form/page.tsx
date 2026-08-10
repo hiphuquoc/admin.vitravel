@@ -305,7 +305,6 @@ function FormInner() {
 
           <FormFooter
             cancelHref="/brand/reviews/"
-            submitLabel="Lưu cảm nhận"
             loading={save.isPending}
           />
         </div>
