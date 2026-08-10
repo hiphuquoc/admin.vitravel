@@ -14,6 +14,8 @@ type RepeaterProps<T> = {
   keyOf?: (item: T, index: number) => string | number;
   /** Khóa thêm/xóa/sắp xếp khi bản dịch (mặc định true). Nội dung từng dòng vẫn sửa được. */
   lockStructure?: boolean;
+  /** Giới hạn số dòng (nút Thêm bị disable khi đủ). */
+  maxItems?: number;
   renderItem: (
     item: T,
     index: number,
@@ -33,9 +35,11 @@ export function Repeater<T>({
   emptyHint = 'Chưa có mục nào. Bấm thêm để bắt đầu.',
   keyOf,
   lockStructure = true,
+  maxItems,
   renderItem,
 }: RepeaterProps<T>) {
   const structureLocked = useStructureLocked() && lockStructure;
+  const atMax = typeof maxItems === 'number' && items.length >= maxItems;
 
   const updateAt = (index: number, patch: Partial<T>) => {
     onChange(items.map((row, i) => (i === index ? { ...row, ...patch } : row)));
@@ -107,9 +111,9 @@ export function Repeater<T>({
         <Button
           type="button"
           variant="secondary"
-          disabled={structureLocked}
+          disabled={structureLocked || atMax}
           onClick={() => {
-            if (structureLocked) return;
+            if (structureLocked || atMax) return;
             onChange([...items, createItem()]);
           }}
         >

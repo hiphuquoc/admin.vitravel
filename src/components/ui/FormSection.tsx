@@ -50,14 +50,28 @@ export function FormCluster({
   title,
   children,
   cols = 2,
+  variant,
 }: {
   title?: string;
   children: ReactNode;
   cols?: 1 | 2 | 3;
+  /** `picker` — cluster chọn danh sách (repeater), spacing gọn hơn. */
+  variant?: 'default' | 'picker';
 }) {
+  const rootClass =
+    variant === 'picker' ? 'ui-field ui-form-cluster--picker' : 'ui-form-cluster';
+
   return (
-    <div className="ui-form-cluster">
-      {title ? <div className="ui-form-cluster__title">{title}</div> : null}
+    <div className={rootClass}>
+      {title ? (
+        variant === 'picker' ? (
+          <div className="ui-field__label">
+            <span className="ui-field__label-text">{title}</span>
+          </div>
+        ) : (
+          <div className="ui-form-cluster__title">{title}</div>
+        )
+      ) : null}
       <div
         className={
           cols === 1
