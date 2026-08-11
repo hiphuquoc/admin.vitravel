@@ -11,7 +11,7 @@ import {
 } from 'react';
 import { createPortal } from 'react-dom';
 import clsx from 'clsx';
-import { CheckCircle2, Loader2, XCircle } from 'lucide-react';
+import { CheckCircle2, XCircle } from 'lucide-react';
 
 export type BlockingProgressPhase = 'running' | 'success' | 'error';
 
@@ -22,7 +22,7 @@ export type BlockingProgressState = {
   detail?: string;
   /** 0–100 */
   percent: number;
-  /** Không biết tổng — vòng quay vô định (vẫn hiện %). */
+  /** Không biết tổng — thanh chạy một chiều (L→R), không nảy qua lại. */
   indeterminate?: boolean;
   phase: BlockingProgressPhase;
 };
@@ -114,23 +114,20 @@ export function BlockingProgressProvider({ children }: { children: ReactNode }) 
 
   const close = useCallback(() => setState(EMPTY), []);
 
-  const success = useCallback(
-    async (opts?: FinishOptions) => {
-      setState((prev) => ({
-        ...prev,
-        open: true,
-        phase: 'success',
-        percent: 100,
-        indeterminate: false,
-        title: opts?.title ?? prev.title,
-        subtitle: opts?.subtitle === undefined ? prev.subtitle : opts.subtitle,
-        detail: opts?.detail === undefined ? prev.detail : opts.detail,
-      }));
-      await sleep(opts?.holdMs ?? 900);
-      setState(EMPTY);
-    },
-    [],
-  );
+  const success = useCallback(async (opts?: FinishOptions) => {
+    setState((prev) => ({
+      ...prev,
+      open: true,
+      phase: 'success',
+      percent: 100,
+      indeterminate: false,
+      title: opts?.title ?? prev.title,
+      subtitle: opts?.subtitle === undefined ? prev.subtitle : opts.subtitle,
+      detail: opts?.detail === undefined ? prev.detail : opts.detail,
+    }));
+    await sleep(opts?.holdMs ?? 900);
+    setState(EMPTY);
+  }, []);
 
   const fail = useCallback(async (opts?: FinishOptions) => {
     setState((prev) => ({
@@ -192,8 +189,7 @@ function BlockingProgressOverlay({ state }: { state: BlockingProgressState }) {
   if (!mounted || !state.open) return null;
 
   const pct = Math.round(state.percent);
-  const ring = 2 * Math.PI * 54;
-  const dash = state.indeterminate && state.phase === 'running' ? ring * 0.28 : (pct / 100) * ring;
+  const running = state.phase === 'running';
 
   return createPortal(
     <div
@@ -204,46 +200,17 @@ function BlockingProgressOverlay({ state }: { state: BlockingProgressState }) {
       )}
       role="alertdialog"
       aria-modal="true"
-      aria-busy={state.phase === 'running'}
+      aria-busy={running}
       aria-labelledby="ui-blocking-progress-title"
       aria-describedby="ui-blocking-progress-detail"
     >
       <div className="ui-blocking-progress__veil" aria-hidden />
       <div className="ui-blocking-progress__card">
-        <div className="ui-blocking-progress__glow" aria-hidden />
-
-        <div
-          className={clsx(
-            'ui-blocking-progress__ring-wrap',
-            state.indeterminate &&
-              state.phase === 'running' &&
-              'ui-blocking-progress__ring-wrap--spin',
-          )}
-        >
-          <svg className="ui-blocking-progress__ring" viewBox="0 0 120 120" aria-hidden>
-            <circle className="ui-blocking-progress__ring-track" cx="60" cy="60" r="54" />
-            <circle
-              className="ui-blocking-progress__ring-value"
-              cx="60"
-              cy="60"
-              r="54"
-              style={{
-                strokeDasharray: `${dash} ${ring}`,
-              }}
-            />
-          </svg>
-          <div className="ui-blocking-progress__ring-center">
-            {state.phase === 'running' ? (
-              <span className="ui-blocking-progress__pct">
-                {state.indeterminate ? <Loader2 size={28} className="ui-spin" /> : `${pct}%`}
-              </span>
-            ) : state.phase === 'success' ? (
-              <CheckCircle2 size={36} strokeWidth={2} className="ui-blocking-progress__done-icon" />
-            ) : (
-              <XCircle size={36} strokeWidth={2} className="ui-blocking-progress__fail-icon" />
-            )}
-          </div>
-        </div>
+        {state.phase === 'success' ? (
+          <CheckCircle2 size={28} strokeWidth={2} className="ui-blocking-progress__status-icon" />
+        ) : state.phase === 'error' ? (
+          <XCircle size={28} strokeWidth={2} className="ui-blocking-progress__status-icon is-error" />
+        ) : null}
 
         <h2 id="ui-blocking-progress-title" className="ui-blocking-progress__title">
           {state.title}
@@ -252,20 +219,29 @@ function BlockingProgressOverlay({ state }: { state: BlockingProgressState }) {
           <p className="ui-blocking-progress__subtitle">{state.subtitle}</p>
         ) : null}
 
-        <div className="ui-blocking-progress__bar" aria-hidden>
+        <div
+          className={clsx(
+            'ui-blocking-progress__bar',
+            running && state.indeterminate && 'ui-blocking-progress__bar--indeterminate',
+          )}
+          aria-hidden
+        >
           <div
-            className={clsx(
-              'ui-blocking-progress__bar-fill',
-              state.indeterminate &&
-                state.phase === 'running' &&
-                'ui-blocking-progress__bar-fill--pulse',
-            )}
-            style={{ width: state.indeterminate && state.phase === 'running' ? '40%' : `${pct}%` }}
+            className="ui-blocking-progress__bar-fill"
+            style={
+              running && state.indeterminate
+                ? undefined
+                : { width: `${state.phase === 'success' ? 100 : pct}%` }
+            }
           />
         </div>
 
+        {running && !state.indeterminate ? (
+          <p className="ui-blocking-progress__pct-line">{pct}%</p>
+        ) : null}
+
         <p id="ui-blocking-progress-detail" className="ui-blocking-progress__detail">
-          {state.detail || (state.phase === 'running' ? 'Vui lòng giữ tab mở…' : '\u00a0')}
+          {state.detail || (running ? 'Vui lòng giữ tab mở…' : '\u00a0')}
         </p>
       </div>
     </div>,

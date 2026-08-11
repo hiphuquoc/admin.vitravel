@@ -380,6 +380,12 @@ export const NAV_GROUPS: NavGroup[] = [
         icon: Languages,
         match: '/settings/languages',
       },
+      {
+        label: 'Prompt AI',
+        href: '/settings/ai-prompts/',
+        icon: Sparkles,
+        match: '/settings/ai-prompts',
+      },
       { label: 'Xóa HTML cache', href: '#', action: 'clear-html-cache', icon: Trash2 },
       {
         label: 'Phong cách du lịch',

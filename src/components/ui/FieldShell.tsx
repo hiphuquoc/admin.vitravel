@@ -76,7 +76,7 @@ export function Field({
             <label className="ui-field__label-text" htmlFor={htmlFor}>
               {renderLabel(label, required)}
               {aiFilled ? (
-                <span className="ui-field__ai-badge" title="AI vừa dịch và điền ô này">
+                <span className="ui-field__ai-badge" title="AI vừa cập nhật ô này">
                   AI
                 </span>
               ) : null}

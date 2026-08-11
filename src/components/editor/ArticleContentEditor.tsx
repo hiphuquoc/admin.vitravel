@@ -34,6 +34,7 @@ import {
 } from '@/lib/articleContent';
 import { ArticleImage, RelatedLinks } from '@/components/editor/articleExtensions';
 import { CodeSourceEditor } from '@/components/editor/CodeSourceEditor';
+import { useAiFilled, useAiFilledActions } from '@/hooks/useAiFilledFields';
 
 type Mode = 'visual' | 'html' | 'json';
 
@@ -43,6 +44,12 @@ type Props = {
   value: string;
   onChange: (next: string) => void;
   disabled?: boolean;
+  /** `blocks` = JSON article blocks (blog). `html` = TipTap HTML string (itinerary…). */
+  format?: 'blocks' | 'html';
+  /** Shorter editor surface for nested repeaters. */
+  compact?: boolean;
+  /** Key đánh dấu AI vừa điền. */
+  aiFieldKey?: string;
 };
 
 /** Debounce commit HTML/JSON → form + TipTap (tránh parse mỗi phím). */
@@ -81,6 +88,9 @@ export function ArticleContentEditor({
   value,
   onChange,
   disabled,
+  format = 'blocks',
+  compact = false,
+  aiFieldKey,
 }: Props) {
   const [mode, setMode] = useState<Mode>('visual');
   const [htmlDraft, setHtmlDraft] = useState('');
@@ -89,14 +99,34 @@ export function ArticleContentEditor({
   const skipNextSync = useRef(false);
   const modeRef = useRef<Mode>(mode);
   modeRef.current = mode;
+  const formatRef = useRef(format);
+  formatRef.current = format;
+  const aiFilled = useAiFilled(aiFieldKey);
+  const { clear: clearAiFilled } = useAiFilledActions();
+
+  const availableModes = useMemo(
+    () =>
+      (format === 'html'
+        ? ([['visual', 'Trực quan'], ['html', 'HTML']] as const)
+        : ([['visual', 'Trực quan'], ['html', 'HTML'], ['json', 'JSON']] as const)),
+    [format],
+  );
 
   const initialHtml = useMemo(() => contentValueToHtml(value), []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const emitFromHtml = useCallback(
     (html: string) => {
-      const next = htmlToContentValue(html);
+      const safe = html || '<p></p>';
+      const next =
+        formatRef.current === 'html'
+          ? safe === '<p></p>'
+            ? ''
+            : safe
+          : htmlToContentValue(safe);
       lastEmitted.current = next;
       skipNextSync.current = true;
+      // Không clear AI highlight ở đây — TipTap sync sau applyFields dễ kích hoạt onUpdate
+      // và xóa badge trước khi user kịp thấy. Clear khi user focus vào editor.
       onChange(next);
     },
     [onChange],
@@ -119,9 +149,15 @@ export function ArticleContentEditor({
         const serialized = serializeArticleContent(blocks);
         const html = contentValueToHtml(serialized);
         ed.commands.setContent(html, { emitUpdate: false });
-        lastEmitted.current = serialized;
-        skipNextSync.current = true;
-        onChange(serialized);
+        if (formatRef.current === 'html') {
+          lastEmitted.current = html === '<p></p>' ? '' : html;
+          skipNextSync.current = true;
+          onChange(lastEmitted.current);
+        } else {
+          lastEmitted.current = serialized;
+          skipNextSync.current = true;
+          onChange(serialized);
+        }
         return true;
       } catch {
         return false;
@@ -155,7 +191,7 @@ export function ArticleContentEditor({
         },
       }).configure({ levels: [2, 3] }),
       Placeholder.configure({
-        placeholder: 'Viết nội dung bài viết…',
+        placeholder: format === 'html' ? 'Viết nội dung lịch trình ngày…' : 'Viết nội dung bài viết…',
       }),
       ArticleImage,
       RelatedLinks,
@@ -163,7 +199,7 @@ export function ArticleContentEditor({
     content: initialHtml,
     editorProps: {
       attributes: {
-        class: 'ui-rte__prose',
+        class: clsx('ui-rte__prose', compact && 'ui-rte__prose--compact'),
       },
     },
     onUpdate: ({ editor: ed }) => {
@@ -308,16 +344,20 @@ export function ArticleContentEditor({
   };
 
   return (
-    <Field label={label} hint={hint}>
-      <div className={clsx('ui-rte', disabled && 'is-disabled')}>
+    <Field label={label} hint={hint} aiFilled={aiFilled}>
+      <div
+        className={clsx(
+          'ui-rte',
+          compact && 'ui-rte--compact',
+          disabled && 'is-disabled',
+          aiFilled && 'ui-rte--ai-filled',
+        )}
+        onFocusCapture={() => {
+          if (aiFieldKey) clearAiFilled(aiFieldKey);
+        }}
+      >
         <div className="ui-rte__modes" role="tablist" aria-label="Chế độ soạn thảo">
-          {(
-            [
-              ['visual', 'Trực quan'],
-              ['html', 'HTML'],
-              ['json', 'JSON'],
-            ] as const
-          ).map(([key, text]) => (
+          {availableModes.map(([key, text]) => (
             <button
               key={key}
               type="button"
@@ -429,7 +469,10 @@ export function ArticleContentEditor({
                 <Code2 />
               </ToolbarBtn>
             </div>
-            <EditorContent editor={editor} className="ui-rte__surface" />
+            <EditorContent
+              editor={editor}
+              className={clsx('ui-rte__surface', compact && 'ui-rte__surface--compact')}
+            />
           </>
         ) : null}
 

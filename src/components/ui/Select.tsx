@@ -7,6 +7,7 @@ import clsx from 'clsx';
 import { Field } from '@/components/ui/FieldShell';
 import { FieldLockIcon } from '@/components/ui/FieldShell';
 import { useFloatingPanel, type FloatingPanelOptions } from '@/hooks/useFloatingPanel';
+import { useAiFilled, useAiFilledActions } from '@/hooks/useAiFilledFields';
 
 export type SelectOption = {
   value: string | number;
@@ -25,6 +26,8 @@ type SelectProps = {
   required?: boolean;
   name?: string;
   className?: string;
+  /** Key đánh dấu AI filled — mặc định lấy từ name. */
+  aiFieldKey?: string;
   onChange?: (value: string) => void;
   /** Native-like event for gradual migration */
   onChangeEvent?: (e: { target: { value: string; name?: string } }) => void;
@@ -47,6 +50,7 @@ export function Select({
   required,
   name,
   className,
+  aiFieldKey,
   onChange,
   onChangeEvent,
   panelMinWidth,
@@ -54,6 +58,9 @@ export function Select({
   preferredMaxHeight = 280,
 }: SelectProps) {
   const id = useId();
+  const fieldKey = aiFieldKey || name;
+  const aiFilled = useAiFilled(fieldKey);
+  const { clear } = useAiFilledActions();
   const rootRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
@@ -98,6 +105,7 @@ export function Select({
   }, [open]);
 
   const pick = (next: string) => {
+    if (fieldKey) clear(fieldKey);
     onChange?.(next);
     onChangeEvent?.({ target: { value: next, name } });
     setOpen(false);
@@ -173,8 +181,17 @@ export function Select({
       className={className}
       required={required}
       locked={!!disabled}
+      aiFilled={aiFilled}
     >
-      <div className={clsx('ui-select', open && 'ui-select--open', disabled && 'ui-select--disabled')} ref={rootRef}>
+      <div
+        className={clsx(
+          'ui-select',
+          open && 'ui-select--open',
+          disabled && 'ui-select--disabled',
+          aiFilled && 'ui-select--ai-filled',
+        )}
+        ref={rootRef}
+      >
         <button
           type="button"
           id={id}
@@ -184,6 +201,7 @@ export function Select({
             error && 'ui-select__trigger--error',
             !selected && 'ui-select__trigger--placeholder',
             disabled && 'ui-select__trigger--locked',
+            aiFilled && 'ui-select__trigger--ai-filled',
           )}
           aria-haspopup="listbox"
           aria-expanded={open}

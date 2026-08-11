@@ -38,6 +38,12 @@ import { emptyImageField, ImageField, type ImageFieldState } from '@/components/
 import { FormMediaAside, FormThumbCard } from '@/components/ui/FormMediaAside';
 import { FormFooter } from '@/components/ui/FormFooter';
 import { FormHeadActions } from '@/components/ui/FormHeadActions';
+import { ArticleContentEditor } from '@/components/editor/ArticleContentEditor';
+import { AiEnrichProgramButton } from '@/components/ui/AiEnrichProgramButton';
+import {
+  buildPackageEnrichPayload,
+  mergeEnrichFields,
+} from '@/lib/aiEnrichFields';
 import { publicPageUrl } from '@/lib/publicUrl';
 import { replaceFormUrl } from '@/lib/formNavigate';
 
@@ -547,6 +553,7 @@ function PackageFormInner({ kind }: { kind: PackageType }) {
           <FormCluster title="Định danh">
             <Input
               label="Tiêu đề"
+              name="title"
               value={form.title}
               onChange={(e) => set('title', e.target.value)}
               required
@@ -620,11 +627,13 @@ function PackageFormInner({ kind }: { kind: PackageType }) {
               />
               <Input
                 label="Cảng khởi hành"
+                name="departure_port"
                 value={form.departure_port}
                 onChange={(e) => set('departure_port', e.target.value)}
               />
               <Input
                 label="Hạng tàu"
+                name="boat_class"
                 value={form.boat_class}
                 onChange={(e) => set('boat_class', e.target.value)}
               />
@@ -708,48 +717,61 @@ function PackageFormInner({ kind }: { kind: PackageType }) {
           <FormCluster>
             <Input
               label="Điểm khởi hành"
+              name="start_location"
               value={form.start_location}
               onChange={(e) => set('start_location', e.target.value)}
             />
             <Input
               label="Điểm kết thúc"
+              name="end_location"
               value={form.end_location}
               onChange={(e) => set('end_location', e.target.value)}
             />
           </FormCluster>
           <FormCluster cols={1}>
-            <Textarea label="Tóm tắt" value={form.summary} onChange={(e) => set('summary', e.target.value)} />
+            <Textarea
+              label="Tóm tắt"
+              name="summary"
+              value={form.summary}
+              onChange={(e) => set('summary', e.target.value)}
+            />
             <Textarea
               label="Mở đầu điểm nổi bật"
+              name="highlights_intro"
               value={form.highlights_intro}
               onChange={(e) => set('highlights_intro', e.target.value)}
             />
             <Textarea
               label="Điểm tham quan"
+              name="places_to_visit"
               value={form.places_to_visit}
               onChange={(e) => set('places_to_visit', e.target.value)}
               hint="Mỗi dòng một địa điểm"
             />
             <Textarea
               label="Điểm nổi bật"
+              name="highlight_bullets"
               value={form.highlight_bullets}
               onChange={(e) => set('highlight_bullets', e.target.value)}
               hint="Mỗi dòng một mục"
             />
             <Textarea
               label="Bao gồm"
+              name="inclusions"
               value={form.inclusions}
               onChange={(e) => set('inclusions', e.target.value)}
               hint="Mỗi dòng một mục"
             />
             <Textarea
               label="Không bao gồm"
+              name="exclusions"
               value={form.exclusions}
               onChange={(e) => set('exclusions', e.target.value)}
               hint="Mỗi dòng một mục"
             />
             <Textarea
               label="Lưu ý"
+              name="notes"
               value={form.notes}
               onChange={(e) => set('notes', e.target.value)}
               hint="Mỗi dòng một mục"
@@ -758,11 +780,13 @@ function PackageFormInner({ kind }: { kind: PackageType }) {
           <FormCluster title="Trích dẫn nổi bật">
             <Input
               label="Nội dung trích dẫn"
+              name="featured_quote_text"
               value={form.featured_quote_text}
               onChange={(e) => set('featured_quote_text', e.target.value)}
             />
             <Input
               label="Tác giả"
+              name="featured_quote_author"
               value={form.featured_quote_author}
               onChange={(e) => set('featured_quote_author', e.target.value)}
             />
@@ -809,6 +833,8 @@ function PackageFormInner({ kind }: { kind: PackageType }) {
                 />
                 <Select
                   label="Bữa ăn"
+                  name={`itinerary.${index}.meals_included`}
+                  aiFieldKey={`itinerary.${index}.meals_included`}
                   value={row.meals_included}
                   onChange={(v) => update({ meals_included: v })}
                   disabled={rowLocked}
@@ -820,28 +846,29 @@ function PackageFormInner({ kind }: { kind: PackageType }) {
                 />
                 <Input
                   label="Tiêu đề ngày"
+                  name={`itinerary.${index}.title`}
+                  aiFieldKey={`itinerary.${index}.title`}
                   value={row.title}
                   onChange={(e) => update({ title: e.target.value })}
                 />
                 <Input
                   label="Nghỉ đêm tại"
+                  name={`itinerary.${index}.overnight_at`}
+                  aiFieldKey={`itinerary.${index}.overnight_at`}
                   value={row.overnight_at}
                   onChange={(e) => update({ overnight_at: e.target.value })}
                 />
-                <div className="ui-form-grid" style={{ gridColumn: '1 / -1' }}>
-                  <Textarea
+                <div style={{ gridColumn: '1 / -1' }}>
+                  <ArticleContentEditor
                     label="Nội dung chi tiết"
+                    hint="Soạn trực quan hoặc HTML — giống nội dung blog. Public sẽ render HTML an toàn."
+                    format="html"
+                    compact
+                    aiFieldKey={`itinerary.${index}.content`}
                     value={row.content}
-                    onChange={(e) => update({ content: e.target.value })}
+                    onChange={(next) => update({ content: next })}
                   />
                 </div>
-                <Input
-                  label="Phương tiện (icon)"
-                  value={row.transport_icons}
-                  onChange={(e) => update({ transport_icons: e.target.value })}
-                  disabled={rowLocked}
-                  hint="plane, car, boat, cruise, trekking, walking, bike"
-                />
               </div>
             )}
           />
@@ -870,15 +897,19 @@ function PackageFormInner({ kind }: { kind: PackageType }) {
             addLabel="Thêm FAQ"
             emptyHint="Chưa có FAQ."
             keyOf={(row, i) => row.id ?? `new-faq-${i}`}
-            renderItem={(row, _i, { update }) => (
+            renderItem={(row, index, { update }) => (
               <div className="ui-form-grid">
                 <Input
                   label="Câu hỏi"
+                  name={`faqs.${index}.question`}
+                  aiFieldKey={`faqs.${index}.question`}
                   value={row.question}
                   onChange={(e) => update({ question: e.target.value })}
                 />
                 <Textarea
                   label="Trả lời"
+                  name={`faqs.${index}.answer`}
+                  aiFieldKey={`faqs.${index}.answer`}
                   value={row.answer}
                   onChange={(e) => update({ answer: e.target.value })}
                 />
@@ -942,6 +973,20 @@ function PackageFormInner({ kind }: { kind: PackageType }) {
             locale,
             defaultLocale,
           )}
+          preActions={
+            <AiEnrichProgramButton
+              entityType={isCruise ? 'cruise_package' : 'tour_package'}
+              locale={locale}
+              getFields={() =>
+                buildPackageEnrichPayload(form as unknown as Record<string, unknown>)
+              }
+              applyFields={(fields) =>
+                setForm((prev) =>
+                  mergeEnrichFields(prev as unknown as Record<string, unknown>, fields) as FormState,
+                )
+              }
+            />
+          }
         />
         </div>
 

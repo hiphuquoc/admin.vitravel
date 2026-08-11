@@ -23,6 +23,7 @@ export const NAV_PERMISSIONS: Record<string, string | null> = {
   '/leads': 'leads.view',
   '/settings/site': 'settings.view',
   '/settings/languages': 'settings.view',
+  '/settings/ai-prompts': 'ai.manage',
   '/settings/media': 'media.view',
   '/settings/users': 'users.view',
   '/account': null,

@@ -191,20 +191,65 @@ export function mergeTranslatedFields<T extends Record<string, unknown>>(
   return next as T;
 }
 
-/** Key top-level (+ nested object keys) AI trả về — dùng highlight input. */
+/** Key top-level + nested (itinerary.0.title, faqs.1.answer…) AI trả về — dùng highlight input. */
 export function listAiFilledFieldKeys(translated: Record<string, unknown>): string[] {
   const keys = new Set<string>();
-  const walk = (obj: Record<string, unknown>) => {
+  const walk = (obj: Record<string, unknown>, prefix = '') => {
     for (const [key, value] of Object.entries(obj)) {
-      if (isStructureKey(key)) continue;
+      // Nested content (title/content/question…) vẫn đánh dấu dù key trùng STRUCTURE ở chỗ khác
+      const nestedContent =
+        prefix !== '' &&
+        (ALWAYS_TRANSLATABLE.has(key) ||
+          key === 'title' ||
+          key === 'content' ||
+          key === 'question' ||
+          key === 'answer' ||
+          key === 'overnight_at' ||
+          key === 'summary' ||
+          key === 'meals_included');
+
+      if (!nestedContent && isStructureKey(key)) continue;
       if (value === null || value === undefined) continue;
       if (typeof value === 'string' && value.trim() === '') continue;
-      keys.add(key);
-      if (value && typeof value === 'object' && !Array.isArray(value)) {
-        walk(value as Record<string, unknown>);
+      // HTML rỗng TipTap
+      if (typeof value === 'string' && /^<p>(\s|&nbsp;|<br\s*\/?>)*<\/p>$/i.test(value.trim())) {
+        continue;
       }
+
+      const path = prefix ? `${prefix}.${key}` : key;
+
+      if (Array.isArray(value)) {
+        // Không mark key mảng cha — chỉ mark từng field con để khớp name input
+        value.forEach((item, i) => {
+          if (item && typeof item === 'object' && !Array.isArray(item)) {
+            walk(item as Record<string, unknown>, `${path}.${i}`);
+          }
+        });
+        continue;
+      }
+
+      if (value && typeof value === 'object') {
+        walk(value as Record<string, unknown>, path);
+        continue;
+      }
+
+      keys.add(path);
     }
   };
   walk(translated);
   return [...keys];
+}
+
+/** Mark AI-filled keys; re-apply sau sync TipTap/controlled để không bị clear sớm. */
+export function applyAiFilledMarks(
+  mark: (keys: string[]) => void,
+  fields: Record<string, unknown>,
+): string[] {
+  const keys = listAiFilledFieldKeys(fields);
+  mark(keys);
+  if (typeof window !== 'undefined' && keys.length) {
+    window.setTimeout(() => mark(keys), 0);
+    window.setTimeout(() => mark(keys), 150);
+  }
+  return keys;
 }

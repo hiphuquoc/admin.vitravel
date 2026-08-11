@@ -20,15 +20,19 @@ type FormFooterProps = {
   /** URL trang public — nút mắt cạnh Lưu (tab mới). */
   viewHref?: string | null;
   viewLabel?: string;
-  /** Nút / nội dung phụ bên trái (trước Hủy). */
+  /** Nút / nội dung phụ bên trái (cạnh AI dịch). */
   leading?: ReactNode;
+  /**
+   * Nút phụ sát trái nhóm Hủy / Xem / Lưu (vd. AI chương trình).
+   */
+  preActions?: ReactNode;
   /** Hiện nút AI dịch (mặc định bật — tự ẩn nếu không phải bản dịch / chưa đăng ký). */
   showAiTranslate?: boolean;
   submitDisabled?: boolean;
   className?: string;
 };
 
-/** Thanh sticky đáy form — AI dịch (trái) + Hủy + Xem + Lưu. */
+/** Thanh sticky đáy form — AI dịch (trái) + preActions + Hủy + Xem + Lưu. */
 export function FormFooter({
   cancelHref,
   cancelLabel = 'Hủy',
@@ -37,6 +41,7 @@ export function FormFooter({
   viewHref,
   viewLabel = 'Xem',
   leading,
+  preActions,
   showAiTranslate = true,
   submitDisabled = false,
   className = 'ui-form-footer',
@@ -85,6 +90,7 @@ export function FormFooter({
         {leading}
       </div>
       <div className="ui-form-footer__end">
+        {preActions}
         {cancelHref ? (
           <Link href={cancelHref}>
             <Button type="button" variant="secondary" disabled={loading || mediaBusy}>

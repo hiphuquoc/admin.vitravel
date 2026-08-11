@@ -21,6 +21,11 @@ import { emptyImageField, ImageField, type ImageFieldState } from '@/components/
 import { FormMediaAside, FormThumbCard } from '@/components/ui/FormMediaAside';
 import { FormFooter } from '@/components/ui/FormFooter';
 import { HeadActions, HeadSecondary } from '@/components/ui/HeadActions';
+import { AiEnrichProgramButton } from '@/components/ui/AiEnrichProgramButton';
+import {
+  buildServiceEnrichPayload,
+  mergeEnrichFields,
+} from '@/lib/aiEnrichFields';
 import { publicPageUrl } from '@/lib/publicUrl';
 import { replaceFormUrl } from '@/lib/formNavigate';
 import { serviceClusterTitle } from '@/lib/nav';
@@ -306,6 +311,7 @@ function FormInner() {
             <Input label="Mã" value={form.code} onChange={(e) => set('code', e.target.value)} />
             <Input
               label="Tiêu đề"
+              name="title"
               value={form.title}
               onChange={(e) => {
                 set('title', e.target.value);
@@ -335,28 +341,39 @@ function FormInner() {
             />
             <Textarea
               label="Tóm tắt"
+              name="summary"
               value={form.summary}
               onChange={(e) => set('summary', e.target.value)}
             />
             <Textarea
               label="Nội dung"
+              name="content"
               value={form.content}
               onChange={(e) => set('content', e.target.value)}
             />
             <Textarea
               label="Điểm nổi bật (mỗi dòng)"
+              name="highlights"
               value={form.highlights}
               onChange={(e) => set('highlights', e.target.value)}
             />
             <Textarea
               label="Bao gồm"
+              name="inclusions"
               value={form.inclusions}
               onChange={(e) => set('inclusions', e.target.value)}
             />
             <Textarea
               label="Không bao gồm"
+              name="exclusions"
               value={form.exclusions}
               onChange={(e) => set('exclusions', e.target.value)}
+            />
+            <Textarea
+              label="Lưu ý"
+              name="notes"
+              value={form.notes}
+              onChange={(e) => set('notes', e.target.value)}
             />
             <div className="ui-form-flags">
               <Switch
@@ -384,6 +401,20 @@ function FormInner() {
               locale,
               metaQuery.data?.default_locale || 'vi',
             )}
+            preActions={
+              <AiEnrichProgramButton
+                entityType="service"
+                locale={locale}
+                getFields={() =>
+                  buildServiceEnrichPayload(form as unknown as Record<string, unknown>)
+                }
+                applyFields={(fields) =>
+                  setForm((prev) =>
+                    mergeEnrichFields(prev as unknown as Record<string, unknown>, fields) as FormState,
+                  )
+                }
+              />
+            }
           />
         </div>
 
