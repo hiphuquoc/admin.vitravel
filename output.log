@@ -64,3 +64,6 @@ Import trace for requested module:
  ○ Compiling /settings/ai-prompts ...
  ✓ Compiled /settings/ai-prompts in 1097ms (1742 modules)
  GET /settings/ai-prompts/ 200 in 1236ms
+ ✓ Compiled in 5.9s (1742 modules)
+ GET /settings/ai-prompts/ 200 in 571ms
+ GET /settings/ai-prompts/ 200 in 335ms
