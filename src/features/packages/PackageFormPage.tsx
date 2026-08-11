@@ -210,6 +210,8 @@ function PackageFormInner({ kind }: { kind: PackageType }) {
   const { locale, setLocale } = useEditLocale();
   const [form, setForm] = useState<FormState>(empty);
   const snapshotRef = useRef<string>(JSON.stringify(empty));
+  /** Tăng sau AI enrich để remount TipTap itinerary (tránh editor giữ HTML cũ). */
+  const [itineraryEditorEpoch, setItineraryEditorEpoch] = useState(0);
 
   const metaQuery = useQuery({
     queryKey: ['packages-meta', locale],
@@ -860,6 +862,7 @@ function PackageFormInner({ kind }: { kind: PackageType }) {
                 />
                 <div style={{ gridColumn: '1 / -1' }}>
                   <ArticleContentEditor
+                    key={`itinerary-content-${row.id ?? 'new'}-${index}-${itineraryEditorEpoch}`}
                     label="Nội dung chi tiết"
                     hint="Soạn trực quan hoặc HTML — giống nội dung blog. Public sẽ render HTML an toàn."
                     format="html"
@@ -980,11 +983,12 @@ function PackageFormInner({ kind }: { kind: PackageType }) {
               getFields={() =>
                 buildPackageEnrichPayload(form as unknown as Record<string, unknown>)
               }
-              applyFields={(fields) =>
+              applyFields={(fields) => {
                 setForm((prev) =>
                   mergeEnrichFields(prev as unknown as Record<string, unknown>, fields) as FormState,
-                )
-              }
+                );
+                setItineraryEditorEpoch((n) => n + 1);
+              }}
             />
           }
         />

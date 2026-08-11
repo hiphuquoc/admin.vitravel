@@ -96,7 +96,8 @@ export function ArticleContentEditor({
   const [htmlDraft, setHtmlDraft] = useState('');
   const [jsonDraft, setJsonDraft] = useState('');
   const lastEmitted = useRef(value);
-  const skipNextSync = useRef(false);
+  /** Chặn onUpdate khi push value ngoài (AI / load) — tránh TipTap ghi đè form bằng HTML cũ. */
+  const applyingExternal = useRef(false);
   const modeRef = useRef<Mode>(mode);
   modeRef.current = mode;
   const formatRef = useRef(format);
@@ -116,6 +117,7 @@ export function ArticleContentEditor({
 
   const emitFromHtml = useCallback(
     (html: string) => {
+      if (applyingExternal.current) return;
       const safe = html || '<p></p>';
       const next =
         formatRef.current === 'html'
@@ -123,22 +125,30 @@ export function ArticleContentEditor({
             ? ''
             : safe
           : htmlToContentValue(safe);
+      // Echo cùng value từ parent → effect no-op (không dùng skipNextSync — từng nuốt mất apply AI).
       lastEmitted.current = next;
-      skipNextSync.current = true;
-      // Không clear AI highlight ở đây — TipTap sync sau applyFields dễ kích hoạt onUpdate
-      // và xóa badge trước khi user kịp thấy. Clear khi user focus vào editor.
+      // Không clear AI highlight ở đây — clear khi user focus vào editor.
       onChange(next);
     },
     [onChange],
   );
 
+  const setEditorHtml = useCallback((ed: NonNullable<ReturnType<typeof useEditor>>, html: string) => {
+    applyingExternal.current = true;
+    ed.commands.setContent(html || '<p></p>', { emitUpdate: false });
+    queueMicrotask(() => {
+      applyingExternal.current = false;
+    });
+  }, []);
+
   const commitHtmlDraft = useCallback(
     (html: string, ed: NonNullable<ReturnType<typeof useEditor>>) => {
       const safe = html || '<p></p>';
-      ed.commands.setContent(safe, { emitUpdate: false });
+      setEditorHtml(ed, safe);
+      applyingExternal.current = false;
       emitFromHtml(safe);
     },
-    [emitFromHtml],
+    [emitFromHtml, setEditorHtml],
   );
 
   const commitJsonDraft = useCallback(
@@ -148,14 +158,13 @@ export function ArticleContentEditor({
         if (!Array.isArray(blocks)) return false;
         const serialized = serializeArticleContent(blocks);
         const html = contentValueToHtml(serialized);
-        ed.commands.setContent(html, { emitUpdate: false });
+        setEditorHtml(ed, html);
+        applyingExternal.current = false;
         if (formatRef.current === 'html') {
           lastEmitted.current = html === '<p></p>' ? '' : html;
-          skipNextSync.current = true;
           onChange(lastEmitted.current);
         } else {
           lastEmitted.current = serialized;
-          skipNextSync.current = true;
           onChange(serialized);
         }
         return true;
@@ -163,7 +172,7 @@ export function ArticleContentEditor({
         return false;
       }
     },
-    [onChange],
+    [onChange, setEditorHtml],
   );
 
   const editor = useEditor({
@@ -203,27 +212,24 @@ export function ArticleContentEditor({
       },
     },
     onUpdate: ({ editor: ed }) => {
+      if (applyingExternal.current) return;
       if (modeRef.current !== 'visual') return;
       emitFromHtml(ed.getHTML());
     },
   });
 
-  // External value (locale / load) → editor
+  // External value (AI enrich / load locale) → editor
   useEffect(() => {
     if (!editor) return;
-    if (skipNextSync.current) {
-      skipNextSync.current = false;
-      return;
-    }
     if (value === lastEmitted.current) return;
     lastEmitted.current = value;
     const html = contentValueToHtml(value);
-    editor.commands.setContent(html, { emitUpdate: false });
+    setEditorHtml(editor, html);
     if (mode === 'html') setHtmlDraft(html);
     if (mode === 'json') {
       setJsonDraft(JSON.stringify(parseArticleContent(value), null, 2));
     }
-  }, [value, editor, mode]);
+  }, [value, editor, mode, setEditorHtml]);
 
   useEffect(() => {
     if (!editor) return;

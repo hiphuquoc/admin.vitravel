@@ -1,7 +1,7 @@
 'use client';
 
 import { GripVertical, Plus, Trash2 } from 'lucide-react';
-import type { ReactNode } from 'react';
+import { useEffect, useRef, type ReactNode } from 'react';
 import { Button } from '@/components/ui/Button';
 import { useStructureLocked } from '@/hooks/useStructureLock';
 
@@ -40,20 +40,26 @@ export function Repeater<T>({
 }: RepeaterProps<T>) {
   const structureLocked = useStructureLocked() && lockStructure;
   const atMax = typeof maxItems === 'number' && items.length >= maxItems;
+  // Luôn patch trên snapshot mới nhất — tránh TipTap onUpdate (sau AI apply) ghi đè bằng `items` cũ.
+  const itemsRef = useRef(items);
+  useEffect(() => {
+    itemsRef.current = items;
+  }, [items]);
 
   const updateAt = (index: number, patch: Partial<T>) => {
-    onChange(items.map((row, i) => (i === index ? { ...row, ...patch } : row)));
+    const current = itemsRef.current;
+    onChange(current.map((row, i) => (i === index ? { ...row, ...patch } : row)));
   };
 
   const removeAt = (index: number) => {
     if (structureLocked) return;
-    onChange(items.filter((_, i) => i !== index));
+    onChange(itemsRef.current.filter((_, i) => i !== index));
   };
 
   const move = (from: number, to: number) => {
     if (structureLocked) return;
-    if (to < 0 || to >= items.length) return;
-    const next = [...items];
+    if (to < 0 || to >= itemsRef.current.length) return;
+    const next = [...itemsRef.current];
     const [row] = next.splice(from, 1);
     next.splice(to, 0, row);
     onChange(next);

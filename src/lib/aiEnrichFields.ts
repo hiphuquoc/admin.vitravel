@@ -35,13 +35,16 @@ export function mergeEnrichFields<T extends Record<string, unknown>>(
       const prevList = Array.isArray(prev.itinerary) ? (prev.itinerary as Record<string, unknown>[]) : [];
       out.itinerary = value.map((row, i) => {
         const cell = isPlainObject(row) ? row : {};
-        const old = isPlainObject(prevList[i]) ? prevList[i] : {};
+        const byDay = prevList.find(
+          (r) => Number(r.day_number) === Number(cell.day_number ?? i + 1),
+        );
+        const old = isPlainObject(byDay) ? byDay : isPlainObject(prevList[i]) ? prevList[i] : {};
         return mergeRow(old, {
           day_number: cell.day_number ?? i + 1,
           meals_included: cell.meals_included ?? '',
           transport_icons: old.transport_icons ?? '',
           title: cell.title ?? '',
-          content: cell.content ?? '',
+          content: typeof cell.content === 'string' ? cell.content : (old.content ?? ''),
           overnight_at: cell.overnight_at ?? '',
           id: old.id ?? cell.id ?? null,
         });
@@ -131,8 +134,10 @@ export function buildPackageEnrichPayload(form: Record<string, unknown>): Record
           day_number: row.day_number || i + 1,
           meals_included: row.meals_included || '',
           title: row.title || '',
-          content: row.content || '',
+          // Không gửi HTML ngày cũ — tránh model giữ nguyên / chỉ viết lại ngày cuối.
+          content: '',
           overnight_at: row.overnight_at || '',
+          content_rewrite: true,
         }))
       : [],
     faqs: Array.isArray(form.faqs)
