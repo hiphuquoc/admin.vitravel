@@ -158,7 +158,9 @@ export function buildServiceEnrichPayload(form: Record<string, unknown>): Record
     price_from: form.price_from || '',
     currency: form.currency || '',
     summary: form.summary || '',
-    content: form.content || '',
+    // Không gửi HTML cũ — tránh model giữ nguyên / viết sơ.
+    content: '',
+    content_rewrite: true,
     highlights: form.highlights || '',
     inclusions: form.inclusions || '',
     exclusions: form.exclusions || '',

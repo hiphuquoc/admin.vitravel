@@ -13,6 +13,7 @@ import { pickTranslatableFields, mergeTranslatedFields } from '@/lib/aiTranslate
 import { StructureNotice } from '@/components/ui/StructureNotice';
 import { DEFAULT_LOCALE, isDefaultLocale } from '@/lib/locale';
 import { Input, Select, Switch, Textarea } from '@/components/ui/Field';
+import { ArticleContentEditor } from '@/components/editor/ArticleContentEditor';
 import { PageHeader } from '@/components/ui/Page';
 import { FormSection } from '@/components/ui/FormSection';
 import { SeoBox } from '@/components/ui/SeoBox';
@@ -96,6 +97,8 @@ function FormInner() {
   const { locale, setLocale } = useEditLocale();
   const [form, setForm] = useState<FormState>({ ...empty, cluster: clusterFromUrl });
   const snapshotRef = useRef(JSON.stringify({ ...empty, cluster: clusterFromUrl }));
+  /** Remount TipTap sau AI enrich — tránh giữ HTML cũ. */
+  const [contentEditorEpoch, setContentEditorEpoch] = useState(0);
   const isDirty = useMemo(() => JSON.stringify(form) !== snapshotRef.current, [form]);
 
   const metaQuery = useQuery({
@@ -345,11 +348,15 @@ function FormInner() {
               value={form.summary}
               onChange={(e) => set('summary', e.target.value)}
             />
-            <Textarea
-              label="Nội dung"
-              name="content"
+            <ArticleContentEditor
+              key={`service-content-${id ?? 'new'}-${contentEditorEpoch}`}
+              label="Nội dung chi tiết"
+              hint="HTML lịch trình / mô tả dịch vụ — AI chương trình ghi vào đây. Public render an toàn."
+              format="html"
+              compact
+              aiFieldKey="content"
               value={form.content}
-              onChange={(e) => set('content', e.target.value)}
+              onChange={(next) => set('content', next)}
             />
             <Textarea
               label="Điểm nổi bật (mỗi dòng)"
@@ -408,11 +415,12 @@ function FormInner() {
                 getFields={() =>
                   buildServiceEnrichPayload(form as unknown as Record<string, unknown>)
                 }
-                applyFields={(fields) =>
+                applyFields={(fields) => {
                   setForm((prev) =>
                     mergeEnrichFields(prev as unknown as Record<string, unknown>, fields) as FormState,
-                  )
-                }
+                  );
+                  setContentEditorEpoch((n) => n + 1);
+                }}
               />
             }
           />
