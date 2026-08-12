@@ -361,19 +361,17 @@ export function GalleryField({
           aria-label={ariaLabel}
         >
           <span className="ui-gallery-field__drop-icon" aria-hidden>
-            {uploading ? <Loader2 size={20} className="ui-spin" /> : <ImagePlus size={20} />}
+            {uploading ? <Loader2 size={18} className="ui-spin" /> : <ImagePlus size={18} />}
           </span>
           <span className="ui-gallery-field__drop-title">
             {isDisabled
               ? 'Gallery khóa (bản dịch)'
               : uploading
                 ? `Đang tải… ${batchProgress?.done ?? 0}/${batchProgress?.total ?? 0}`
-                : 'Kéo thả hoặc chọn nhiều ảnh'}
+                : 'Thêm ảnh'}
           </span>
           <span className="ui-gallery-field__drop-sub">
-            {isDisabled
-              ? 'Chỉnh ở ngôn ngữ mặc định'
-              : 'JPG, PNG, WebP'}
+            {isDisabled ? 'Chỉnh ở ngôn ngữ mặc định' : 'JPG · PNG · WebP'}
           </span>
         </button>
       ) : (

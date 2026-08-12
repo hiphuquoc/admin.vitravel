@@ -17,7 +17,7 @@ export const FORM_BANNER_COPY = {
 
 export const FORM_GALLERY_COPY = {
   title: 'Gallery chi tiết',
-  description: 'Click khung để chọn nhiều ảnh cùng lúc',
+  description: 'Nhiều ảnh · kéo thả hoặc chọn file',
 } as const;
 
 type FormMediaCardProps = {
