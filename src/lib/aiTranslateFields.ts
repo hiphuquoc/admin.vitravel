@@ -42,6 +42,7 @@ const ALWAYS_TRANSLATABLE = new Set([
   'title',
   'name',
   'body',
+  'seo_body',
   'excerpt',
   'content',
   'description',

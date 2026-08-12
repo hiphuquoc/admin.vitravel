@@ -29,6 +29,7 @@ import type { LocaleOption } from '@/lib/locale';
 type FormState = {
   title: string;
   body: string;
+  seo_body: string;
   seo_slug: string;
   seo_title: string;
   seo_description: string;
@@ -42,6 +43,7 @@ type FormState = {
 const empty: FormState = {
   title: '',
   body: '',
+  seo_body: '',
   seo_slug: '',
   seo_title: '',
   seo_description: '',
@@ -73,6 +75,7 @@ export default function ListingHubForm() {
     const next: FormState = {
       title: String(d.title || ''),
       body: String(d.body || ''),
+      seo_body: String(d.seo_body || ''),
       seo_slug: String(d.seo_slug || ''),
       seo_title: String(d.seo_title || ''),
       seo_description: String(d.seo_description || ''),
@@ -134,6 +137,7 @@ export default function ListingHubForm() {
       return pickTranslatableFields({
         title: String(d.title || ''),
         body: String(d.body || ''),
+        seo_body: String(d.seo_body || ''),
         seo_slug: String(d.seo_slug || ''),
         seo_title: String(d.seo_title || ''),
         seo_description: String(d.seo_description || ''),
@@ -208,11 +212,24 @@ export default function ListingHubForm() {
             <FormSection
               icon={LayoutTemplate}
               title="Nội dung hub"
-              description="Tiêu đề và đoạn giới thiệu trang listing."
+              description="Tiêu đề, subtitle header và đoạn SEO cuối listing (rỗng = ẩn)."
             >
               <FormCluster cols={1}>
                 <Input label="Tiêu đề" name="title" value={form.title} onChange={(e) => set('title', e.target.value)} />
-                <Textarea label="Nội dung" name="body" value={form.body} onChange={(e) => set('body', e.target.value)} />
+                <Textarea
+                  label="Mô tả ngắn (subtitle header)"
+                  name="body"
+                  value={form.body}
+                  onChange={(e) => set('body', e.target.value)}
+                  hint="Hiện dưới H1 trang hub."
+                />
+                <Textarea
+                  label="Đoạn SEO cuối listing"
+                  name="seo_body"
+                  value={form.seo_body}
+                  onChange={(e) => set('seo_body', e.target.value)}
+                  hint="Khối văn bản dưới lưới sản phẩm. Để trống thì không hiển thị."
+                />
               </FormCluster>
             </FormSection>
 
