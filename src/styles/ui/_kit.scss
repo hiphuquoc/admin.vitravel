@@ -2962,6 +2962,292 @@ button.ui-head-btn {
     gap: 0.75rem;
     background: color-mix(in srgb, var(--admin-surface) 92%, var(--admin-surface-tint));
   }
+
+  &__head-actions {
+    position: relative;
+    z-index: 1;
+    flex-shrink: 0;
+  }
+
+  &__empty {
+    margin: 0;
+    font-size: var(--admin-fs-sm);
+    color: var(--admin-muted);
+    line-height: 1.45;
+  }
+
+  &--gallery .ui-media-card__body {
+    padding-top: 0.7rem;
+  }
+}
+
+.ui-media-gallery-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.65rem;
+
+  &__item {
+    display: grid;
+    gap: 0.35rem;
+  }
+
+  &__remove {
+    appearance: none;
+    border: 0;
+    background: transparent;
+    padding: 0;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--admin-danger, #b42318);
+    cursor: pointer;
+    text-align: left;
+
+    &:hover {
+      text-decoration: underline;
+    }
+  }
+}
+
+.ui-gallery-field {
+  display: grid;
+  gap: 0.5rem;
+
+  &__input {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  &__dropzone {
+    appearance: none;
+    width: 100%;
+    min-height: 9.5rem;
+    display: grid;
+    place-content: center;
+    justify-items: center;
+    gap: 0.35rem;
+    padding: 1.1rem 0.85rem;
+    border-radius: 0.75rem;
+    border: 1.5px dashed color-mix(in srgb, var(--admin-primary-400) 55%, var(--admin-line));
+    background: color-mix(in srgb, var(--admin-primary-50) 55%, var(--admin-surface));
+    cursor: pointer;
+    text-align: center;
+    transition:
+      border-color 0.15s ease,
+      background 0.15s ease,
+      box-shadow 0.15s ease;
+
+    &:hover:not(:disabled),
+    &.is-drag {
+      border-color: var(--admin-primary-500);
+      background: color-mix(in srgb, var(--admin-primary-100) 48%, var(--admin-surface));
+      box-shadow: 0 0 0 3px color-mix(in srgb, var(--admin-primary-200) 45%, transparent);
+    }
+
+    &:disabled {
+      cursor: not-allowed;
+      opacity: 0.72;
+    }
+  }
+
+  &__drop-icon {
+    width: 2.35rem;
+    height: 2.35rem;
+    display: grid;
+    place-items: center;
+    border-radius: 0.55rem;
+    color: var(--admin-primary-800);
+    background: color-mix(in srgb, var(--admin-primary-100) 70%, white);
+    border: 1px solid color-mix(in srgb, var(--admin-primary-300) 50%, transparent);
+  }
+
+  &__drop-title {
+    font-size: var(--admin-fs-sm);
+    font-weight: var(--admin-fw-extrabold);
+    color: var(--admin-ink);
+    letter-spacing: -0.01em;
+  }
+
+  &__drop-sub {
+    font-size: 0.72rem;
+    color: var(--admin-muted);
+    max-width: 16rem;
+    line-height: 1.35;
+  }
+
+  &__panel {
+    display: grid;
+    gap: 0.55rem;
+    padding: 0.55rem;
+    border-radius: 0.75rem;
+    border: 1px solid color-mix(in srgb, var(--admin-primary-300) 35%, var(--admin-line));
+    background: color-mix(in srgb, var(--admin-surface) 94%, var(--admin-primary-50));
+
+    &.is-drag {
+      border-color: var(--admin-primary-500);
+      box-shadow: 0 0 0 3px color-mix(in srgb, var(--admin-primary-200) 45%, transparent);
+    }
+  }
+
+  &__toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    padding: 0 0.15rem;
+  }
+
+  &__count {
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: var(--admin-muted);
+  }
+
+  &__toolbar-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.55rem;
+  }
+
+  &__link {
+    appearance: none;
+    border: 0;
+    background: transparent;
+    padding: 0;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: var(--admin-primary-700);
+    cursor: pointer;
+
+    &:hover {
+      text-decoration: underline;
+    }
+
+    &.is-danger {
+      color: var(--admin-danger, #b42318);
+    }
+  }
+
+  &__grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.5rem;
+  }
+
+  &__tile {
+    position: relative;
+    aspect-ratio: 4 / 3;
+    border-radius: 0.55rem;
+    overflow: hidden;
+    background: var(--admin-surface-tint, #f3f4f0);
+
+    img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+
+    &:hover .ui-gallery-field__tile-actions {
+      opacity: 1;
+    }
+  }
+
+  &__tile-actions {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: flex-end;
+    justify-content: flex-end;
+    gap: 0.3rem;
+    padding: 0.35rem;
+    background: linear-gradient(to top, rgb(15 23 42 / 0.55), transparent 55%);
+    opacity: 0;
+    transition: opacity 0.15s ease;
+
+    button {
+      appearance: none;
+      border: 0;
+      width: 1.7rem;
+      height: 1.7rem;
+      border-radius: 0.4rem;
+      display: grid;
+      place-items: center;
+      background: rgb(255 255 255 / 0.92);
+      color: var(--admin-ink);
+      cursor: pointer;
+
+      &.is-danger {
+        color: var(--admin-danger, #b42318);
+      }
+
+      &:hover {
+        background: #fff;
+      }
+    }
+  }
+
+  &__tile.is-pending .ui-gallery-field__tile-progress {
+    opacity: 1;
+  }
+
+  &__tile-progress {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    place-content: end center;
+    gap: 0.25rem;
+    padding: 0.45rem;
+    background: rgb(15 23 42 / 0.45);
+    color: #fff;
+    font-size: 0.7rem;
+    font-weight: 700;
+
+    span {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.25rem;
+    }
+  }
+
+  &__tile-bar {
+    height: 3px;
+    width: 100%;
+    border-radius: 99px;
+    background: color-mix(in srgb, #fff 85%, transparent);
+    justify-self: stretch;
+  }
+
+  &__add-tile {
+    appearance: none;
+    aspect-ratio: 4 / 3;
+    border-radius: 0.55rem;
+    border: 1.5px dashed color-mix(in srgb, var(--admin-primary-400) 55%, var(--admin-line));
+    background: color-mix(in srgb, var(--admin-primary-50) 40%, var(--admin-surface));
+    color: var(--admin-primary-800);
+    display: grid;
+    place-content: center;
+    justify-items: center;
+    gap: 0.2rem;
+    cursor: pointer;
+    font-size: 0.72rem;
+    font-weight: 700;
+
+    &:hover {
+      border-color: var(--admin-primary-500);
+      background: color-mix(in srgb, var(--admin-primary-100) 45%, var(--admin-surface));
+    }
+  }
+
+  &--disabled {
+    opacity: 0.78;
+    pointer-events: none;
+  }
 }
 
 [data-theme='dark'] .ui-media-card {

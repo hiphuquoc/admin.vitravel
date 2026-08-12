@@ -15,6 +15,11 @@ export const FORM_BANNER_COPY = {
   description: 'Hero first-view trang listing',
 } as const;
 
+export const FORM_GALLERY_COPY = {
+  title: 'Gallery chi tiết',
+  description: 'Click khung để chọn nhiều ảnh cùng lúc',
+} as const;
+
 type FormMediaCardProps = {
   title: string;
   description?: string;
@@ -96,6 +101,26 @@ export function FormBannerCard({
       title={FORM_BANNER_COPY.title}
       description={description}
       className={className}
+    >
+      {children}
+    </FormMediaCard>
+  );
+}
+
+/** Gallery dưới thumbnail — body chứa GalleryField multi-upload. */
+export function FormGalleryCard({
+  children,
+  className,
+}: {
+  children: ReactNode;
+  className?: string;
+}) {
+  return (
+    <FormMediaCard
+      variant="thumb"
+      title={FORM_GALLERY_COPY.title}
+      description={FORM_GALLERY_COPY.description}
+      className={clsx('ui-media-card--gallery', className)}
     >
       {children}
     </FormMediaCard>

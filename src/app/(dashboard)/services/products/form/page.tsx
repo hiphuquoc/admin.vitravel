@@ -6,6 +6,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ArrowLeft } from 'lucide-react';
 import toast from '@/lib/toast';
 import { servicesApi } from '@/lib/services';
+import type { MediaImage } from '@/lib/types';
 import { useEditLocale } from '@/hooks/useEditLocale';
 import { StructureLockProvider } from '@/hooks/useStructureLock';
 import { useRegisterAiTranslate } from '@/hooks/useAiFormTranslate';
@@ -19,7 +20,8 @@ import { FormSection } from '@/components/ui/FormSection';
 import { SeoBox } from '@/components/ui/SeoBox';
 import { LocaleSwitcher } from '@/components/ui/LocaleSwitcher';
 import { emptyImageField, ImageField, type ImageFieldState } from '@/components/ui/ImageField';
-import { FormMediaAside, FormThumbCard } from '@/components/ui/FormMediaAside';
+import { FormMediaAside, FormThumbCard, FormGalleryCard } from '@/components/ui/FormMediaAside';
+import { GalleryField, emptyGalleryRow, type GalleryFieldRow } from '@/components/ui/GalleryField';
 import { FormFooter } from '@/components/ui/FormFooter';
 import { HeadActions, HeadSecondary } from '@/components/ui/HeadActions';
 import { AiEnrichProgramButton } from '@/components/ui/AiEnrichProgramButton';
@@ -30,6 +32,8 @@ import {
 import { publicPageUrl } from '@/lib/publicUrl';
 import { replaceFormUrl } from '@/lib/formNavigate';
 import { serviceClusterTitle } from '@/lib/nav';
+
+type GalleryRow = GalleryFieldRow;
 
 type FormState = {
   cluster: string;
@@ -57,6 +61,7 @@ type FormState = {
   rating_aggregate_star: string;
   rating_aggregate_count: string;
   cover: ImageFieldState;
+  gallery: GalleryRow[];
 };
 
 const empty: FormState = {
@@ -85,6 +90,7 @@ const empty: FormState = {
   rating_aggregate_star: '',
   rating_aggregate_count: '',
   cover: emptyImageField(),
+  gallery: [],
 };
 
 function FormInner() {
@@ -142,6 +148,11 @@ function FormInner() {
       rating_aggregate_count:
         d.seo?.rating_aggregate_count != null ? String(d.seo.rating_aggregate_count) : '',
       cover: emptyImageField(d.cover),
+      gallery: Array.isArray(d.gallery)
+        ? (d.gallery as { id?: number; media?: MediaImage | null }[]).map((row) =>
+            emptyGalleryRow(row.media ?? null),
+          )
+        : [],
     };
     setForm(next);
     snapshotRef.current = JSON.stringify(next);
@@ -164,6 +175,9 @@ function FormInner() {
           : null,
         cover_media_id: form.cover.media?.id ?? null,
         remove_cover: form.cover.remove,
+        gallery_media_ids: form.gallery
+          .map((row) => row.image.media?.id)
+          .filter((id): id is number => typeof id === 'number' && id > 0),
         locale,
       };
       return isNew ? servicesApi.create(payload) : servicesApi.update(id!, payload);
@@ -439,6 +453,15 @@ function FormInner() {
               onChange={(v) => set('cover', v)}
             />
           </FormThumbCard>
+          <FormGalleryCard>
+            <GalleryField
+              folder="services"
+              slug={form.seo_slug}
+              role="gallery"
+              value={form.gallery}
+              onChange={(gallery) => set('gallery', gallery)}
+            />
+          </FormGalleryCard>
         </FormMediaAside>
       </form>
     </div>

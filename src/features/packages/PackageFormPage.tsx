@@ -20,7 +20,7 @@ import {
   themesApi,
   type PackageType,
 } from '@/lib/services';
-import type { PackageFaq, PackageItineraryDay } from '@/lib/types';
+import type { MediaImage, PackageFaq, PackageItineraryDay } from '@/lib/types';
 import { useEditLocale } from '@/hooks/useEditLocale';
 import { StructureLockProvider } from '@/hooks/useStructureLock';
 import { useRegisterAiTranslate } from '@/hooks/useAiFormTranslate';
@@ -35,7 +35,8 @@ import { LocaleSwitcher } from '@/components/ui/LocaleSwitcher';
 import { StructureNotice } from '@/components/ui/StructureNotice';
 import { Repeater } from '@/components/ui/Repeater';
 import { emptyImageField, ImageField, type ImageFieldState } from '@/components/ui/ImageField';
-import { FormMediaAside, FormThumbCard } from '@/components/ui/FormMediaAside';
+import { FormMediaAside, FormThumbCard, FormGalleryCard } from '@/components/ui/FormMediaAside';
+import { GalleryField, emptyGalleryRow, type GalleryFieldRow } from '@/components/ui/GalleryField';
 import { FormFooter } from '@/components/ui/FormFooter';
 import { FormHeadActions } from '@/components/ui/FormHeadActions';
 import { ArticleContentEditor } from '@/components/editor/ArticleContentEditor';
@@ -46,6 +47,8 @@ import {
 } from '@/lib/aiEnrichFields';
 import { publicPageUrl } from '@/lib/publicUrl';
 import { replaceFormUrl } from '@/lib/formNavigate';
+
+type GalleryRow = GalleryFieldRow;
 
 const MEAL_OPTIONS = [
   { value: '', label: '— Không gồm —' },
@@ -97,6 +100,7 @@ type FormState = {
   itinerary: PackageItineraryDay[];
   faqs: PackageFaq[];
   cover: ImageFieldState;
+  gallery: GalleryRow[];
 };
 
 const emptyDay = (n = 1): PackageItineraryDay => ({
@@ -154,6 +158,7 @@ const empty: FormState = {
   itinerary: [],
   faqs: [],
   cover: emptyImageField(),
+  gallery: [],
 };
 
 const COPY: Record<
@@ -299,6 +304,11 @@ function PackageFormInner({ kind }: { kind: PackageType }) {
         answer: row.answer || '',
       })),
       cover: emptyImageField(d.cover ?? null),
+      gallery: Array.isArray(d.gallery)
+        ? (d.gallery as { id?: number; media?: MediaImage | null }[]).map((row) =>
+            emptyGalleryRow(row.media ?? null),
+          )
+        : [],
     };
     setForm(next);
     snapshotRef.current = JSON.stringify(next);
@@ -401,6 +411,9 @@ function PackageFormInner({ kind }: { kind: PackageType }) {
         locale,
         cover_media_id: form.cover.media?.id ?? null,
         remove_cover: form.cover.remove,
+        gallery_media_ids: form.gallery
+          .map((row) => row.image.media?.id)
+          .filter((id): id is number => typeof id === 'number' && id > 0),
       };
       return isNew ? api.create(payload) : api.update(id!, payload);
     },
@@ -1007,6 +1020,15 @@ function PackageFormInner({ kind }: { kind: PackageType }) {
               onChange={(cover) => set('cover', cover)}
             />
           </FormThumbCard>
+          <FormGalleryCard>
+            <GalleryField
+              folder="packages"
+              slug={form.seo_slug}
+              role="gallery"
+              value={form.gallery}
+              onChange={(gallery) => set('gallery', gallery)}
+            />
+          </FormGalleryCard>
         </FormMediaAside>
       </form>
     </div>

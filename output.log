@@ -24,6 +24,27 @@ Retrying 1/3...
 
 
 Retrying 1/3...
+
+
+Retrying 1/3...
+
+
+Retrying 1/3...
+
+
+Retrying 1/3...
+
+
+Retrying 1/3...
+
+
+Retrying 1/3...
+
+
+Retrying 2/3...
+
+
+Retrying 2/3...
  ⚠ ./src/styles/app.scss.webpack[javascript/auto]!=!./node_modules/next/dist/build/webpack/loaders/css-loader/src/index.js??ruleSet[1].rules[14].oneOf[11].use[2]!./node_modules/next/dist/build/webpack/loaders/postcss-loader/src/index.js??ruleSet[1].rules[14].oneOf[11].use[3]!./node_modules/next/dist/build/webpack/loaders/resolve-url-loader/index.js??ruleSet[1].rules[14].oneOf[11].use[4]!./node_modules/next/dist/compiled/sass-loader/cjs.js??ruleSet[1].rules[14].oneOf[11].use[5]!./src/styles/app.scss
 Deprecation Warning on line 17, column 8 of file:///var/www/html/admin.vitravel.dev/src/styles/ui/_kit.scss:17:8:
 The Sass if() syntax is deprecated in favor of the modern CSS syntax.
@@ -40,7 +61,7 @@ src/styles/app.scss 3:1       root stylesheet
 Import trace for requested module:
 ./src/styles/app.scss.webpack[javascript/auto]!=!./node_modules/next/dist/build/webpack/loaders/css-loader/src/index.js??ruleSet[1].rules[14].oneOf[11].use[2]!./node_modules/next/dist/build/webpack/loaders/postcss-loader/src/index.js??ruleSet[1].rules[14].oneOf[11].use[3]!./node_modules/next/dist/build/webpack/loaders/resolve-url-loader/index.js??ruleSet[1].rules[14].oneOf[11].use[4]!./node_modules/next/dist/compiled/sass-loader/cjs.js??ruleSet[1].rules[14].oneOf[11].use[5]!./src/styles/app.scss
 ./src/styles/app.scss
- GET / 200 in 10027ms
+ GET / 200 in 13924ms
  ⚠ ./src/styles/app.scss.webpack[javascript/auto]!=!./node_modules/next/dist/build/webpack/loaders/css-loader/src/index.js??ruleSet[1].rules[14].oneOf[11].use[2]!./node_modules/next/dist/build/webpack/loaders/postcss-loader/src/index.js??ruleSet[1].rules[14].oneOf[11].use[3]!./node_modules/next/dist/build/webpack/loaders/resolve-url-loader/index.js??ruleSet[1].rules[14].oneOf[11].use[4]!./node_modules/next/dist/compiled/sass-loader/cjs.js??ruleSet[1].rules[14].oneOf[11].use[5]!./src/styles/app.scss
 Deprecation Warning on line 17, column 8 of file:///var/www/html/admin.vitravel.dev/src/styles/ui/_kit.scss:17:8:
 The Sass if() syntax is deprecated in favor of the modern CSS syntax.
@@ -57,13 +78,69 @@ src/styles/app.scss 3:1       root stylesheet
 Import trace for requested module:
 ./src/styles/app.scss.webpack[javascript/auto]!=!./node_modules/next/dist/build/webpack/loaders/css-loader/src/index.js??ruleSet[1].rules[14].oneOf[11].use[2]!./node_modules/next/dist/build/webpack/loaders/postcss-loader/src/index.js??ruleSet[1].rules[14].oneOf[11].use[3]!./node_modules/next/dist/build/webpack/loaders/resolve-url-loader/index.js??ruleSet[1].rules[14].oneOf[11].use[4]!./node_modules/next/dist/compiled/sass-loader/cjs.js??ruleSet[1].rules[14].oneOf[11].use[5]!./src/styles/app.scss
 ./src/styles/app.scss
- ✓ Compiled /login in 4s (1721 modules)
- GET /login?next=%2F 200 in 4169ms
- GET / 200 in 82ms
- GET / 200 in 55ms
- ○ Compiling /settings/ai-prompts ...
- ✓ Compiled /settings/ai-prompts in 1097ms (1742 modules)
- GET /settings/ai-prompts/ 200 in 1236ms
- ✓ Compiled in 5.9s (1742 modules)
- GET /settings/ai-prompts/ 200 in 571ms
- GET /settings/ai-prompts/ 200 in 335ms
+ ✓ Compiled /login in 4.3s (1721 modules)
+ GET /login?next=%2F 200 in 4529ms
+ GET / 200 in 81ms
+ GET / 200 in 52ms
+ ○ Compiling /tours/packages ...
+ ✓ Compiled /tours/packages in 1404ms (1746 modules)
+ GET /tours/packages/ 200 in 1582ms
+ ○ Compiling /tours/packages/form ...
+ ✓ Compiled /tours/packages/form in 4.7s (2039 modules)
+ GET /tours/packages/form/?id=20 200 in 5082ms
+ ✓ Compiled in 3.1s (2039 modules)
+ ✓ Compiled in 1718ms (2039 modules)
+ ✓ Compiled in 1783ms (2039 modules)
+ ✓ Compiled in 908ms (2039 modules)
+ ✓ Compiled in 916ms (2039 modules)
+ ✓ Compiled in 2.5s (2039 modules)
+ ✓ Compiled in 1484ms (2039 modules)
+ ⚠ Fast Refresh had to perform a full reload due to a runtime error.
+ GET /tours/packages/form/?id=20 200 in 1996ms
+ ⚠ ./src/styles/app.scss.webpack[javascript/auto]!=!./node_modules/next/dist/build/webpack/loaders/css-loader/src/index.js??ruleSet[1].rules[14].oneOf[11].use[2]!./node_modules/next/dist/build/webpack/loaders/postcss-loader/src/index.js??ruleSet[1].rules[14].oneOf[11].use[3]!./node_modules/next/dist/build/webpack/loaders/resolve-url-loader/index.js??ruleSet[1].rules[14].oneOf[11].use[4]!./node_modules/next/dist/compiled/sass-loader/cjs.js??ruleSet[1].rules[14].oneOf[11].use[5]!./src/styles/app.scss
+Deprecation Warning on line 17, column 8 of file:///var/www/html/admin.vitravel.dev/src/styles/ui/_kit.scss:17:8:
+The Sass if() syntax is deprecated in favor of the modern CSS syntax.
+
+Suggestion: if(sass($size == null): var(--admin-scrollbar-size); else: $size)
+
+More info: https://sass-lang.com/d/if-function
+
+17 |   $bar: if($size == null, var(--admin-scrollbar-size), $size);
+
+src/styles/ui/_kit.scss 18:9  @use
+src/styles/app.scss 3:1       root stylesheet
+
+Import trace for requested module:
+./src/styles/app.scss.webpack[javascript/auto]!=!./node_modules/next/dist/build/webpack/loaders/css-loader/src/index.js??ruleSet[1].rules[14].oneOf[11].use[2]!./node_modules/next/dist/build/webpack/loaders/postcss-loader/src/index.js??ruleSet[1].rules[14].oneOf[11].use[3]!./node_modules/next/dist/build/webpack/loaders/resolve-url-loader/index.js??ruleSet[1].rules[14].oneOf[11].use[4]!./node_modules/next/dist/compiled/sass-loader/cjs.js??ruleSet[1].rules[14].oneOf[11].use[5]!./src/styles/app.scss
+./src/styles/app.scss
+ GET /tours/packages/form/?id=20 200 in 291ms
+ GET /tours/packages/form/?id=20 200 in 136ms
+ GET /tours/packages/form/?id=20 200 in 113ms
+ ⚠ ./src/styles/app.scss.webpack[javascript/auto]!=!./node_modules/next/dist/build/webpack/loaders/css-loader/src/index.js??ruleSet[1].rules[14].oneOf[11].use[2]!./node_modules/next/dist/build/webpack/loaders/postcss-loader/src/index.js??ruleSet[1].rules[14].oneOf[11].use[3]!./node_modules/next/dist/build/webpack/loaders/resolve-url-loader/index.js??ruleSet[1].rules[14].oneOf[11].use[4]!./node_modules/next/dist/compiled/sass-loader/cjs.js??ruleSet[1].rules[14].oneOf[11].use[5]!./src/styles/app.scss
+Deprecation Warning on line 17, column 8 of file:///var/www/html/admin.vitravel.dev/src/styles/ui/_kit.scss:17:8:
+The Sass if() syntax is deprecated in favor of the modern CSS syntax.
+
+Suggestion: if(sass($size == null): var(--admin-scrollbar-size); else: $size)
+
+More info: https://sass-lang.com/d/if-function
+
+17 |   $bar: if($size == null, var(--admin-scrollbar-size), $size);
+
+src/styles/ui/_kit.scss 18:9  @use
+src/styles/app.scss 3:1       root stylesheet
+
+Import trace for requested module:
+./src/styles/app.scss.webpack[javascript/auto]!=!./node_modules/next/dist/build/webpack/loaders/css-loader/src/index.js??ruleSet[1].rules[14].oneOf[11].use[2]!./node_modules/next/dist/build/webpack/loaders/postcss-loader/src/index.js??ruleSet[1].rules[14].oneOf[11].use[3]!./node_modules/next/dist/build/webpack/loaders/resolve-url-loader/index.js??ruleSet[1].rules[14].oneOf[11].use[4]!./node_modules/next/dist/compiled/sass-loader/cjs.js??ruleSet[1].rules[14].oneOf[11].use[5]!./src/styles/app.scss
+./src/styles/app.scss
+ ✓ Compiled in 6.5s (2039 modules)
+ GET /tours/packages/form/?id=20 200 in 7329ms
+ ✓ Compiled in 5.7s (2043 modules)
+ ✓ Compiled in 1765ms (2043 modules)
+ ⚠ Fast Refresh had to perform a full reload. Read more: https://nextjs.org/docs/messages/fast-refresh-reload
+ GET /tours/packages/form/?id=20 200 in 1975ms
+ ✓ Compiled in 2.7s (2043 modules)
+ ✓ Compiled in 1322ms (2043 modules)
+ ✓ Compiled in 1885ms (2043 modules)
+ ✓ Compiled in 1497ms (2043 modules)
+ ✓ Compiled in 1344ms (2043 modules)
+ ✓ Compiled in 5.6s (2043 modules)
