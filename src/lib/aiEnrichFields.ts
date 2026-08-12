@@ -22,6 +22,22 @@ function mergeRow(
   return out;
 }
 
+/** Chuẩn hoá FAQ từ AI (question/answer hoặc q/a / cau_hoi…). */
+function normalizeFaqRow(cell: Record<string, unknown>): { question: string; answer: string; id?: unknown } {
+  const question =
+    cell.question ?? cell.q ?? cell.Question ?? cell.cau_hoi ?? '';
+  const answer =
+    cell.answer ?? cell.a ?? cell.Answer ?? cell.cau_tra_loi ?? cell.tra_loi ?? '';
+  const row = {
+    question: typeof question === 'string' ? question.trim() : '',
+    answer: typeof answer === 'string' ? answer.trim() : '',
+  };
+  if (cell.id != null && cell.id !== '') {
+    return { ...row, id: cell.id };
+  }
+  return row;
+}
+
 export function mergeEnrichFields<T extends Record<string, unknown>>(
   prev: T,
   fields: Record<string, unknown>,
@@ -53,14 +69,16 @@ export function mergeEnrichFields<T extends Record<string, unknown>>(
     }
 
     if (key === 'faqs' && Array.isArray(value)) {
+      if (value.length === 0) continue;
       const prevList = Array.isArray(prev.faqs) ? (prev.faqs as Record<string, unknown>[]) : [];
       out.faqs = value.map((row, i) => {
         const cell = isPlainObject(row) ? row : {};
+        const normalized = normalizeFaqRow(cell);
         const old = isPlainObject(prevList[i]) ? prevList[i] : {};
         return mergeRow(old, {
-          question: cell.question ?? '',
-          answer: cell.answer ?? '',
-          id: old.id ?? cell.id ?? null,
+          question: normalized.question,
+          answer: normalized.answer,
+          id: old.id ?? normalized.id ?? null,
         });
       });
       continue;
@@ -81,6 +99,8 @@ export function mergeEnrichFields<T extends Record<string, unknown>>(
         'cover',
         'cluster',
         'service_category_id',
+        'content_rewrite',
+        'faq_rewrite',
       ].includes(key)
     ) {
       continue;
@@ -143,9 +163,12 @@ export function buildPackageEnrichPayload(form: Record<string, unknown>): Record
     faqs: Array.isArray(form.faqs)
       ? (form.faqs as Record<string, unknown>[]).map((row) => ({
           question: row.question || '',
-          answer: row.answer || '',
+          // Không gửi answer cũ — tránh model copy / bỏ qua viết lại FAQ.
+          answer: '',
+          faq_rewrite: true,
         }))
       : [],
+    faq_rewrite: true,
   };
 }
 

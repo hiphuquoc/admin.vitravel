@@ -25,3 +25,14 @@ nohup: ignoring input
  ○ Compiling /tours/packages ...
  ✓ Compiled /tours/packages in 1292ms (1746 modules)
  GET /tours/packages/ 200 in 1414ms
+ ○ Compiling /tours/packages/form ...
+ ✓ Compiled /tours/packages/form in 5.5s (2043 modules)
+ GET /tours/packages/form/?id=11 200 in 5918ms
+ GET /tours/packages/ 200 in 132ms
+ GET /tours/packages/ 200 in 336ms
+ ○ Compiling /settings/site ...
+ ✓ Compiled /settings/site in 1964ms (2050 modules)
+ GET /settings/site/ 200 in 2168ms
+ ✓ Compiled in 3.1s (2050 modules)
+ ✓ Compiled in 1262ms (2050 modules)
+ ✓ Compiled in 1555ms (2050 modules)
