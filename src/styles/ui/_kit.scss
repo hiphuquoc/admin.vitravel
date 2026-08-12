@@ -15,7 +15,10 @@
 }
 
 @mixin admin-brand-scrollbar($size: null) {
-  $bar: if($size == null, var(--admin-scrollbar-size), $size);
+  $bar: var(--admin-scrollbar-size);
+  @if $size != null {
+    $bar: $size;
+  }
 
   scrollbar-width: thin;
   scrollbar-color: var(--admin-scrollbar-thumb) var(--admin-scrollbar-track);

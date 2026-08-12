@@ -6,7 +6,6 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ArrowLeft } from 'lucide-react';
 import toast from '@/lib/toast';
 import { servicesApi } from '@/lib/services';
-import type { MediaImage } from '@/lib/types';
 import { useEditLocale } from '@/hooks/useEditLocale';
 import { StructureLockProvider } from '@/hooks/useStructureLock';
 import { useRegisterAiTranslate } from '@/hooks/useAiFormTranslate';
@@ -149,9 +148,7 @@ function FormInner() {
         d.seo?.rating_aggregate_count != null ? String(d.seo.rating_aggregate_count) : '',
       cover: emptyImageField(d.cover),
       gallery: Array.isArray(d.gallery)
-        ? (d.gallery as { id?: number; media?: MediaImage | null }[]).map((row) =>
-            emptyGalleryRow(row.media ?? null),
-          )
+        ? d.gallery.map((row) => emptyGalleryRow(row.media ?? null))
         : [],
     };
     setForm(next);

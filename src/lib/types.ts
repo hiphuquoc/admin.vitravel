@@ -180,6 +180,12 @@ export type PackageFaq = {
   answer: string;
 };
 
+/** Gallery attachment row from package/service admin API. */
+export type GalleryAttachment = {
+  id?: number;
+  media?: MediaImage | null;
+};
+
 export type PackageDetail = PackageListItem & {
   start_location: string | null;
   end_location: string | null;
@@ -206,6 +212,7 @@ export type PackageDetail = PackageListItem & {
   faqs: PackageFaq[];
   translated_locales?: string[];
   cover: MediaImage | null;
+  gallery?: GalleryAttachment[];
   seo: {
     slug: string | null;
     slug_full: string | null;
@@ -398,6 +405,7 @@ export type ServiceDetail = ServiceItem & {
   discount_badge: string | null;
   translated_locales?: string[];
   cover: MediaImage | null;
+  gallery?: GalleryAttachment[];
   seo: {
     slug: string | null;
     slug_full: string | null;

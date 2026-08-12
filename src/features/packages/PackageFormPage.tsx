@@ -20,7 +20,7 @@ import {
   themesApi,
   type PackageType,
 } from '@/lib/services';
-import type { MediaImage, PackageFaq, PackageItineraryDay } from '@/lib/types';
+import type { PackageFaq, PackageItineraryDay } from '@/lib/types';
 import { useEditLocale } from '@/hooks/useEditLocale';
 import { StructureLockProvider } from '@/hooks/useStructureLock';
 import { useRegisterAiTranslate } from '@/hooks/useAiFormTranslate';
@@ -305,7 +305,7 @@ function PackageFormInner({ kind }: { kind: PackageType }) {
       })),
       cover: emptyImageField(d.cover ?? null),
       gallery: Array.isArray(d.gallery)
-        ? (d.gallery as { id?: number; media?: MediaImage | null }[]).map((row) =>
+        ? d.gallery.map((row) =>
             emptyGalleryRow(row.media ?? null),
           )
         : [],
