@@ -20,6 +20,8 @@ import { LocaleSwitcher } from '@/components/ui/LocaleSwitcher';
 import { emptyImageField, ImageField, type ImageFieldState } from '@/components/ui/ImageField';
 import { FormMediaAside, FormThumbCard, FormBannerCard } from '@/components/ui/FormMediaAside';
 import { FormFooter } from '@/components/ui/FormFooter';
+import { AiEnrichListingButton } from '@/components/ui/AiEnrichListingButton';
+import { mergeListingEnrichFields } from '@/lib/aiEnrichFields';
 import { ViewPublicButton } from '@/components/ui/ViewPublicButton';
 import { HeadActions, HeadSecondary } from '@/components/ui/HeadActions';
 import { publicPageUrl } from '@/lib/publicUrl';
@@ -240,6 +242,23 @@ export default function ListingHubForm() {
                 locale,
                 defaultLocale,
               )}
+              preActions={
+                <AiEnrichListingButton
+                  entityType="listing_hub"
+                  locale={locale}
+                  hubKey={hubKey}
+                  getForm={() => form as unknown as Record<string, unknown>}
+                  applyFields={(fields) =>
+                    setForm((prev) =>
+                      mergeListingEnrichFields(
+                        prev as unknown as Record<string, unknown>,
+                        fields,
+                        'listing_hub',
+                      ) as FormState,
+                    )
+                  }
+                />
+              }
             />
           </div>
 

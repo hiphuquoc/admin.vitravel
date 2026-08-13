@@ -193,3 +193,95 @@ export function buildServiceEnrichPayload(form: Record<string, unknown>): Record
     seo_description: form.seo_description || '',
   };
 }
+
+export type ListingEnrichEntityType =
+  | 'listing_hub'
+  | 'country'
+  | 'tour_category'
+  | 'cruise_type'
+  | 'service_category';
+
+/** Tiêu đề trang listing — input duy nhất gửi AI (tránh nhiễu nội dung cũ). */
+export function getListingPageTitle(
+  form: Record<string, unknown>,
+  entityType: ListingEnrichEntityType,
+): string {
+  if (entityType === 'listing_hub') {
+    return String(form.title || '').trim();
+  }
+  return String(form.name || '').trim();
+}
+
+/** Map canonical AI fields → form admin theo loại trang. */
+export function mergeListingEnrichFields<T extends Record<string, unknown>>(
+  prev: T,
+  fields: Record<string, unknown>,
+  entityType: ListingEnrichEntityType,
+): T {
+  const out: Record<string, unknown> = { ...prev };
+
+  const title = typeof fields.title === 'string' ? fields.title.trim() : '';
+  const subtitle = typeof fields.subtitle === 'string' ? fields.subtitle.trim() : '';
+  const seoBody = typeof fields.seo_body === 'string' ? fields.seo_body.trim() : '';
+
+  if (entityType === 'listing_hub') {
+    if (title) out.title = title;
+    if (subtitle) out.body = subtitle;
+    if (seoBody) out.seo_body = seoBody;
+  } else if (entityType === 'country') {
+    if (title) out.name = title;
+    if (subtitle) out.tagline = subtitle;
+    if (seoBody) out.long_form_content = seoBody;
+  } else if (entityType === 'tour_category') {
+    if (title) out.name = title;
+    if (subtitle) out.description = subtitle;
+    if (seoBody) out.seo_intro = seoBody;
+  } else if (entityType === 'cruise_type') {
+    if (title) out.name = title;
+    // Form chưa có subtitle/seo_body — chỉ SEO meta.
+  } else if (entityType === 'service_category') {
+    if (title) out.name = title;
+    if (subtitle || seoBody) {
+      const parts = [subtitle, seoBody].filter(Boolean);
+      out.intro = parts.join('\n\n');
+    }
+  }
+
+  for (const key of ['seo_slug', 'seo_title', 'seo_description'] as const) {
+    const val = fields[key];
+    if (typeof val === 'string' && val.trim() !== '') {
+      out[key] = val.trim();
+    }
+  }
+
+  return out as T;
+}
+
+/** Keys để đánh dấu badge AI sau enrich listing. */
+export function listingEnrichAppliedKeys(
+  fields: Record<string, unknown>,
+  entityType: ListingEnrichEntityType,
+): string[] {
+  const keys: string[] = [];
+  if (typeof fields.title === 'string' && fields.title.trim()) {
+    keys.push(entityType === 'listing_hub' ? 'title' : 'name');
+  }
+  if (typeof fields.subtitle === 'string' && fields.subtitle.trim()) {
+    if (entityType === 'listing_hub') keys.push('body');
+    else if (entityType === 'country') keys.push('tagline');
+    else if (entityType === 'tour_category') keys.push('description');
+    else if (entityType === 'service_category') keys.push('intro');
+  }
+  if (typeof fields.seo_body === 'string' && fields.seo_body.trim()) {
+    if (entityType === 'listing_hub') keys.push('seo_body');
+    else if (entityType === 'country') keys.push('long_form_content');
+    else if (entityType === 'tour_category') keys.push('seo_intro');
+    else if (entityType === 'service_category' && !keys.includes('intro')) keys.push('intro');
+  }
+  for (const key of ['seo_slug', 'seo_title', 'seo_description']) {
+    if (typeof fields[key] === 'string' && String(fields[key]).trim()) {
+      keys.push(key);
+    }
+  }
+  return keys;
+}

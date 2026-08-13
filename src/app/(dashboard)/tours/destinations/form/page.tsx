@@ -19,6 +19,8 @@ import { StructureNotice } from '@/components/ui/StructureNotice';
 import { emptyImageField, ImageField, type ImageFieldState } from '@/components/ui/ImageField';
 import { FormMediaAside, FormThumbCard, FormBannerCard } from '@/components/ui/FormMediaAside';
 import { FormFooter } from '@/components/ui/FormFooter';
+import { AiEnrichListingButton } from '@/components/ui/AiEnrichListingButton';
+import { mergeListingEnrichFields } from '@/lib/aiEnrichFields';
 import { HeadActions, HeadSecondary } from '@/components/ui/HeadActions';
 import { ViewPublicButton } from '@/components/ui/ViewPublicButton';
 import { publicPageUrl } from '@/lib/publicUrl';
@@ -379,6 +381,22 @@ function FormInner() {
               locale,
               defaultLocale,
             )}
+            preActions={
+              <AiEnrichListingButton
+                entityType="country"
+                locale={locale}
+                getForm={() => form as unknown as Record<string, unknown>}
+                applyFields={(fields) =>
+                  setForm((prev) =>
+                    mergeListingEnrichFields(
+                      prev as unknown as Record<string, unknown>,
+                      fields,
+                      'country',
+                    ) as FormState,
+                  )
+                }
+              />
+            }
           />
         </div>
 

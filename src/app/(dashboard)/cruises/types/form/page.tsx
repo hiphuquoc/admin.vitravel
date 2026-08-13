@@ -20,6 +20,8 @@ import { LocaleSwitcher } from '@/components/ui/LocaleSwitcher';
 import { emptyImageField, ImageField, type ImageFieldState } from '@/components/ui/ImageField';
 import { FormMediaAside, FormThumbCard, FormBannerCard } from '@/components/ui/FormMediaAside';
 import { FormFooter } from '@/components/ui/FormFooter';
+import { AiEnrichListingButton } from '@/components/ui/AiEnrichListingButton';
+import { mergeListingEnrichFields } from '@/lib/aiEnrichFields';
 import { HeadActions, HeadSecondary } from '@/components/ui/HeadActions';
 import { ViewPublicButton } from '@/components/ui/ViewPublicButton';
 import { publicPageUrl } from '@/lib/publicUrl';
@@ -299,6 +301,22 @@ function CruiseTypeFormInner() {
             locale,
             metaQuery.data?.default_locale || 'vi',
           )}
+          preActions={
+            <AiEnrichListingButton
+              entityType="cruise_type"
+              locale={locale}
+              getForm={() => form as unknown as Record<string, unknown>}
+              applyFields={(fields) =>
+                setForm((prev) =>
+                  mergeListingEnrichFields(
+                    prev as unknown as Record<string, unknown>,
+                    fields,
+                    'cruise_type',
+                  ) as FormState,
+                )
+              }
+            />
+          }
         />
         </div>
 

@@ -13,26 +13,21 @@ nohup: ignoring input
    - Environments: .env.local
 
  ✓ Starting...
- ✓ Ready in 2.5s
+ ✓ Ready in 2.3s
  ○ Compiling / ...
- ✓ Compiled / in 5s (903 modules)
- GET / 200 in 5703ms
+ ✓ Compiled / in 5.2s (903 modules)
+ GET / 200 in 5883ms
  ○ Compiling /login ...
- ✓ Compiled /login in 2.6s (1721 modules)
- GET /login?next=%2F 200 in 2821ms
- GET / 200 in 117ms
- GET / 200 in 82ms
+ ✓ Compiled /login in 2.1s (1721 modules)
+ GET /login?next=%2F 200 in 2338ms
+ GET / 200 in 85ms
+ GET / 200 in 59ms
+ ⚠ Fast Refresh had to perform a full reload due to a runtime error.
+ ✓ Compiled in 2.9s (1721 modules)
+ ⚠ Fast Refresh had to perform a full reload due to a runtime error.
+ GET / 200 in 1885ms
+ ✓ Compiled in 10.3s (1735 modules)
+ GET / 200 in 1578ms
  ○ Compiling /tours/packages ...
- ✓ Compiled /tours/packages in 1292ms (1746 modules)
- GET /tours/packages/ 200 in 1414ms
- ○ Compiling /tours/packages/form ...
- ✓ Compiled /tours/packages/form in 5.5s (2043 modules)
- GET /tours/packages/form/?id=11 200 in 5918ms
- GET /tours/packages/ 200 in 132ms
- GET /tours/packages/ 200 in 336ms
- ○ Compiling /settings/site ...
- ✓ Compiled /settings/site in 1964ms (2050 modules)
- GET /settings/site/ 200 in 2168ms
- ✓ Compiled in 3.1s (2050 modules)
- ✓ Compiled in 1262ms (2050 modules)
- ✓ Compiled in 1555ms (2050 modules)
+ ✓ Compiled /tours/packages in 1722ms (1746 modules)
+ GET /tours/packages/ 200 in 1913ms
