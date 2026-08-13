@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { Sparkles, Loader2 } from 'lucide-react';
-import toast from '@/lib/toast';
+import toast, { notify } from '@/lib/toast';
 import { apiRequest } from '@/lib/api';
 import { useAiFilledActions } from '@/hooks/useAiFilledFields';
 import { useFormActionsLocked } from '@/hooks/useStructureLock';
@@ -117,7 +117,7 @@ export function AiEnrichListingButton({
         Array.isArray(applied.faqs) &&
         applied.faqs.length > 0
       ) {
-        toast.info(
+        notify.info(
           `AI đã soạn ${applied.faqs.length} FAQ — form chưa có ô FAQ, bỏ qua. Sẽ áp dụng khi có UI.`,
         );
       }
