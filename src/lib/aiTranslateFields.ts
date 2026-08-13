@@ -91,8 +91,10 @@ const ALWAYS_TRANSLATABLE = new Set([
   'short_bio',
   'full_bio',
   'tagline',
+  'intro',
   'intro_text',
   'long_form_content',
+  'seo_intro',
 ]);
 
 /** Prefix / exact structural — có $ để không nuốt seo_description, title, … */

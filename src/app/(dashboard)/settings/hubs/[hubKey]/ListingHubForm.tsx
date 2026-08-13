@@ -12,7 +12,7 @@ import { useRegisterAiTranslate } from '@/hooks/useAiFormTranslate';
 import { pickTranslatableFields, mergeTranslatedFields } from '@/lib/aiTranslateFields';
 import { StructureNotice } from '@/components/ui/StructureNotice';
 import { DEFAULT_LOCALE, isDefaultLocale } from '@/lib/locale';
-import { Input, Textarea } from '@/components/ui/Field';
+import { Input } from '@/components/ui/Field';
 import { PageHeader } from '@/components/ui/Page';
 import { FormCluster, FormSection } from '@/components/ui/FormSection';
 import { SeoBox } from '@/components/ui/SeoBox';
@@ -22,6 +22,7 @@ import { FormMediaAside, FormThumbCard, FormBannerCard } from '@/components/ui/F
 import { FormFooter } from '@/components/ui/FormFooter';
 import { AiEnrichListingButton } from '@/components/ui/AiEnrichListingButton';
 import { mergeListingEnrichFields } from '@/lib/aiEnrichFields';
+import { ListingChromeCopyFields } from '@/components/ui/ListingChromeCopyFields';
 import { ViewPublicButton } from '@/components/ui/ViewPublicButton';
 import { HeadActions, HeadSecondary } from '@/components/ui/HeadActions';
 import { publicPageUrl } from '@/lib/publicUrl';
@@ -62,6 +63,7 @@ export default function ListingHubForm() {
   const qc = useQueryClient();
   const { locale, setLocale } = useEditLocale();
   const [form, setForm] = useState<FormState>(empty);
+  const [listingEditorEpoch, setListingEditorEpoch] = useState(0);
   const snapshotRef = useRef(JSON.stringify(empty));
   const isDirty = useMemo(() => JSON.stringify(form) !== snapshotRef.current, [form]);
 
@@ -213,24 +215,19 @@ export default function ListingHubForm() {
 
             <FormSection
               icon={LayoutTemplate}
-              title="Nội dung hub"
-              description="Tiêu đề, subtitle header và đoạn SEO cuối listing (rỗng = ẩn)."
+              title="Nội dung listing"
+              description="Tiêu đề, mô tả ngắn dưới H1 và đoạn SEO cuối listing (rỗng = ẩn)."
             >
               <FormCluster cols={1}>
                 <Input label="Tiêu đề" name="title" value={form.title} onChange={(e) => set('title', e.target.value)} />
-                <Textarea
-                  label="Mô tả ngắn (subtitle header)"
-                  name="body"
-                  value={form.body}
-                  onChange={(e) => set('body', e.target.value)}
-                  hint="Hiện dưới H1 trang hub."
-                />
-                <Textarea
-                  label="Đoạn SEO cuối listing"
-                  name="seo_body"
-                  value={form.seo_body}
-                  onChange={(e) => set('seo_body', e.target.value)}
-                  hint="Khối văn bản dưới lưới sản phẩm. Để trống thì không hiển thị."
+                <ListingChromeCopyFields
+                  subtitle={form.body}
+                  seoBody={form.seo_body}
+                  subtitleName="body"
+                  seoBodyName="seo_body"
+                  editorEpoch={listingEditorEpoch}
+                  onSubtitleChange={(v) => set('body', v)}
+                  onSeoBodyChange={(v) => set('seo_body', v)}
                 />
               </FormCluster>
             </FormSection>
@@ -248,15 +245,16 @@ export default function ListingHubForm() {
                   locale={locale}
                   hubKey={hubKey}
                   getForm={() => form as unknown as Record<string, unknown>}
-                  applyFields={(fields) =>
+                  applyFields={(fields) => {
                     setForm((prev) =>
                       mergeListingEnrichFields(
                         prev as unknown as Record<string, unknown>,
                         fields,
                         'listing_hub',
                       ) as FormState,
-                    )
-                  }
+                    );
+                    setListingEditorEpoch((n) => n + 1);
+                  }}
                 />
               }
             />

@@ -12,7 +12,7 @@ import { useRegisterAiTranslate } from '@/hooks/useAiFormTranslate';
 import { pickTranslatableFields, mergeTranslatedFields } from '@/lib/aiTranslateFields';
 import { StructureNotice } from '@/components/ui/StructureNotice';
 import { DEFAULT_LOCALE, isDefaultLocale } from '@/lib/locale';
-import { Input, Select, Switch, Textarea } from '@/components/ui/Field';
+import { Input, Select, Switch } from '@/components/ui/Field';
 import { PageHeader } from '@/components/ui/Page';
 import { FormSection } from '@/components/ui/FormSection';
 import { SeoBox } from '@/components/ui/SeoBox';
@@ -22,6 +22,7 @@ import { FormMediaAside, FormThumbCard, FormBannerCard } from '@/components/ui/F
 import { FormFooter } from '@/components/ui/FormFooter';
 import { AiEnrichListingButton } from '@/components/ui/AiEnrichListingButton';
 import { mergeListingEnrichFields } from '@/lib/aiEnrichFields';
+import { ListingChromeCopyFields } from '@/components/ui/ListingChromeCopyFields';
 import { HeadActions, HeadSecondary } from '@/components/ui/HeadActions';
 import { publicPageUrl } from '@/lib/publicUrl';
 import { replaceFormUrl } from '@/lib/formNavigate';
@@ -31,6 +32,7 @@ type FormState = {
   cluster: string;
   name: string;
   intro: string;
+  seo_body: string;
   sort: string;
   is_active: boolean;
   seo_slug: string;
@@ -47,6 +49,7 @@ const empty: FormState = {
   cluster: 'experience',
   name: '',
   intro: '',
+  seo_body: '',
   sort: '0',
   is_active: true,
   seo_slug: '',
@@ -78,6 +81,7 @@ function FormInner() {
   const qc = useQueryClient();
   const { locale, setLocale } = useEditLocale();
   const [form, setForm] = useState<FormState>({ ...empty, cluster: clusterFromUrl });
+  const [listingEditorEpoch, setListingEditorEpoch] = useState(0);
   const snapshotRef = useRef(JSON.stringify({ ...empty, cluster: clusterFromUrl }));
   const isDirty = useMemo(() => JSON.stringify(form) !== snapshotRef.current, [form]);
 
@@ -98,6 +102,7 @@ function FormInner() {
       cluster: d.cluster || clusterFromUrl,
       name: d.name || '',
       intro: d.intro || '',
+      seo_body: String((d as { seo_body?: string }).seo_body || d.intro || ''),
       sort: String(d.sort || 0),
       is_active: !!d.is_active,
       seo_slug: d.seo?.slug || d.slug || '',
@@ -123,6 +128,7 @@ function FormInner() {
         name: form.name,
         slug,
         intro: form.intro || null,
+        seo_body: form.seo_body || null,
         sort: Number(form.sort) || 0,
         is_active: form.is_active,
         seo_slug: slug,
@@ -179,7 +185,8 @@ function FormInner() {
       const d = (await serviceCategoriesApi.get(id, defaultLocale)) as Record<string, any>;
       return pickTranslatableFields({
         name: d.name || '',
-        description: d.description || '',
+        intro: d.intro || '',
+        seo_body: d.seo_body || '',
         seo_slug: d.seo?.slug || d.slug || '',
         seo_title: d.seo?.title || '',
         seo_description: d.seo?.description || '',
@@ -270,10 +277,14 @@ function FormInner() {
                 }
               }}
             />
-            <Textarea
-              label="Giới thiệu"
-              value={form.intro}
-              onChange={(e) => set('intro', e.target.value)}
+            <ListingChromeCopyFields
+              subtitle={form.intro}
+              seoBody={form.seo_body}
+              subtitleName="intro"
+              seoBodyName="seo_body"
+              editorEpoch={listingEditorEpoch}
+              onSubtitleChange={(v) => set('intro', v)}
+              onSeoBodyChange={(v) => set('seo_body', v)}
             />
             <Input
               label="Thứ tự"
@@ -306,15 +317,16 @@ function FormInner() {
                 entityType="service_category"
                 locale={locale}
                 getForm={() => form as unknown as Record<string, unknown>}
-                applyFields={(fields) =>
+                applyFields={(fields) => {
                   setForm((prev) =>
                     mergeListingEnrichFields(
                       prev as unknown as Record<string, unknown>,
                       fields,
                       'service_category',
                     ) as FormState,
-                  )
-                }
+                  );
+                  setListingEditorEpoch((n) => n + 1);
+                }}
               />
             }
           />

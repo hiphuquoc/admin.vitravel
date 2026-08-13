@@ -12,7 +12,7 @@ import { useRegisterAiTranslate } from '@/hooks/useAiFormTranslate';
 import { pickTranslatableFields, mergeTranslatedFields } from '@/lib/aiTranslateFields';
 import { StructureNotice } from '@/components/ui/StructureNotice';
 import { DEFAULT_LOCALE, isDefaultLocale } from '@/lib/locale';
-import { Input, Select, Switch, Textarea } from '@/components/ui/Field';
+import { Input, Select, Switch } from '@/components/ui/Field';
 import { PageHeader } from '@/components/ui/Page';
 import { FormCluster, FormSection } from '@/components/ui/FormSection';
 import { SeoBox } from '@/components/ui/SeoBox';
@@ -22,6 +22,7 @@ import { FormMediaAside, FormThumbCard } from '@/components/ui/FormMediaAside';
 import { FormFooter } from '@/components/ui/FormFooter';
 import { AiEnrichListingButton } from '@/components/ui/AiEnrichListingButton';
 import { mergeListingEnrichFields } from '@/lib/aiEnrichFields';
+import { ListingChromeCopyFields } from '@/components/ui/ListingChromeCopyFields';
 import { HeadActions, HeadSecondary } from '@/components/ui/HeadActions';
 import { ViewPublicButton } from '@/components/ui/ViewPublicButton';
 import { publicPageUrl } from '@/lib/publicUrl';
@@ -81,6 +82,7 @@ function CategoryFormInner() {
   const { locale, setLocale } = useEditLocale();
   const [form, setForm] = useState<FormState>(empty);
   const [slugTouched, setSlugTouched] = useState(false);
+  const [listingEditorEpoch, setListingEditorEpoch] = useState(0);
   const snapshotRef = useRef(JSON.stringify(empty));
   const isDirty = useMemo(() => JSON.stringify(form) !== snapshotRef.current, [form]);
 
@@ -178,6 +180,7 @@ function CategoryFormInner() {
       return pickTranslatableFields({
         name: d.name || '',
         description: d.description || '',
+        seo_intro: d.seo_intro || '',
         seo_slug: d.seo?.slug || d.slug || '',
         seo_title: d.seo?.title || '',
         seo_description: d.seo?.description || '',
@@ -315,9 +318,16 @@ function CategoryFormInner() {
             />
           </FormCluster>
 
-          <FormCluster cols={1}>
-            <Textarea label="Mô tả" value={form.description} onChange={(e) => set('description', e.target.value)} />
-            <Textarea label="Giới thiệu SEO" value={form.seo_intro} onChange={(e) => set('seo_intro', e.target.value)} />
+          <FormCluster cols={1} title="Nội dung listing">
+            <ListingChromeCopyFields
+              subtitle={form.description}
+              seoBody={form.seo_intro}
+              subtitleName="description"
+              seoBodyName="seo_intro"
+              editorEpoch={listingEditorEpoch}
+              onSubtitleChange={(v) => set('description', v)}
+              onSeoBodyChange={(v) => set('seo_intro', v)}
+            />
           </FormCluster>
         </FormSection>
 
@@ -334,15 +344,16 @@ function CategoryFormInner() {
               entityType="tour_category"
               locale={locale}
               getForm={() => form as unknown as Record<string, unknown>}
-              applyFields={(fields) =>
+              applyFields={(fields) => {
                 setForm((prev) =>
                   mergeListingEnrichFields(
                     prev as unknown as Record<string, unknown>,
                     fields,
                     'tour_category',
                   ) as FormState,
-                )
-              }
+                );
+                setListingEditorEpoch((n) => n + 1);
+              }}
             />
           }
         />

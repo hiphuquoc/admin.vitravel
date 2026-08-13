@@ -13,21 +13,4 @@ nohup: ignoring input
    - Environments: .env.local
 
  ✓ Starting...
- ✓ Ready in 2.3s
- ○ Compiling / ...
- ✓ Compiled / in 5.2s (903 modules)
- GET / 200 in 5883ms
- ○ Compiling /login ...
- ✓ Compiled /login in 2.1s (1721 modules)
- GET /login?next=%2F 200 in 2338ms
- GET / 200 in 85ms
- GET / 200 in 59ms
- ⚠ Fast Refresh had to perform a full reload due to a runtime error.
- ✓ Compiled in 2.9s (1721 modules)
- ⚠ Fast Refresh had to perform a full reload due to a runtime error.
- GET / 200 in 1885ms
- ✓ Compiled in 10.3s (1735 modules)
- GET / 200 in 1578ms
- ○ Compiling /tours/packages ...
- ✓ Compiled /tours/packages in 1722ms (1746 modules)
- GET /tours/packages/ 200 in 1913ms
+ ✓ Ready in 2.8s

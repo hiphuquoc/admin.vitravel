@@ -10,7 +10,7 @@ import { useEditLocale } from '@/hooks/useEditLocale';
 import { StructureLockProvider } from '@/hooks/useStructureLock';
 import { useRegisterAiTranslate } from '@/hooks/useAiFormTranslate';
 import { pickTranslatableFields, mergeTranslatedFields } from '@/lib/aiTranslateFields';
-import { Input, Select, Switch, Textarea } from '@/components/ui/Field';
+import { Input, Select, Switch } from '@/components/ui/Field';
 import { PageHeader } from '@/components/ui/Page';
 import { FormCluster, FormSection } from '@/components/ui/FormSection';
 import { SeoBox } from '@/components/ui/SeoBox';
@@ -21,6 +21,7 @@ import { FormMediaAside, FormThumbCard, FormBannerCard } from '@/components/ui/F
 import { FormFooter } from '@/components/ui/FormFooter';
 import { AiEnrichListingButton } from '@/components/ui/AiEnrichListingButton';
 import { mergeListingEnrichFields } from '@/lib/aiEnrichFields';
+import { ListingChromeCopyFields } from '@/components/ui/ListingChromeCopyFields';
 import { HeadActions, HeadSecondary } from '@/components/ui/HeadActions';
 import { ViewPublicButton } from '@/components/ui/ViewPublicButton';
 import { publicPageUrl } from '@/lib/publicUrl';
@@ -89,6 +90,7 @@ function FormInner() {
   const qc = useQueryClient();
   const { locale, setLocale } = useEditLocale();
   const [form, setForm] = useState<FormState>(empty);
+  const [listingEditorEpoch, setListingEditorEpoch] = useState(0);
   const snapshotRef = useRef(JSON.stringify(empty));
   const isDirty = useMemo(() => JSON.stringify(form) !== snapshotRef.current, [form]);
 
@@ -110,7 +112,7 @@ function FormInner() {
       name: d.name || '',
       tagline: d.tagline || '',
       intro_text: d.intro_text || '',
-      long_form_content: d.long_form_content || '',
+      long_form_content: d.long_form_content || d.intro_text || '',
       sort: String(d.sort || 0),
       home_grid_size: d.home_grid_size || 'medium',
       is_active: !!d.is_active,
@@ -315,11 +317,6 @@ function FormInner() {
                 }}
               />
               <Input
-                label="Slogan ngắn"
-                value={form.tagline}
-                onChange={(e) => set('tagline', e.target.value)}
-              />
-              <Input
                 label="Thứ tự"
                 type="number"
                 value={form.sort}
@@ -359,16 +356,15 @@ function FormInner() {
               />
             </div>
 
-            <FormCluster cols={1}>
-              <Textarea
-                label="Giới thiệu"
-                value={form.intro_text}
-                onChange={(e) => set('intro_text', e.target.value)}
-              />
-              <Textarea
-                label="Nội dung dài"
-                value={form.long_form_content}
-                onChange={(e) => set('long_form_content', e.target.value)}
+            <FormCluster cols={1} title="Nội dung listing">
+              <ListingChromeCopyFields
+                subtitle={form.tagline}
+                seoBody={form.long_form_content}
+                subtitleName="tagline"
+                seoBodyName="long_form_content"
+                editorEpoch={listingEditorEpoch}
+                onSubtitleChange={(v) => set('tagline', v)}
+                onSeoBodyChange={(v) => set('long_form_content', v)}
               />
             </FormCluster>
           </FormSection>
@@ -386,15 +382,16 @@ function FormInner() {
                 entityType="country"
                 locale={locale}
                 getForm={() => form as unknown as Record<string, unknown>}
-                applyFields={(fields) =>
+                applyFields={(fields) => {
                   setForm((prev) =>
                     mergeListingEnrichFields(
                       prev as unknown as Record<string, unknown>,
                       fields,
                       'country',
                     ) as FormState,
-                  )
-                }
+                  );
+                  setListingEditorEpoch((n) => n + 1);
+                }}
               />
             }
           />

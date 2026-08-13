@@ -241,10 +241,8 @@ export function mergeListingEnrichFields<T extends Record<string, unknown>>(
     // Form chưa có subtitle/seo_body — chỉ SEO meta.
   } else if (entityType === 'service_category') {
     if (title) out.name = title;
-    if (subtitle || seoBody) {
-      const parts = [subtitle, seoBody].filter(Boolean);
-      out.intro = parts.join('\n\n');
-    }
+    if (subtitle) out.intro = subtitle;
+    if (seoBody) out.seo_body = seoBody;
   }
 
   for (const key of ['seo_slug', 'seo_title', 'seo_description'] as const) {
@@ -276,7 +274,7 @@ export function listingEnrichAppliedKeys(
     if (entityType === 'listing_hub') keys.push('seo_body');
     else if (entityType === 'country') keys.push('long_form_content');
     else if (entityType === 'tour_category') keys.push('seo_intro');
-    else if (entityType === 'service_category' && !keys.includes('intro')) keys.push('intro');
+    else if (entityType === 'service_category') keys.push('seo_body');
   }
   for (const key of ['seo_slug', 'seo_title', 'seo_description']) {
     if (typeof fields[key] === 'string' && String(fields[key]).trim()) {
