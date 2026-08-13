@@ -105,7 +105,11 @@ export function AiEnrichListingButton({
       applyFields(applied);
 
       const filledKeys = listingEnrichAppliedKeys(applied, entityType);
-      filledKeys.forEach((key) => markAiFilled(key));
+      markAiFilled(filledKeys);
+      if (typeof window !== 'undefined' && filledKeys.length) {
+        window.setTimeout(() => markAiFilled(filledKeys), 0);
+        window.setTimeout(() => markAiFilled(filledKeys), 150);
+      }
       const filledCount = filledKeys.length;
 
       if (
