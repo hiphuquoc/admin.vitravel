@@ -55,14 +55,18 @@ export function mergeEnrichFields<T extends Record<string, unknown>>(
           (r) => Number(r.day_number) === Number(cell.day_number ?? i + 1),
         );
         const old = isPlainObject(byDay) ? byDay : isPlainObject(prevList[i]) ? prevList[i] : {};
+        const meals = cell.meals_included;
+        const mealsStr = Array.isArray(meals)
+          ? meals.map((x) => String(x).trim()).filter(Boolean).join('; ')
+          : String(meals ?? '');
         return mergeRow(old, {
           day_number: cell.day_number ?? i + 1,
-          meals_included: cell.meals_included ?? '',
+          meals_included: mealsStr,
           transport_icons: old.transport_icons ?? '',
           title: cell.title ?? '',
           content: typeof cell.content === 'string' ? cell.content : (old.content ?? ''),
           overnight_at: cell.overnight_at ?? '',
-          id: old.id ?? cell.id ?? null,
+          id: old.id ?? null,
         });
       });
       continue;
@@ -78,7 +82,7 @@ export function mergeEnrichFields<T extends Record<string, unknown>>(
         return mergeRow(old, {
           question: normalized.question,
           answer: normalized.answer,
-          id: old.id ?? normalized.id ?? null,
+          id: old.id ?? null,
         });
       });
       continue;
@@ -113,8 +117,16 @@ export function mergeEnrichFields<T extends Record<string, unknown>>(
         const n = Number(value);
         out[key] = Number.isFinite(n) ? n : prev[key];
       } else {
-        out[key] = value == null ? '' : String(value);
+        let next = value == null ? '' : String(value);
+        if (key === 'featured_quote_text' || key === 'featured_quote_author' || key === 'seo_title' || key === 'title') {
+          next = next.slice(0, 255);
+        } else if (key === 'seo_description') {
+          next = next.slice(0, 320);
+        }
+        out[key] = next;
       }
+    } else if (Array.isArray(value) && typeof prev[key] === 'string') {
+      out[key] = value.map((x) => String(x).trim()).filter(Boolean).join('\n');
     }
   }
 

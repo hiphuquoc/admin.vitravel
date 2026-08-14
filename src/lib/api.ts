@@ -82,6 +82,17 @@ export class ApiClientError extends Error {
   }
 }
 
+function formatValidationMessage(message?: string, details?: unknown): string {
+  const base = (message || '').trim();
+  if (details && typeof details === 'object' && !Array.isArray(details)) {
+    const first = Object.values(details as Record<string, unknown>)
+      .flatMap((v) => (Array.isArray(v) ? v : [v]))
+      .find((v) => typeof v === 'string' && v.trim() !== '' && !String(v).startsWith('validation.'));
+    if (typeof first === 'string') return first;
+  }
+  return base;
+}
+
 type RequestOptions = {
   method?: string;
   body?: unknown;
@@ -177,7 +188,8 @@ export async function apiRequest<T>(path: string, options: RequestOptions = {}):
       }
     }
     throw new ApiClientError(
-      err?.message || (res.status >= 500 ? 'Lỗi máy chủ. Thử lại sau.' : 'Đã xảy ra lỗi.'),
+      formatValidationMessage(err?.message, err?.details) ||
+        (res.status >= 500 ? 'Lỗi máy chủ. Thử lại sau.' : 'Đã xảy ra lỗi.'),
       err?.code || 'ERROR',
       res.status,
       err?.details,
