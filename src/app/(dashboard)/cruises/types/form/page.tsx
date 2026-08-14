@@ -22,6 +22,7 @@ import { FormMediaAside, FormThumbCard, FormBannerCard } from '@/components/ui/F
 import { FormFooter } from '@/components/ui/FormFooter';
 import { AiEnrichListingButton } from '@/components/ui/AiEnrichListingButton';
 import { mergeListingEnrichFields } from '@/lib/aiEnrichFields';
+import { ListingChromeCopyFields } from '@/components/ui/ListingChromeCopyFields';
 import { HeadActions, HeadSecondary } from '@/components/ui/HeadActions';
 import { ViewPublicButton } from '@/components/ui/ViewPublicButton';
 import { publicPageUrl } from '@/lib/publicUrl';
@@ -29,6 +30,8 @@ import { replaceFormUrl } from '@/lib/formNavigate';
 
 type FormState = {
   name: string;
+  intro: string;
+  seo_body: string;
   sort: string;
   is_active: boolean;
   seo_slug: string;
@@ -43,6 +46,8 @@ type FormState = {
 
 const empty: FormState = {
   name: '',
+  intro: '',
+  seo_body: '',
   sort: '0',
   is_active: true,
   seo_slug: '',
@@ -75,6 +80,7 @@ function CruiseTypeFormInner() {
   const { locale, setLocale } = useEditLocale();
   const [form, setForm] = useState<FormState>(empty);
   const [slugTouched, setSlugTouched] = useState(false);
+  const [listingEditorEpoch, setListingEditorEpoch] = useState(0);
   const snapshotRef = useRef(JSON.stringify(empty));
   const isDirty = useMemo(() => JSON.stringify(form) !== snapshotRef.current, [form]);
 
@@ -94,6 +100,8 @@ function CruiseTypeFormInner() {
     const d = detailQuery.data;
     const next: FormState = {
       name: d.name || '',
+      intro: d.intro || '',
+      seo_body: String((d as { seo_body?: string }).seo_body || ''),
       sort: String(d.sort || 0),
       is_active: !!d.is_active,
       seo_slug: d.seo?.slug || d.slug || '',
@@ -127,6 +135,8 @@ function CruiseTypeFormInner() {
       const payload = {
         name: form.name,
         slug,
+        intro: form.intro || null,
+        seo_body: form.seo_body || null,
         sort: Number(form.sort) || 0,
         is_active: form.is_active,
         seo_slug: slug,
@@ -177,6 +187,8 @@ function CruiseTypeFormInner() {
       const d = (await cruiseTypesApi.get(id, defaultLocale)) as Record<string, any>;
       return pickTranslatableFields({
         name: d.name || '',
+        intro: d.intro || '',
+        seo_body: d.seo_body || '',
         seo_slug: d.seo?.slug || d.slug || '',
         seo_title: d.seo?.title || '',
         seo_description: d.seo?.description || '',
@@ -291,6 +303,17 @@ function CruiseTypeFormInner() {
               onChange={(v) => set('is_active', v)}
             />
           </FormCluster>
+          <FormCluster cols={1} title="Nội dung listing">
+            <ListingChromeCopyFields
+              subtitle={form.intro}
+              seoBody={form.seo_body}
+              subtitleName="intro"
+              seoBodyName="seo_body"
+              editorEpoch={listingEditorEpoch}
+              onSubtitleChange={(v) => set('intro', v)}
+              onSeoBodyChange={(v) => set('seo_body', v)}
+            />
+          </FormCluster>
         </FormSection>
 
         <FormFooter
@@ -306,15 +329,16 @@ function CruiseTypeFormInner() {
               entityType="cruise_type"
               locale={locale}
               getForm={() => form as unknown as Record<string, unknown>}
-              applyFields={(fields) =>
+              applyFields={(fields) => {
                 setForm((prev) =>
                   mergeListingEnrichFields(
                     prev as unknown as Record<string, unknown>,
                     fields,
                     'cruise_type',
                   ) as FormState,
-                )
-              }
+                );
+                setListingEditorEpoch((n) => n + 1);
+              }}
             />
           }
         />

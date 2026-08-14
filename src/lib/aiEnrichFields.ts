@@ -238,7 +238,8 @@ export function mergeListingEnrichFields<T extends Record<string, unknown>>(
     if (seoBody) out.seo_intro = seoBody;
   } else if (entityType === 'cruise_type') {
     if (title) out.name = title;
-    // Form chưa có subtitle/seo_body — chỉ SEO meta.
+    if (subtitle) out.intro = subtitle;
+    if (seoBody) out.seo_body = seoBody;
   } else if (entityType === 'service_category') {
     if (title) out.name = title;
     if (subtitle) out.intro = subtitle;
@@ -268,13 +269,13 @@ export function listingEnrichAppliedKeys(
     if (entityType === 'listing_hub') keys.push('body');
     else if (entityType === 'country') keys.push('tagline');
     else if (entityType === 'tour_category') keys.push('description');
-    else if (entityType === 'service_category') keys.push('intro');
+    else if (entityType === 'cruise_type' || entityType === 'service_category') keys.push('intro');
   }
   if (typeof fields.seo_body === 'string' && fields.seo_body.trim()) {
     if (entityType === 'listing_hub') keys.push('seo_body');
     else if (entityType === 'country') keys.push('long_form_content');
     else if (entityType === 'tour_category') keys.push('seo_intro');
-    else if (entityType === 'service_category') keys.push('seo_body');
+    else if (entityType === 'cruise_type' || entityType === 'service_category') keys.push('seo_body');
   }
   for (const key of ['seo_slug', 'seo_title', 'seo_description']) {
     if (typeof fields[key] === 'string' && String(fields[key]).trim()) {
