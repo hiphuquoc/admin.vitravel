@@ -102,7 +102,7 @@ function FormInner() {
       cluster: d.cluster || clusterFromUrl,
       name: d.name || '',
       intro: d.intro || '',
-      seo_body: String((d as { seo_body?: string }).seo_body || d.intro || ''),
+      seo_body: d.seo_body || d.intro || '',
       sort: String(d.sort || 0),
       is_active: !!d.is_active,
       seo_slug: d.seo?.slug || d.slug || '',

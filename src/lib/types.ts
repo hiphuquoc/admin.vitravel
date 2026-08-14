@@ -235,6 +235,8 @@ export type CruiseType = {
   id: number;
   name: string | null;
   slug: string | null;
+  intro: string | null;
+  seo_body: string | null;
   sort: number;
   is_active: boolean;
   seo?: { slug: string | null; slug_full: string | null };
@@ -346,6 +348,7 @@ export type ServiceCategory = {
   name: string | null;
   slug: string | null;
   intro: string | null;
+  seo_body: string | null;
   sort: number;
   is_active: boolean;
   seo?: { slug: string | null; slug_full: string | null };
