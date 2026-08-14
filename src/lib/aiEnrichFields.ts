@@ -98,6 +98,8 @@ export function mergeEnrichFields<T extends Record<string, unknown>>(
         'status',
         'code',
         'country_id',
+        'cruise_type',
+        'seo_parent_id',
         'category_ids',
         'travel_style_ids',
         'cover',

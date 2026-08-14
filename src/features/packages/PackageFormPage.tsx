@@ -364,7 +364,17 @@ function PackageFormInner({ kind }: { kind: PackageType }) {
         status: form.status,
         sort: Number(form.sort) || 0,
         discount_badge: form.discount_badge || null,
-        cruise_type: isCruise ? form.cruise_type || null : null,
+        cruise_type: isCruise
+          ? (() => {
+              const raw = String(form.cruise_type || '').trim();
+              const types = metaQuery.data?.cruise_types ?? [];
+              const bySlug = types.find((t) => t.slug === raw);
+              if (bySlug) return bySlug.slug;
+              const lower = raw.toLowerCase();
+              const byName = types.find((t) => String(t.name || '').trim().toLowerCase() === lower);
+              return byName?.slug || raw || null;
+            })()
+          : null,
         departure_port: isCruise ? form.departure_port || null : null,
         boat_class: isCruise ? form.boat_class || null : null,
         nights_on_board:
