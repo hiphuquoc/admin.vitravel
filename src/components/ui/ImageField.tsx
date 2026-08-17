@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useId, useRef, useState, type ChangeEvent } from 'react';
-import { ImagePlus, Loader2, Pencil, Trash2 } from 'lucide-react';
+import { ImagePlus, Images, Loader2, Pencil, Trash2 } from 'lucide-react';
 import clsx from 'clsx';
 import { useQuery } from '@tanstack/react-query';
 import toast from '@/lib/toast';
@@ -9,6 +9,7 @@ import { mediaApi } from '@/lib/services';
 import type { MediaFolder, MediaImage } from '@/lib/types';
 import { useStructureLocked } from '@/hooks/useStructureLock';
 import { useReportMediaUpload } from '@/hooks/useMediaUploadBusy';
+import { MediaLibraryPicker } from '@/components/ui/MediaLibraryPicker';
 
 export type ImageFieldState = {
   media: MediaImage | null;
@@ -58,6 +59,7 @@ export function ImageField({
   const [localPreview, setLocalPreview] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const [progress, setProgress] = useState(0);
+  const [libraryOpen, setLibraryOpen] = useState(false);
   const locked = useStructureLocked();
   const isDisabled = !!disabled || (structure && locked);
   useReportMediaUpload(uploading);
@@ -166,6 +168,23 @@ export function ImageField({
     inputRef.current?.click();
   };
 
+  const openLibrary = () => {
+    if (isDisabled || uploading) return;
+    setLibraryOpen(true);
+  };
+
+  const applyLibraryPick = (picked: MediaImage[]) => {
+    const media = picked[0];
+    if (!media) return;
+    abortRef.current?.abort();
+    abortRef.current = null;
+    clearLocal();
+    setUploading(false);
+    setProgress(0);
+    onChange({ media, remove: false });
+    toast.success('Đã chọn ảnh từ thư viện — nhấn Lưu để gắn vào nội dung');
+  };
+
   return (
     <div className={clsx('ui-image-field', isDisabled && 'ui-image-field--disabled', className)}>
       {label ? <div className="ui-image-field__label">{label}</div> : null}
@@ -223,7 +242,11 @@ export function ImageField({
               <div className="ui-image-field__overlay">
                 <button type="button" className="ui-image-field__action" onClick={openPicker}>
                   <Pencil size={15} />
-                  Thay đổi
+                  Tải mới
+                </button>
+                <button type="button" className="ui-image-field__action" onClick={openLibrary}>
+                  <Images size={15} />
+                  Thư viện
                 </button>
                 <button
                   type="button"
@@ -237,34 +260,51 @@ export function ImageField({
             )}
           </div>
         ) : (
-          <button
-            type="button"
-            className="ui-image-field__dropzone"
-            style={{ aspectRatio }}
-            onClick={openPicker}
-            disabled={uploading || isDisabled}
-            aria-label={a11y}
-          >
-            <span className="ui-image-field__drop-icon" aria-hidden>
-              {uploading ? <Loader2 size={18} className="ui-spin" /> : <ImagePlus size={18} />}
-            </span>
-            <span className="ui-image-field__drop-title">
-              {uploading
-                ? `Đang tải… ${progress}%`
-                : isDisabled
-                  ? 'Ảnh khóa (bản dịch)'
-                  : 'Kéo thả hoặc chọn ảnh'}
-            </span>
-            <span className="ui-image-field__drop-sub">
-              {uploading
-                ? 'Chưa gắn vào nội dung — chờ xong rồi nhấn Lưu'
-                : isDisabled
-                  ? 'Chỉnh ở ngôn ngữ mặc định'
-                  : 'JPG, PNG, WebP'}
-            </span>
-          </button>
+          <div className="ui-image-field__empty" style={{ aspectRatio }}>
+            <button
+              type="button"
+              className="ui-image-field__dropzone"
+              onClick={openPicker}
+              disabled={uploading || isDisabled}
+              aria-label={a11y}
+            >
+              <span className="ui-image-field__drop-icon" aria-hidden>
+                {uploading ? <Loader2 size={18} className="ui-spin" /> : <ImagePlus size={18} />}
+              </span>
+              <span className="ui-image-field__drop-title">
+                {uploading
+                  ? `Đang tải… ${progress}%`
+                  : isDisabled
+                    ? 'Ảnh khóa (bản dịch)'
+                    : 'Tải ảnh mới'}
+              </span>
+              <span className="ui-image-field__drop-sub">
+                {uploading
+                  ? 'Chưa gắn vào nội dung — chờ xong rồi nhấn Lưu'
+                  : isDisabled
+                    ? 'Chỉnh ở ngôn ngữ mặc định'
+                    : 'JPG, PNG, WebP · kéo thả'}
+              </span>
+            </button>
+            {!isDisabled && !uploading ? (
+              <button type="button" className="ui-image-field__library-cta" onClick={openLibrary}>
+                <Images size={14} />
+                Chọn từ thư viện
+              </button>
+            ) : null}
+          </div>
         )}
       </div>
+      <MediaLibraryPicker
+        open={libraryOpen}
+        onClose={() => setLibraryOpen(false)}
+        onSelect={applyLibraryPick}
+        multiple={false}
+        maxSelect={1}
+        excludeIds={value.media?.id ? [value.media.id] : []}
+        defaultFolder={folder}
+        title="Chọn ảnh từ thư viện"
+      />
     </div>
   );
 }

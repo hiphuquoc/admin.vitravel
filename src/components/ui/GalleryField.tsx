@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useId, useRef, useState, type ChangeEvent, type DragEvent } from 'react';
-import { ImagePlus, Loader2, Pencil, Plus, Trash2, X } from 'lucide-react';
+import { ImagePlus, Images, Loader2, Pencil, Plus, Trash2, X } from 'lucide-react';
 import clsx from 'clsx';
 import { useQuery } from '@tanstack/react-query';
 import toast from '@/lib/toast';
@@ -10,6 +10,7 @@ import type { MediaFolder, MediaImage } from '@/lib/types';
 import { useStructureLocked } from '@/hooks/useStructureLock';
 import { useReportMediaUpload } from '@/hooks/useMediaUploadBusy';
 import { emptyImageField, type ImageFieldState } from '@/components/ui/ImageField';
+import { MediaLibraryPicker } from '@/components/ui/MediaLibraryPicker';
 
 export type GalleryFieldRow = {
   key: string;
@@ -69,6 +70,8 @@ export function GalleryField({
   const [dragOver, setDragOver] = useState(false);
   const [pending, setPending] = useState<PendingUpload[]>([]);
   const [batchProgress, setBatchProgress] = useState<{ done: number; total: number } | null>(null);
+  const [libraryOpen, setLibraryOpen] = useState(false);
+  const [libraryReplaceIndex, setLibraryReplaceIndex] = useState<number | null>(null);
   const locked = useStructureLocked();
   const isDisabled = !!disabled || (structure && locked);
   const uploading = pending.length > 0 || batchProgress !== null;
@@ -94,6 +97,56 @@ export function GalleryField({
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  const openLibraryAdd = () => {
+    if (isDisabled || uploading) return;
+    if (slotsLeft <= 0) {
+      toast.error(`Tối đa ${maxItems} ảnh gallery.`);
+      return;
+    }
+    setLibraryReplaceIndex(null);
+    setLibraryOpen(true);
+  };
+
+  const openLibraryReplace = (index: number) => {
+    if (isDisabled || uploading) return;
+    setLibraryReplaceIndex(index);
+    setLibraryOpen(true);
+  };
+
+  const applyLibraryPicks = (picked: MediaImage[]) => {
+    const existingIds = new Set(
+      items.map((row) => row.image.media?.id).filter((id): id is number => typeof id === 'number'),
+    );
+
+    if (libraryReplaceIndex != null && libraryReplaceIndex >= 0) {
+      const media = picked[0];
+      if (!media) return;
+      const next = [...items];
+      if (libraryReplaceIndex < next.length) {
+        next[libraryReplaceIndex] = { key: newKey('gal'), image: emptyImageField(media) };
+        onChange(next);
+        toast.success('Đã chọn ảnh từ thư viện — nhấn Lưu để cập nhật');
+      }
+      setLibraryReplaceIndex(null);
+      return;
+    }
+
+    const fresh = picked.filter((m) => !existingIds.has(m.id)).slice(0, slotsLeft);
+    if (fresh.length === 0) {
+      toast.error('Ảnh đã có trong gallery hoặc không còn chỗ.');
+      return;
+    }
+    onChange([
+      ...value.filter((r) => !!r.image.media && !r.image.remove),
+      ...fresh.map((media) => ({ key: newKey('gal'), image: emptyImageField(media) })),
+    ]);
+    toast.success(
+      fresh.length === 1
+        ? 'Đã chọn 1 ảnh từ thư viện — nhấn Lưu để gắn vào nội dung'
+        : `Đã chọn ${fresh.length} ảnh từ thư viện — nhấn Lưu để gắn vào nội dung`,
+    );
+  };
 
   const openMultiPicker = () => {
     if (isDisabled || uploading) return;
@@ -334,46 +387,54 @@ export function GalleryField({
       />
 
       {!hasItems ? (
-        <button
-          type="button"
-          className={clsx(
-            'ui-gallery-field__dropzone',
-            dragOver && 'is-drag',
-            uploading && 'is-busy',
-          )}
-          onClick={openMultiPicker}
-          disabled={uploading || isDisabled}
-          onDragEnter={(e) => {
-            if (isDisabled) return;
-            e.preventDefault();
-            setDragOver(true);
-          }}
-          onDragOver={(e) => {
-            if (isDisabled) return;
-            e.preventDefault();
-            setDragOver(true);
-          }}
-          onDragLeave={(e) => {
-            e.preventDefault();
-            setDragOver(false);
-          }}
-          onDrop={onDrop}
-          aria-label={ariaLabel}
-        >
-          <span className="ui-gallery-field__drop-icon" aria-hidden>
-            {uploading ? <Loader2 size={18} className="ui-spin" /> : <ImagePlus size={18} />}
-          </span>
-          <span className="ui-gallery-field__drop-title">
-            {isDisabled
-              ? 'Gallery khóa (bản dịch)'
-              : uploading
-                ? `Đang tải… ${batchProgress?.done ?? 0}/${batchProgress?.total ?? 0}`
-                : 'Thêm ảnh'}
-          </span>
-          <span className="ui-gallery-field__drop-sub">
-            {isDisabled ? 'Chỉnh ở ngôn ngữ mặc định' : 'JPG · PNG · WebP'}
-          </span>
-        </button>
+        <div className="ui-gallery-field__empty">
+          <button
+            type="button"
+            className={clsx(
+              'ui-gallery-field__dropzone',
+              dragOver && 'is-drag',
+              uploading && 'is-busy',
+            )}
+            onClick={openMultiPicker}
+            disabled={uploading || isDisabled}
+            onDragEnter={(e) => {
+              if (isDisabled) return;
+              e.preventDefault();
+              setDragOver(true);
+            }}
+            onDragOver={(e) => {
+              if (isDisabled) return;
+              e.preventDefault();
+              setDragOver(true);
+            }}
+            onDragLeave={(e) => {
+              e.preventDefault();
+              setDragOver(false);
+            }}
+            onDrop={onDrop}
+            aria-label={ariaLabel}
+          >
+            <span className="ui-gallery-field__drop-icon" aria-hidden>
+              {uploading ? <Loader2 size={18} className="ui-spin" /> : <ImagePlus size={18} />}
+            </span>
+            <span className="ui-gallery-field__drop-title">
+              {isDisabled
+                ? 'Gallery khóa (bản dịch)'
+                : uploading
+                  ? `Đang tải… ${batchProgress?.done ?? 0}/${batchProgress?.total ?? 0}`
+                  : 'Tải ảnh mới'}
+            </span>
+            <span className="ui-gallery-field__drop-sub">
+              {isDisabled ? 'Chỉnh ở ngôn ngữ mặc định' : 'JPG · PNG · WebP · kéo thả'}
+            </span>
+          </button>
+          {!isDisabled && !uploading ? (
+            <button type="button" className="ui-gallery-field__library-cta" onClick={openLibraryAdd}>
+              <Images size={14} />
+              Chọn từ thư viện
+            </button>
+          ) : null}
+        </div>
       ) : (
         <div
           className={clsx('ui-gallery-field__panel', dragOver && 'is-drag')}
@@ -401,7 +462,10 @@ export function GalleryField({
             {!isDisabled && !uploading ? (
               <div className="ui-gallery-field__toolbar-actions">
                 <button type="button" className="ui-gallery-field__link" onClick={openMultiPicker}>
-                  <Plus size={14} /> Thêm ảnh
+                  <Plus size={14} /> Tải mới
+                </button>
+                <button type="button" className="ui-gallery-field__link" onClick={openLibraryAdd}>
+                  <Images size={14} /> Thư viện
                 </button>
                 {items.length > 0 ? (
                   <button type="button" className="ui-gallery-field__link is-danger" onClick={clearAll}>
@@ -427,11 +491,19 @@ export function GalleryField({
                     <div className="ui-gallery-field__tile-actions">
                       <button
                         type="button"
-                        title="Thay ảnh"
-                        aria-label="Thay ảnh"
+                        title="Thay bằng file mới"
+                        aria-label="Thay bằng file mới"
                         onClick={() => openReplacePicker(index)}
                       >
                         <Pencil size={14} />
+                      </button>
+                      <button
+                        type="button"
+                        title="Chọn từ thư viện"
+                        aria-label="Chọn từ thư viện"
+                        onClick={() => openLibraryReplace(index)}
+                      >
+                        <Images size={14} />
                       </button>
                       <button
                         type="button"
@@ -462,19 +534,53 @@ export function GalleryField({
             ))}
 
             {!isDisabled && !uploading && slotsLeft > 0 ? (
-              <button
-                type="button"
-                className="ui-gallery-field__add-tile"
-                onClick={openMultiPicker}
-                aria-label="Thêm ảnh gallery"
-              >
-                <Plus size={18} />
-                <span>Thêm</span>
-              </button>
+              <>
+                <button
+                  type="button"
+                  className="ui-gallery-field__add-tile"
+                  onClick={openMultiPicker}
+                  aria-label="Tải ảnh gallery mới"
+                >
+                  <Plus size={18} />
+                  <span>Tải mới</span>
+                </button>
+                <button
+                  type="button"
+                  className="ui-gallery-field__add-tile"
+                  onClick={openLibraryAdd}
+                  aria-label="Chọn ảnh từ thư viện"
+                >
+                  <Images size={18} />
+                  <span>Thư viện</span>
+                </button>
+              </>
             ) : null}
           </div>
         </div>
       )}
+
+      <MediaLibraryPicker
+        open={libraryOpen}
+        onClose={() => {
+          setLibraryOpen(false);
+          setLibraryReplaceIndex(null);
+        }}
+        onSelect={applyLibraryPicks}
+        multiple={libraryReplaceIndex == null}
+        maxSelect={libraryReplaceIndex == null ? slotsLeft : 1}
+        excludeIds={
+          libraryReplaceIndex == null
+            ? items
+                .map((row) => row.image.media?.id)
+                .filter((id): id is number => typeof id === 'number')
+            : items
+                .filter((_, i) => i !== libraryReplaceIndex)
+                .map((row) => row.image.media?.id)
+                .filter((id): id is number => typeof id === 'number')
+        }
+        defaultFolder={folder}
+        title={libraryReplaceIndex == null ? 'Chọn ảnh gallery' : 'Thay ảnh từ thư viện'}
+      />
     </div>
   );
 }
