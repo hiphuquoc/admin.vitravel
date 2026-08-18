@@ -6593,6 +6593,36 @@ html.is-navigating {
   }
 }
 
+.ui-ai-stage-checks {
+  display: grid;
+  gap: 0.55rem;
+  padding: 0.65rem 0.75rem;
+  border: 1px solid var(--admin-line);
+  border-radius: var(--admin-radius-md);
+  background: color-mix(in srgb, var(--admin-page) 42%, var(--admin-surface));
+
+  &__item {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.55rem;
+    cursor: pointer;
+    font-size: 0.875rem;
+    line-height: 1.45;
+    color: var(--admin-ink);
+
+    input {
+      margin-top: 0.18rem;
+      flex: none;
+      accent-color: var(--admin-primary-600);
+    }
+
+    &:has(input:disabled) {
+      opacity: 0.55;
+      cursor: not-allowed;
+    }
+  }
+}
+
 .ui-media-picker {
   align-items: start;
   padding: 1.5rem 1rem;

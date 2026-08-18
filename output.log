@@ -13,46 +13,26 @@ nohup: ignoring input
    - Environments: .env.local
 
  ✓ Starting...
- ✓ Ready in 2.6s
+ ✓ Ready in 6.2s
  ○ Compiling / ...
- ✓ Compiled / in 6.1s (903 modules)
- GET / 200 in 6882ms
+ ✓ Compiled / in 14.4s (903 modules)
+ GET / 200 in 16963ms
  ○ Compiling /login ...
- ✓ Compiled /login in 2.5s (1721 modules)
- GET /login?next=%2F 200 in 2767ms
- GET / 200 in 83ms
- GET / 200 in 43ms
+ ✓ Compiled /login in 6.6s (1721 modules)
+ GET /login?next=%2F 200 in 7200ms
+ GET / 200 in 260ms
+ GET / 200 in 146ms
  ○ Compiling /tours/packages ...
- ✓ Compiled /tours/packages in 1126ms (1746 modules)
- GET /tours/packages/ 200 in 1276ms
+ ✓ Compiled /tours/packages in 3.6s (1746 modules)
+ GET /tours/packages/ 200 in 4116ms
  ○ Compiling /tours/packages/form ...
- ✓ Compiled /tours/packages/form in 2.8s (2051 modules)
- GET /tours/packages/form/?id=44 200 in 3184ms
- GET /tours/packages/ 200 in 93ms
- GET /tours/packages/form/?id=96 200 in 47ms
- ✓ Compiled in 2.3s (2045 modules)
- ✓ Compiled in 1740ms (2045 modules)
- ✓ Compiled in 2.3s (2045 modules)
- ✓ Compiled in 1909ms (2045 modules)
- ✓ Compiled in 1211ms (2045 modules)
- ✓ Compiled in 1825ms (2047 modules)
- ✓ Compiled in 1678ms (2047 modules)
- ✓ Compiled in 827ms (2047 modules)
- ✓ Compiled in 3.7s (2051 modules)
- ⚠ Fast Refresh had to perform a full reload due to a runtime error.
- GET /tours/packages/form/?id=96 200 in 2378ms
- ✓ Compiled in 793ms (2047 modules)
- ✓ Compiled in 1526ms (2051 modules)
- ✓ Compiled in 1561ms (2051 modules)
- ✓ Compiled in 1343ms (2051 modules)
- GET /tours/packages/form/?id=96 200 in 2122ms
- GET /tours/packages/form/?id=96 200 in 180ms
- ✓ Compiled in 2.3s (2051 modules)
- ✓ Compiled in 1374ms (2051 modules)
- ✓ Compiled in 3.9s (967 modules)
- GET /tours/packages/form/?id=96 200 in 380ms
- GET /tours/packages/form/?id=96 200 in 665ms
- GET /tours/packages/form/?id=96 200 in 159ms
- ✓ Compiled in 11.1s (2051 modules)
- GET /tours/packages/form/?id=96 200 in 306ms
- GET /tours/packages/form/?id=96 200 in 569ms
+ ✓ Compiled /tours/packages/form in 9.9s (2057 modules)
+ GET /tours/packages/form/?id=44 200 in 13742ms
+ ✓ Compiled in 13.3s (2051 modules)
+ ✓ Compiled in 5.2s (2051 modules)
+ ✓ Compiled in 15.1s (2051 modules)
+ GET /tours/packages/form/?id=44 200 in 490ms
+ ✓ Compiled in 2.2s (2051 modules)
+ GET /tours/packages/form/?id=44 200 in 1871ms
+ ✓ Compiled in 9s (2051 modules)
+ ✓ Compiled in 1457ms (2051 modules)

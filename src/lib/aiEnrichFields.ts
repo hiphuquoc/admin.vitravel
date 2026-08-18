@@ -88,7 +88,6 @@ export function mergeEnrichFields<T extends Record<string, unknown>>(
       continue;
     }
 
-    // Context-only keys (duration…) — bỏ qua nếu form không có string field tương ứng cần AI ghi.
     if (
       [
         'duration_days',
@@ -135,9 +134,59 @@ export function mergeEnrichFields<T extends Record<string, unknown>>(
   return out as T;
 }
 
-/** Payload gửi AI — gồm nội dung + context kỹ thuật (không phải media/id). */
-export function buildPackageEnrichPayload(form: Record<string, unknown>): Record<string, unknown> {
-  return {
+export type DetailEnrichStage = 'meta' | 'content' | 'faq';
+export type ListingEnrichStage = 'meta' | 'body' | 'faq';
+
+function itinerarySkeleton(form: Record<string, unknown>, includeContent: boolean): Record<string, unknown>[] {
+  const days = Array.isArray(form.itinerary) ? (form.itinerary as Record<string, unknown>[]) : [];
+  return days.map((row, i) => ({
+    day_number: row.day_number || i + 1,
+    meals_included: row.meals_included || '',
+    title: row.title || '',
+    content: includeContent ? String(row.content ?? '') : '',
+    overnight_at: row.overnight_at || '',
+    ...(includeContent ? {} : { content_rewrite: true }),
+  }));
+}
+
+function faqSkeleton(form: Record<string, unknown>, includeAnswers: boolean): Record<string, unknown>[] {
+  const faqs = Array.isArray(form.faqs) ? (form.faqs as Record<string, unknown>[]) : [];
+  return faqs.map((row) => ({
+    question: row.question || '',
+    answer: includeAnswers ? String(row.answer ?? '') : '',
+    ...(includeAnswers ? {} : { faq_rewrite: true }),
+  }));
+}
+
+/**
+ * Snapshot form cho multi-stage AI — clone list lồng nhau để `live` tách khỏi React state.
+ * Bước sau trong cùng lần chạy đọc `live` (đã merge), không gọi lại API server.
+ */
+export function snapshotFormForAiRun(form: Record<string, unknown>): Record<string, unknown> {
+  const snap: Record<string, unknown> = { ...form };
+  if (Array.isArray(form.itinerary)) {
+    snap.itinerary = (form.itinerary as Record<string, unknown>[]).map((row) =>
+      isPlainObject(row) ? { ...row } : row,
+    );
+  }
+  if (Array.isArray(form.faqs)) {
+    snap.faqs = (form.faqs as Record<string, unknown>[]).map((row) =>
+      isPlainObject(row) ? { ...row } : row,
+    );
+  }
+  return snap;
+}
+
+/** Payload gửi AI theo luồng — meta chỉ title; content/faq mang context đầy đủ. */
+export function buildPackageEnrichPayload(
+  form: Record<string, unknown>,
+  stage: DetailEnrichStage = 'content',
+): Record<string, unknown> {
+  if (stage === 'meta') {
+    return { title: form.title || '' };
+  }
+
+  const base: Record<string, unknown> = {
     title: form.title || '',
     code: form.code || '',
     duration_days: Number(form.duration_days) || null,
@@ -163,31 +212,26 @@ export function buildPackageEnrichPayload(form: Record<string, unknown>): Record
     seo_slug: form.seo_slug || '',
     seo_title: form.seo_title || '',
     seo_description: form.seo_description || '',
-    itinerary: Array.isArray(form.itinerary)
-      ? (form.itinerary as Record<string, unknown>[]).map((row, i) => ({
-          day_number: row.day_number || i + 1,
-          meals_included: row.meals_included || '',
-          title: row.title || '',
-          // Không gửi HTML ngày cũ — tránh model giữ nguyên / chỉ viết lại ngày cuối.
-          content: '',
-          overnight_at: row.overnight_at || '',
-          content_rewrite: true,
-        }))
-      : [],
-    faqs: Array.isArray(form.faqs)
-      ? (form.faqs as Record<string, unknown>[]).map((row) => ({
-          question: row.question || '',
-          // Không gửi answer cũ — tránh model copy / bỏ qua viết lại FAQ.
-          answer: '',
-          faq_rewrite: true,
-        }))
-      : [],
-    faq_rewrite: true,
+    itinerary: itinerarySkeleton(form, stage === 'faq'),
   };
+
+  if (stage === 'faq') {
+    base.faqs = faqSkeleton(form, false);
+    base.faq_rewrite = true;
+  }
+
+  return base;
 }
 
-export function buildServiceEnrichPayload(form: Record<string, unknown>): Record<string, unknown> {
-  return {
+export function buildServiceEnrichPayload(
+  form: Record<string, unknown>,
+  stage: DetailEnrichStage = 'content',
+): Record<string, unknown> {
+  if (stage === 'meta') {
+    return { title: form.title || '' };
+  }
+
+  const base: Record<string, unknown> = {
     title: form.title || '',
     code: form.code || '',
     cluster: form.cluster || '',
@@ -195,9 +239,8 @@ export function buildServiceEnrichPayload(form: Record<string, unknown>): Record
     price_from: form.price_from || '',
     currency: form.currency || '',
     summary: form.summary || '',
-    // Không gửi HTML cũ — tránh model giữ nguyên / viết sơ.
-    content: '',
-    content_rewrite: true,
+    content: stage === 'faq' ? String(form.content ?? '') : '',
+    ...(stage === 'content' ? { content_rewrite: true } : {}),
     highlights: form.highlights || '',
     inclusions: form.inclusions || '',
     exclusions: form.exclusions || '',
@@ -206,6 +249,13 @@ export function buildServiceEnrichPayload(form: Record<string, unknown>): Record
     seo_title: form.seo_title || '',
     seo_description: form.seo_description || '',
   };
+
+  if (stage === 'faq') {
+    base.faqs = faqSkeleton(form, false);
+    base.faq_rewrite = true;
+  }
+
+  return base;
 }
 
 export type ListingEnrichEntityType =
@@ -215,7 +265,7 @@ export type ListingEnrichEntityType =
   | 'cruise_type'
   | 'service_category';
 
-/** Tiêu đề trang listing — input duy nhất gửi AI (tránh nhiễu nội dung cũ). */
+/** Tiêu đề trang listing. */
 export function getListingPageTitle(
   form: Record<string, unknown>,
   entityType: ListingEnrichEntityType,
@@ -224,6 +274,59 @@ export function getListingPageTitle(
     return String(form.title || '').trim();
   }
   return String(form.name || '').trim();
+}
+
+/** Canonical listing fields từ form admin (map ngược alias). */
+export function listingCanonicalFromForm(
+  form: Record<string, unknown>,
+  entityType: ListingEnrichEntityType,
+): Record<string, string> {
+  const title = getListingPageTitle(form, entityType);
+  let subtitle = '';
+  let seoBody = '';
+  if (entityType === 'listing_hub') {
+    subtitle = String(form.body || '').trim();
+    seoBody = String(form.seo_body || '').trim();
+  } else if (entityType === 'country') {
+    subtitle = String(form.tagline || '').trim();
+    seoBody = String(form.long_form_content || '').trim();
+  } else if (entityType === 'tour_category') {
+    subtitle = String(form.description || '').trim();
+    seoBody = String(form.seo_intro || '').trim();
+  } else {
+    subtitle = String(form.intro || '').trim();
+    seoBody = String(form.seo_body || '').trim();
+  }
+
+  return {
+    title,
+    subtitle,
+    seo_body: seoBody,
+    seo_title: String(form.seo_title || '').trim(),
+    seo_description: String(form.seo_description || '').trim(),
+    seo_slug: String(form.seo_slug || '').trim(),
+  };
+}
+
+export function buildListingEnrichPayload(
+  form: Record<string, unknown>,
+  entityType: ListingEnrichEntityType,
+  stage: ListingEnrichStage,
+): Record<string, unknown> {
+  const canonical = listingCanonicalFromForm(form, entityType);
+  if (stage === 'meta') {
+    return { title: canonical.title };
+  }
+  if (stage === 'body') {
+    return {
+      title: canonical.title,
+      subtitle: canonical.subtitle,
+      seo_title: canonical.seo_title,
+      seo_description: canonical.seo_description,
+      seo_slug: canonical.seo_slug,
+    };
+  }
+  return canonical;
 }
 
 /** Map canonical AI fields → form admin theo loại trang. */
@@ -267,6 +370,20 @@ export function mergeListingEnrichFields<T extends Record<string, unknown>>(
     }
   }
 
+  if (Array.isArray(fields.faqs) && fields.faqs.length > 0) {
+    const prevList = Array.isArray(prev.faqs) ? (prev.faqs as Record<string, unknown>[]) : [];
+    out.faqs = fields.faqs.map((row, i) => {
+      const cell = isPlainObject(row) ? row : {};
+      const normalized = normalizeFaqRow(cell);
+      const old = isPlainObject(prevList[i]) ? prevList[i] : {};
+      return mergeRow(old, {
+        question: normalized.question,
+        answer: normalized.answer,
+        id: old.id ?? null,
+      });
+    });
+  }
+
   return out as T;
 }
 
@@ -295,6 +412,9 @@ export function listingEnrichAppliedKeys(
     if (typeof fields[key] === 'string' && String(fields[key]).trim()) {
       keys.push(key);
     }
+  }
+  if (Array.isArray(fields.faqs) && fields.faqs.length > 0) {
+    keys.push('faqs');
   }
   return keys;
 }

@@ -6,11 +6,13 @@ import { useQuery } from '@tanstack/react-query';
 import clsx from 'clsx';
 import { apiRequest } from '@/lib/api';
 import { Button } from '@/components/ui/Button';
-import { Select, Textarea } from '@/components/ui/Field';
+import { Field, Select, Textarea } from '@/components/ui/Field';
 
 export type AiConfirmResult = {
   provider: string | null;
   instructions: string;
+  /** Các luồng đã chọn — chạy tuần tự theo thứ tự trong modal. */
+  stages: string[];
 };
 
 type AiStatus = {
@@ -30,6 +32,10 @@ type Props = {
   description: string;
   /** Hiện ô hướng dẫn thêm (enrich). */
   showInstructions?: boolean;
+  /** Checkbox từng luồng AI (meta / content / faq…). */
+  stageOptions?: { value: string; label: string }[];
+  /** Mặc định tick — không truyền thì tick tất cả option. */
+  defaultStages?: string[];
   confirmLabel?: string;
   busy?: boolean;
   onCancel: () => void;
@@ -50,6 +56,8 @@ export function AiConfirmModal({
   title,
   description,
   showInstructions = false,
+  stageOptions,
+  defaultStages,
   confirmLabel = 'Tiếp tục',
   busy = false,
   onCancel,
@@ -58,6 +66,12 @@ export function AiConfirmModal({
   const [mounted, setMounted] = useState(false);
   const [provider, setProvider] = useState('');
   const [instructions, setInstructions] = useState('');
+  const [selectedStages, setSelectedStages] = useState<Set<string>>(() => new Set());
+
+  const allStageValues = useMemo(
+    () => (stageOptions || []).map((o) => o.value),
+    [stageOptions],
+  );
 
   const statusQuery = useQuery({
     queryKey: ['ai-status'],
@@ -85,13 +99,24 @@ export function AiConfirmModal({
   useEffect(() => {
     if (!open) return;
     setInstructions('');
+    const defaults = defaultStages?.length ? defaultStages : allStageValues;
+    setSelectedStages(new Set(defaults));
     const def = statusQuery.data?.default_provider || '';
     const normalized = def === 'gemini' ? 'google' : def;
     const first = options.find((o) => o.value)?.value || '';
     const pick =
       options.some((o) => o.value === normalized) ? normalized : first;
     setProvider(pick);
-  }, [open, statusQuery.data, options]);
+  }, [open, statusQuery.data, options, defaultStages, allStageValues]);
+
+  const toggleStage = (value: string, checked: boolean) => {
+    setSelectedStages((prev) => {
+      const next = new Set(prev);
+      if (checked) next.add(value);
+      else next.delete(value);
+      return next;
+    });
+  };
 
   useEffect(() => {
     if (!open) return;
@@ -112,7 +137,8 @@ export function AiConfirmModal({
 
   if (!mounted || !open) return null;
 
-  const canSubmit = !!provider && !busy;
+  const hasStages = !!stageOptions?.length;
+  const canSubmit = !!provider && !busy && (!hasStages || selectedStages.size > 0);
 
   return createPortal(
     <div
@@ -153,6 +179,26 @@ export function AiConfirmModal({
             disabled={busy || statusQuery.isLoading || options.every((o) => !o.value)}
             searchable={options.length > 5}
           />
+          {hasStages ? (
+            <Field
+              label="Luồng chạy"
+              hint="Chạy tuần tự theo thứ tự đã chọn — bước sau dùng dữ liệu vừa ghi. Bỏ tick nếu chỉ muốn chạy lại 1–2 bước."
+            >
+              <div className="ui-ai-stage-checks">
+                {stageOptions!.map((opt) => (
+                  <label key={opt.value} className="ui-ai-stage-checks__item">
+                    <input
+                      type="checkbox"
+                      checked={selectedStages.has(opt.value)}
+                      disabled={busy}
+                      onChange={(e) => toggleStage(opt.value, e.target.checked)}
+                    />
+                    <span>{opt.label}</span>
+                  </label>
+                ))}
+              </div>
+            </Field>
+          ) : null}
           {showInstructions ? (
             <Textarea
               label="Hướng dẫn thêm (tuỳ chọn)"
@@ -177,6 +223,7 @@ export function AiConfirmModal({
               onConfirm({
                 provider: provider || null,
                 instructions: instructions.trim(),
+                stages: hasStages ? Array.from(selectedStages) : [],
               })
             }
           >

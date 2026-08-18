@@ -45,7 +45,6 @@ import { AiEnrichProgramButton } from '@/components/ui/AiEnrichProgramButton';
 import { PriceTableEditor } from '@/components/ui/PriceTableEditor';
 import { emptyPriceTable, hydratePriceTable, serializePriceTable, type PriceTableForm } from '@/lib/priceTable';
 import {
-  buildPackageEnrichPayload,
   mergeEnrichFields,
 } from '@/lib/aiEnrichFields';
 import { publicPageUrl } from '@/lib/publicUrl';
@@ -1025,9 +1024,8 @@ function PackageFormInner({ kind }: { kind: PackageType }) {
             <AiEnrichProgramButton
               entityType={isCruise ? 'cruise_package' : 'tour_package'}
               locale={locale}
-              getFields={() =>
-                buildPackageEnrichPayload(form as unknown as Record<string, unknown>)
-              }
+              kind="package"
+              getForm={() => form as unknown as Record<string, unknown>}
               applyFields={(fields) => {
                 setForm((prev) =>
                   mergeEnrichFields(prev as unknown as Record<string, unknown>, fields) as FormState,
