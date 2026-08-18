@@ -20,6 +20,7 @@ import type {
   ServiceCategoryDetail,
   ServiceItem,
   ServiceDetail,
+  PriceGuestType,
   TourCategory,
   TourCategoryDetail,
   TravelStyle,
@@ -533,4 +534,18 @@ export const listingHubsApi = {
     apiRequest<Record<string, unknown>>(`/listing-hubs/${hubKey}`, { query: { locale } }),
   update: (hubKey: string, body: Record<string, unknown>) =>
     apiRequest<Record<string, unknown>>(`/listing-hubs/${hubKey}`, { method: 'PUT', body }),
+};
+
+export const priceGuestTypesApi = {
+  list: (locale = 'vi') =>
+    apiRequest<{
+      items: PriceGuestType[];
+      units: Record<string, string>;
+      period_kinds: Record<string, string>;
+    }>('/price-guest-types', { query: { locale } }),
+  create: (body: Record<string, unknown>) =>
+    apiRequest<PriceGuestType>('/price-guest-types', { method: 'POST', body }),
+  update: (id: number, body: Record<string, unknown>) =>
+    apiRequest<PriceGuestType>(`/price-guest-types/${id}`, { method: 'PUT', body }),
+  remove: (id: number) => apiRequest<null>(`/price-guest-types/${id}`, { method: 'DELETE' }),
 };

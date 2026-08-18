@@ -222,6 +222,7 @@ export type PackageDetail = PackageListItem & {
     rating_aggregate_star: number | null;
     rating_aggregate_count: number | null;
   };
+  price_table?: PriceTableAdmin | null;
 };
 
 export type CruiseTypeOption = {
@@ -419,6 +420,75 @@ export type ServiceDetail = ServiceItem & {
     rating_aggregate_star: number | null;
     rating_aggregate_count: number | null;
   };
+  price_table?: PriceTableAdmin | null;
+};
+
+export type PriceGuestType = {
+  id: number;
+  code: string;
+  name: string;
+  description?: string | null;
+  age_min?: number | null;
+  age_max?: number | null;
+  sort: number;
+  is_active: boolean;
+  rates_count?: number;
+};
+
+export type PriceTableAdmin = {
+  id?: number | null;
+  currency: string;
+  unit: string;
+  notes?: string | null;
+  guest_types?: PriceGuestType[];
+  units?: Record<string, string>;
+  period_kinds?: Record<string, string>;
+  variants: PriceVariantAdmin[];
+  suggested_variants?: PriceSuggestedVariant[];
+  periods: PricePeriodAdmin[];
+};
+
+export type PriceSuggestedVariant = {
+  code: string;
+  name: string;
+  description?: string | null;
+  source: string;
+  source_id?: number | null;
+};
+
+export type PriceVariantAdmin = {
+  id?: number | null;
+  code: string;
+  name: string;
+  description?: string | null;
+  source: string;
+  source_id?: number | null;
+  sort: number;
+  is_active: boolean;
+};
+
+export type PricePeriodAdmin = {
+  id?: number | null;
+  kind: string;
+  starts_on: string;
+  ends_on: string;
+  year?: number | null;
+  label?: string | null;
+  is_promo: boolean;
+  priority: number;
+  sort: number;
+  is_active: boolean;
+  rates: PriceRateAdmin[];
+};
+
+export type PriceRateAdmin = {
+  id?: number;
+  variant_id: number;
+  guest_type_id: number;
+  amount: number;
+  compare_at_amount?: number | null;
+  min_qty?: number | null;
+  max_qty?: number | null;
 };
 
 export type Option = { id: number; name: string | null; code?: string };

@@ -22,6 +22,7 @@ export const NAV_PERMISSIONS: Record<string, string | null> = {
   '/brand': 'brand.view',
   '/leads': 'leads.view',
   '/settings/site': 'settings.view',
+  '/settings/price-guest-types': 'packages.view',
   '/settings/languages': 'settings.view',
   '/settings/ai-prompts': 'ai.manage',
   '/settings/media': 'media.view',

@@ -11,6 +11,7 @@ import {
   Plus,
   Ship,
   Tags,
+  Wallet,
 } from 'lucide-react';
 import toast from '@/lib/toast';
 import {
@@ -41,6 +42,8 @@ import { FormFooter } from '@/components/ui/FormFooter';
 import { FormHeadActions } from '@/components/ui/FormHeadActions';
 import { ArticleContentEditor } from '@/components/editor/ArticleContentEditor';
 import { AiEnrichProgramButton } from '@/components/ui/AiEnrichProgramButton';
+import { PriceTableEditor } from '@/components/ui/PriceTableEditor';
+import { emptyPriceTable, hydratePriceTable, serializePriceTable, type PriceTableForm } from '@/lib/priceTable';
 import {
   buildPackageEnrichPayload,
   mergeEnrichFields,
@@ -101,6 +104,7 @@ type FormState = {
   faqs: PackageFaq[];
   cover: ImageFieldState;
   gallery: GalleryRow[];
+  price_table: PriceTableForm;
 };
 
 const emptyDay = (n = 1): PackageItineraryDay => ({
@@ -159,6 +163,7 @@ const empty: FormState = {
   faqs: [],
   cover: emptyImageField(),
   gallery: [],
+  price_table: emptyPriceTable(),
 };
 
 const COPY: Record<
@@ -309,6 +314,7 @@ function PackageFormInner({ kind }: { kind: PackageType }) {
             emptyGalleryRow(row.media ?? null),
           )
         : [],
+      price_table: hydratePriceTable(d.price_table, d.currency || 'VND'),
     };
     setForm(next);
     snapshotRef.current = JSON.stringify(next);
@@ -424,6 +430,10 @@ function PackageFormInner({ kind }: { kind: PackageType }) {
         gallery_media_ids: form.gallery
           .map((row) => row.image.media?.id)
           .filter((id): id is number => typeof id === 'number' && id > 0),
+        price_table: {
+          ...serializePriceTable(form.price_table),
+          currency: form.currency || metaQuery.data?.default_currency || 'VND',
+        },
       };
       return isNew ? api.create(payload) : api.update(id!, payload);
     },
@@ -736,6 +746,18 @@ function PackageFormInner({ kind }: { kind: PackageType }) {
             />
             <Switch label="Ưu đãi hot" checked={form.is_hot_deal} onChange={(v) => set('is_hot_deal', v)} />
           </div>
+        </FormSection>
+
+        <FormSection
+          icon={Wallet}
+          title="Bảng giá chi tiết"
+          description="Theo ngày / khoảng / năm × tuỳ chọn × đối tượng khách × khuyến mãi. Giá “từ” phía trên dùng cho listing / sidebar."
+        >
+          <PriceTableEditor
+            value={form.price_table}
+            onChange={(price_table) => set('price_table', price_table)}
+            locale={locale}
+          />
         </FormSection>
 
         <FormSection icon={FileText} title="Nội dung" description="Tóm tắt, điểm nhấn và danh sách bao gồm.">

@@ -381,6 +381,12 @@ export const NAV_GROUPS: NavGroup[] = [
         match: '/settings/languages',
       },
       {
+        label: 'Đối tượng khách (giá)',
+        href: '/settings/price-guest-types/',
+        icon: Users,
+        match: '/settings/price-guest-types',
+      },
+      {
         label: 'Prompt AI',
         href: '/settings/ai-prompts/',
         icon: Sparkles,

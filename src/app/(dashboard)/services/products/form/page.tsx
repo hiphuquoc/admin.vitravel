@@ -3,7 +3,7 @@
 import { FormEvent, Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Wallet } from 'lucide-react';
 import toast from '@/lib/toast';
 import { servicesApi } from '@/lib/services';
 import { useEditLocale } from '@/hooks/useEditLocale';
@@ -24,6 +24,8 @@ import { GalleryField, emptyGalleryRow, type GalleryFieldRow } from '@/component
 import { FormFooter } from '@/components/ui/FormFooter';
 import { HeadActions, HeadSecondary } from '@/components/ui/HeadActions';
 import { AiEnrichProgramButton } from '@/components/ui/AiEnrichProgramButton';
+import { PriceTableEditor } from '@/components/ui/PriceTableEditor';
+import { emptyPriceTable, hydratePriceTable, serializePriceTable, type PriceTableForm } from '@/lib/priceTable';
 import {
   buildServiceEnrichPayload,
   mergeEnrichFields,
@@ -61,6 +63,7 @@ type FormState = {
   rating_aggregate_count: string;
   cover: ImageFieldState;
   gallery: GalleryRow[];
+  price_table: PriceTableForm;
 };
 
 const empty: FormState = {
@@ -90,6 +93,7 @@ const empty: FormState = {
   rating_aggregate_count: '',
   cover: emptyImageField(),
   gallery: [],
+  price_table: emptyPriceTable(),
 };
 
 function FormInner() {
@@ -150,6 +154,7 @@ function FormInner() {
       gallery: Array.isArray(d.gallery)
         ? d.gallery.map((row) => emptyGalleryRow(row.media ?? null))
         : [],
+      price_table: hydratePriceTable(d.price_table, d.currency || 'VND'),
     };
     setForm(next);
     snapshotRef.current = JSON.stringify(next);
@@ -175,6 +180,10 @@ function FormInner() {
         gallery_media_ids: form.gallery
           .map((row) => row.image.media?.id)
           .filter((id): id is number => typeof id === 'number' && id > 0),
+        price_table: {
+          ...serializePriceTable(form.price_table),
+          currency: form.currency || 'VND',
+        },
         locale,
       };
       return isNew ? servicesApi.create(payload) : servicesApi.update(id!, payload);
@@ -405,6 +414,18 @@ function FormInner() {
                 onChange={(v) => set('is_hot_deal', v)}
               />
             </div>
+          </FormSection>
+
+          <FormSection
+            icon={Wallet}
+            title="Bảng giá chi tiết"
+            description="Theo ngày / khoảng / năm × tuỳ chọn × đối tượng khách × khuyến mãi. Giá “từ” dùng cho listing."
+          >
+            <PriceTableEditor
+              value={form.price_table}
+              onChange={(price_table) => set('price_table', price_table)}
+              locale={locale}
+            />
           </FormSection>
 
           <FormFooter
