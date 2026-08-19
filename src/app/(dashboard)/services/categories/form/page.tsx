@@ -27,6 +27,8 @@ import { HeadActions, HeadSecondary } from '@/components/ui/HeadActions';
 import { publicPageUrl } from '@/lib/publicUrl';
 import { replaceFormUrl } from '@/lib/formNavigate';
 import { serviceClusterTitle } from '@/lib/nav';
+import Link from 'next/link';
+import { ScanSearch } from 'lucide-react';
 
 type FormState = {
   cluster: string;
@@ -299,6 +301,22 @@ function FormInner() {
               onChange={(v) => set('is_active', v)}
             />
           </FormSection>
+
+          {form.cluster === 'stay' && !isNew && (
+            <div className="rounded-xl border border-blue-100 bg-blue-50/50 dark:border-blue-900 dark:bg-blue-950/30 p-4 flex items-center gap-3">
+              <ScanSearch className="h-5 w-5 text-blue-600 dark:text-blue-400 shrink-0" />
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-blue-900 dark:text-blue-100">Crawler Booking.com</p>
+                <p className="text-xs text-blue-700 dark:text-blue-300">Cào khách sạn và tạo trang con cho danh mục này.</p>
+              </div>
+              <Link
+                href="/services/stay-crawler/"
+                className="shrink-0 inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-sm font-medium text-blue-700 bg-blue-100 hover:bg-blue-200 dark:text-blue-200 dark:bg-blue-900 dark:hover:bg-blue-800 transition-colors"
+              >
+                Mở Crawler
+              </Link>
+            </div>
+          )}
 
           <FormFooter
             cancelHref={

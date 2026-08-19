@@ -14,6 +14,7 @@ import {
   MessageSquare,
   Newspaper,
   Plane,
+  ScanSearch,
   Ship,
   SlidersHorizontal,
   Sparkles,
@@ -282,6 +283,16 @@ export const NAV_GROUPS: NavGroup[] = [
         match: '/services/categories',
         matchQuery: { cluster: cluster.key },
       },
+      ...(cluster.key === 'stay'
+        ? [
+            {
+              label: 'Crawler Booking',
+              href: '/services/stay-crawler/',
+              icon: ScanSearch,
+              match: '/services/stay-crawler',
+            } as NavItem,
+          ]
+        : []),
       {
         label: `Hub ${cluster.title}`,
         href: `/settings/hubs/${cluster.hubKey}/`,

@@ -24,10 +24,18 @@ import { GalleryField, emptyGalleryRow, type GalleryFieldRow } from '@/component
 import { FormFooter } from '@/components/ui/FormFooter';
 import { HeadActions, HeadSecondary } from '@/components/ui/HeadActions';
 import { AiEnrichProgramButton } from '@/components/ui/AiEnrichProgramButton';
+import { AiEnrichStayButton } from '@/components/services/AiEnrichStayButton';
+import {
+  StayProductFields,
+  stayAttrsFromApi,
+  stayAttrsToApi,
+} from '@/components/services/StayProductFields';
 import { PriceTableEditor } from '@/components/ui/PriceTableEditor';
 import { emptyPriceTable, hydratePriceTable, serializePriceTable, type PriceTableForm } from '@/lib/priceTable';
 import {
   mergeEnrichFields,
+  mergeStayEnrichFields,
+  type StayRoomFormRow,
 } from '@/lib/aiEnrichFields';
 import { publicPageUrl } from '@/lib/publicUrl';
 import { replaceFormUrl } from '@/lib/formNavigate';
@@ -48,6 +56,12 @@ type FormState = {
   is_featured: boolean;
   is_hot_deal: boolean;
   location_label: string;
+  featured_quote_text: string;
+  featured_quote_author: string;
+  star_rating: string;
+  discount_badge: string;
+  stay_attrs: ReturnType<typeof stayAttrsFromApi>;
+  options: StayRoomFormRow[];
   summary: string;
   content: string;
   highlights: string;
@@ -78,6 +92,12 @@ const empty: FormState = {
   is_featured: false,
   is_hot_deal: false,
   location_label: '',
+  featured_quote_text: '',
+  featured_quote_author: '',
+  star_rating: '',
+  discount_badge: '',
+  stay_attrs: stayAttrsFromApi({}),
+  options: [],
   summary: '',
   content: '',
   highlights: '',
@@ -119,9 +139,11 @@ function FormInner() {
     enabled: !!id,
   });
 
+  const isStay = form.cluster === 'stay';
+
   useEffect(() => {
     if (!detailQuery.data) return;
-    const d = detailQuery.data;
+    const d = detailQuery.data as Record<string, any>;
     const next: FormState = {
       cluster: d.cluster || clusterFromUrl,
       service_category_id: d.service_category_id ? String(d.service_category_id) : '',
@@ -135,6 +157,12 @@ function FormInner() {
       is_featured: !!d.is_featured,
       is_hot_deal: !!d.is_hot_deal,
       location_label: d.location_label || '',
+      featured_quote_text: d.featured_quote_text || '',
+      featured_quote_author: d.featured_quote_author || '',
+      star_rating: d.star_rating != null ? String(d.star_rating) : '',
+      discount_badge: d.discount_badge || '',
+      stay_attrs: stayAttrsFromApi(d.attrs),
+      options: Array.isArray(d.options) ? d.options : [],
       summary: d.summary || '',
       content: d.content || '',
       highlights: d.highlights || '',
@@ -167,6 +195,10 @@ function FormInner() {
         country_id: form.country_id ? Number(form.country_id) : null,
         price_from: form.price_from ? Number(form.price_from) : null,
         sort: Number(form.sort) || 0,
+        star_rating: form.star_rating ? Number(form.star_rating) : null,
+        discount_badge: form.discount_badge || null,
+        attrs: isStay ? stayAttrsToApi(form.stay_attrs) : undefined,
+        options: isStay ? form.options : undefined,
         seo_parent_id: form.seo_parent_id ? Number(form.seo_parent_id) : null,
         rating_aggregate_star: form.rating_aggregate_star
           ? Number(form.rating_aggregate_star)
@@ -361,16 +393,35 @@ function FormInner() {
               value={form.currency}
               onChange={(e) => set('currency', e.target.value)}
             />
+            <Input
+              label={isStay ? 'Vị trí / địa chỉ' : 'Vị trí'}
+              name="location_label"
+              value={form.location_label}
+              onChange={(e) => set('location_label', e.target.value)}
+            />
             <Textarea
               label="Tóm tắt"
               name="summary"
               value={form.summary}
               onChange={(e) => set('summary', e.target.value)}
             />
+            {isStay ? (
+              <StayProductFields
+                attrs={form.stay_attrs}
+                options={form.options}
+                starRating={form.star_rating}
+                discountBadge={form.discount_badge}
+                propertyTypes={metaQuery.data?.property_types ?? []}
+                onChangeAttrs={(stay_attrs) => setForm((p) => ({ ...p, stay_attrs }))}
+                onChangeOptions={(options) => setForm((p) => ({ ...p, options }))}
+                onChangeStarRating={(star_rating) => setForm((p) => ({ ...p, star_rating }))}
+                onChangeDiscountBadge={(discount_badge) => setForm((p) => ({ ...p, discount_badge }))}
+              />
+            ) : null}
             <ArticleContentEditor
               key={`service-content-${id ?? 'new'}-${contentEditorEpoch}`}
-              label="Nội dung chi tiết"
-              hint="HTML lịch trình / mô tả dịch vụ — AI chương trình ghi vào đây. Public render an toàn."
+              label={isStay ? 'Giới thiệu chỗ nghỉ (HTML)' : 'Nội dung chi tiết'}
+              hint={isStay ? 'Tab «Về chỗ nghỉ» trên trang public — AI luồng property ghi vào đây.' : 'HTML lịch trình / mô tả dịch vụ — AI chương trình ghi vào đây. Public render an toàn.'}
               format="html"
               compact
               aiFieldKey="content"
@@ -440,18 +491,31 @@ function FormInner() {
               metaQuery.data?.default_locale || 'vi',
             )}
             preActions={
-              <AiEnrichProgramButton
-                entityType="service"
-                locale={locale}
-                kind="service"
-                getForm={() => form as unknown as Record<string, unknown>}
-                applyFields={(fields) => {
-                  setForm((prev) =>
-                    mergeEnrichFields(prev as unknown as Record<string, unknown>, fields) as FormState,
-                  );
-                  setContentEditorEpoch((n) => n + 1);
-                }}
-              />
+              isStay ? (
+                <AiEnrichStayButton
+                  locale={locale}
+                  getForm={() => form as unknown as Record<string, unknown>}
+                  applyFields={(fields) => {
+                    setForm((prev) =>
+                      mergeStayEnrichFields(prev as unknown as Record<string, unknown>, fields) as FormState,
+                    );
+                    setContentEditorEpoch((n) => n + 1);
+                  }}
+                />
+              ) : (
+                <AiEnrichProgramButton
+                  entityType="service"
+                  locale={locale}
+                  kind="service"
+                  getForm={() => form as unknown as Record<string, unknown>}
+                  applyFields={(fields) => {
+                    setForm((prev) =>
+                      mergeEnrichFields(prev as unknown as Record<string, unknown>, fields) as FormState,
+                    );
+                    setContentEditorEpoch((n) => n + 1);
+                  }}
+                />
+              )
             }
           />
         </div>

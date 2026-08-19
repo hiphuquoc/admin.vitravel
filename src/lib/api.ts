@@ -97,6 +97,7 @@ type RequestOptions = {
   method?: string;
   body?: unknown;
   query?: Record<string, string | number | boolean | undefined | null>;
+  headers?: Record<string, string>;
   auth?: boolean;
   signal?: AbortSignal;
   /** Skip JSON Content-Type (FormData uploads). */
@@ -115,9 +116,10 @@ function buildQuery(query?: RequestOptions['query']): string {
 }
 
 export async function apiRequest<T>(path: string, options: RequestOptions = {}): Promise<T> {
-  const { method = 'GET', body, query, auth = true, signal, formData = false } = options;
+  const { method = 'GET', body, query, auth = true, signal, formData = false, headers: extraHeaders } = options;
   const headers: Record<string, string> = {
     Accept: 'application/json',
+    ...extraHeaders,
   };
 
   if (body !== undefined && !formData && !(body instanceof FormData)) {

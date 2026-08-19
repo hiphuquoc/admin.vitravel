@@ -226,9 +226,111 @@ export const servicesApi = {
       categories: Option[];
       countries: Option[];
       statuses: ValueLabel[];
+      property_types: ValueLabel[];
       hub_seo_id: number | null;
       seo_parents: { id: number; label: string; slug_full?: string; reference_id?: number | null }[];
     }>('/services/meta', { query: { locale, cluster } }),
+};
+
+export type StayCrawlJob = {
+  id: number;
+  list_url: string;
+  canonical_url?: string | null;
+  status: string;
+  pages_crawled?: number;
+  items_found?: number;
+  items_count?: number | null;
+  service_category_id?: number | null;
+  error?: string | null;
+  created_at?: string | null;
+};
+
+export type StayCrawlItem = {
+  id: number;
+  job_id?: number | null;
+  source_url: string;
+  canonical_url: string;
+  status: string;
+  http_status?: number | null;
+  blocked_reason?: string | null;
+  service_id?: number | null;
+  error?: string | null;
+  crawled_at?: string | null;
+  ai_at?: string | null;
+  imported_at?: string | null;
+  has_extracted?: boolean;
+  has_ai?: boolean;
+  slug_full?: string | null;
+};
+
+export type StayCrawlServiceRef = {
+  service_id: number;
+  code: string;
+  service_category_id?: number | null;
+  slug_full?: string | null;
+  level?: number | null;
+  parent_id?: number | null;
+};
+
+export const stayCrawlsApi = {
+  jobs: (query?: Record<string, string | number | undefined>) =>
+    apiRequest<{ items: StayCrawlJob[] }>('/stay-crawls/jobs', { query }),
+  job: (id: number) =>
+    apiRequest<{ job: StayCrawlJob; items: StayCrawlItem[] }>(`/stay-crawls/jobs/${id}`),
+  items: (query?: Record<string, string | number | undefined>) =>
+    apiRequest<{ items: StayCrawlItem[] }>('/stay-crawls/items', { query }),
+  enqueueList: (body: Record<string, unknown>) =>
+    apiRequest<{ job: StayCrawlJob; urls: string[] }>('/stay-crawls/jobs', { method: 'POST', body }),
+  status: () =>
+    apiRequest<{
+      driver: string;
+      browser_ready: boolean;
+      proxy_configured: boolean;
+      proxy_enabled_default: boolean;
+    }>('/stay-crawls/status'),
+  fromCategory: (body: Record<string, unknown>) => {
+    const rerun = typeof body.rerun === 'string' ? body.rerun : undefined;
+    const payload = rerun ? { rerun, ...body } : body;
+    return apiRequest<{ job: StayCrawlJob; urls: string[]; items: StayCrawlItem[] }>(
+      '/stay-crawls/from-category',
+      {
+        method: 'POST',
+        body: payload,
+        query: rerun ? { rerun } : undefined,
+        headers: rerun ? { 'X-Stay-Crawl-Rerun': rerun } : undefined,
+      },
+    );
+  },
+  processNext: (id: number, body?: Record<string, unknown>) =>
+    apiRequest<{
+      done: boolean;
+      remaining: number;
+      imported: number;
+      blocked: number;
+      failed: number;
+      total: number;
+      job: StayCrawlJob;
+      item: StayCrawlItem | null;
+      service: StayCrawlServiceRef | null;
+    }>(`/stay-crawls/jobs/${id}/process-next`, { method: 'POST', body }),
+  enqueueHotel: (body: Record<string, unknown>) =>
+    apiRequest<{ item: StayCrawlItem }>('/stay-crawls/items', { method: 'POST', body }),
+  ingest: (body: Record<string, unknown>) =>
+    apiRequest<StayCrawlServiceRef & { item: StayCrawlItem }>('/stay-crawls/ingest', {
+      method: 'POST',
+      body,
+    }),
+  detail: (id: number, body?: Record<string, unknown>) =>
+    apiRequest<{ item: StayCrawlItem }>(`/stay-crawls/items/${id}/detail`, { method: 'POST', body }),
+  map: (id: number) =>
+    apiRequest<{ item: StayCrawlItem }>(`/stay-crawls/items/${id}/map`, { method: 'POST' }),
+  ai: (id: number, body?: Record<string, unknown>) =>
+    apiRequest<{ item: StayCrawlItem }>(`/stay-crawls/items/${id}/map`, { method: 'POST', body }),
+  import: (id: number, body?: Record<string, unknown>) =>
+    apiRequest<StayCrawlServiceRef & { item: StayCrawlItem }>(
+      `/stay-crawls/items/${id}/import`,
+      { method: 'POST', body },
+    ),
 };
 
 export const mediaApi = {

@@ -418,3 +418,147 @@ export function listingEnrichAppliedKeys(
   }
   return keys;
 }
+
+export type StayEnrichStage = 'meta' | 'property' | 'faq';
+
+export type StayRoomFormRow = {
+  id?: number | null;
+  code?: string;
+  name: string;
+  description?: string;
+  price_from?: number | string | null;
+  capacity?: number | null;
+  bed_label?: string;
+  size_sqm?: number | null;
+  view?: string;
+  amenities?: string;
+  unit_type?: string;
+  bathroom_count?: number | null;
+  bedroom_count?: number | null;
+  smoking?: string;
+  highlights?: string;
+  beds_json?: string;
+  amenity_groups_json?: string;
+  photos_json?: string;
+};
+
+function linesFromUnknown(value: unknown): string {
+  if (Array.isArray(value)) return value.map((x) => String(x).trim()).filter(Boolean).join('\n');
+  return value == null ? '' : String(value);
+}
+
+function attrsFromForm(form: Record<string, unknown>): Record<string, unknown> {
+  const raw = form.stay_attrs;
+  return isPlainObject(raw) ? { ...raw } : isPlainObject(form.attrs) ? { ...(form.attrs as object) } : {};
+}
+
+/** Payload AI lưu trú theo luồng meta / property / faq. */
+export function buildStayEnrichPayload(
+  form: Record<string, unknown>,
+  stage: StayEnrichStage,
+): Record<string, unknown> {
+  if (stage === 'meta') {
+    return { title: form.title || '' };
+  }
+
+  const attrs = attrsFromForm(form);
+  const amenities = linesFromUnknown(attrs.amenities);
+  const base: Record<string, unknown> = {
+    title: form.title || '',
+    location_label: form.location_label || '',
+    summary: form.summary || '',
+    featured_quote_text: form.featured_quote_text || '',
+    featured_quote_author: form.featured_quote_author || '',
+    seo_slug: form.seo_slug || '',
+    seo_title: form.seo_title || '',
+    seo_description: form.seo_description || '',
+    star_rating: form.star_rating ?? null,
+    price_from: form.price_from || '',
+    currency: form.currency || '',
+    highlights: form.highlights || '',
+    inclusions: form.inclusions || '',
+    exclusions: form.exclusions || '',
+    notes: form.notes || '',
+    content: stage === 'faq' ? String(form.content ?? '') : '',
+    attrs: {
+      ...attrs,
+      amenities: amenities ? amenities.split('\n').map((s) => s.trim()).filter(Boolean) : [],
+    },
+    options: Array.isArray(form.options)
+      ? (form.options as StayRoomFormRow[]).map((row) => ({
+          code: row.code || '',
+          name: row.name || '',
+          description: row.description || '',
+          price_from: row.price_from ?? null,
+          capacity: row.capacity ?? null,
+          bed_label: row.bed_label || '',
+          size_sqm: row.size_sqm ?? null,
+          view: row.view || '',
+          amenities: row.amenities
+            ? row.amenities.split('\n').map((s) => s.trim()).filter(Boolean)
+            : [],
+          unit_type: row.unit_type || '',
+          bathroom_count: row.bathroom_count ?? null,
+          bedroom_count: row.bedroom_count ?? null,
+          smoking: row.smoking || '',
+          highlights: row.highlights
+            ? row.highlights.split('\n').map((s) => s.trim()).filter(Boolean)
+            : [],
+          beds_json: row.beds_json || '',
+          amenity_groups_json: row.amenity_groups_json || '',
+          photos_json: row.photos_json || '',
+        }))
+      : [],
+  };
+
+  if (stage === 'faq') {
+    base.faqs = faqSkeleton(form, false);
+    base.faq_rewrite = true;
+  }
+
+  return base;
+}
+
+/** Merge kết quả AI lưu trú vào form admin. */
+export function mergeStayEnrichFields<T extends Record<string, unknown>>(
+  prev: T,
+  fields: Record<string, unknown>,
+): T {
+  const out: Record<string, unknown> = { ...prev, ...mergeEnrichFields(prev, fields) };
+
+  if (isPlainObject(fields.attrs)) {
+    const prevAttrs = attrsFromForm(prev);
+    out.stay_attrs = { ...prevAttrs, ...fields.attrs };
+    out.attrs = out.stay_attrs;
+  }
+
+  if (Array.isArray(fields.options) && fields.options.length > 0) {
+    out.options = fields.options.map((row, i) => {
+      const cell = isPlainObject(row) ? row : {};
+      const oldList = Array.isArray(prev.options) ? (prev.options as Record<string, unknown>[]) : [];
+      const old = isPlainObject(oldList[i]) ? oldList[i] : {};
+      return {
+        id: old.id ?? null,
+        code: cell.code ?? old.code ?? '',
+        name: cell.name ?? old.name ?? '',
+        description: cell.description ?? old.description ?? '',
+        price_from: cell.price_from ?? old.price_from ?? '',
+        capacity: cell.capacity ?? old.capacity ?? null,
+        bed_label: cell.bed_label ?? old.bed_label ?? '',
+        size_sqm: cell.size_sqm ?? old.size_sqm ?? null,
+        view: cell.view ?? old.view ?? '',
+          unit_type: cell.unit_type ?? old.unit_type ?? '',
+          bathroom_count: cell.bathroom_count ?? old.bathroom_count ?? null,
+          bedroom_count: cell.bedroom_count ?? old.bedroom_count ?? null,
+          smoking: cell.smoking ?? old.smoking ?? '',
+          highlights: linesFromUnknown(cell.highlights ?? old.highlights),
+          beds_json: String(cell.beds_json ?? old.beds_json ?? ''),
+          amenity_groups_json: String(cell.amenity_groups_json ?? old.amenity_groups_json ?? ''),
+          photos_json: String(cell.photos_json ?? old.photos_json ?? ''),
+          amenities: linesFromUnknown(cell.amenities ?? old.amenities),
+      };
+    });
+  }
+
+  return out as T;
+}

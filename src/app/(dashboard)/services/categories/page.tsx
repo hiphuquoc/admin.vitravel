@@ -29,7 +29,11 @@ function Inner() {
     <ResourceListPage
       eyebrow={kind}
       title={`Danh mục ${kind}`}
-      description="Nhóm danh mục theo cụm dịch vụ."
+      description={
+        cluster === 'stay'
+          ? 'Sửa một danh mục để dán URL Booking.com và cào chỗ nghỉ con (URL/cấp trang kế thừa danh mục).'
+          : 'Nhóm danh mục theo cụm dịch vụ.'
+      }
       queryKey={`service-categories-${cluster || 'all'}`}
       createHref={
         cluster
