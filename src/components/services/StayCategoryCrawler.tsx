@@ -288,13 +288,31 @@ export function StayCategoryCrawler({
         structure={false}
       />
       {statusQuery.data && !statusQuery.data.browser_ready ? (
-        <p className="body-text">
-          Chưa cài crawler Chrome. Trên server Laravel chạy: <code>cd scripts/stay-crawl && npm ci</code>
+        <p className="body-text" style={{ color: 'var(--admin-warning)' }}>
+          ⚠ {statusQuery.data.ready_hint || 'Chưa cài crawler Chrome.'} Trên server:{' '}
+          <code>cd scripts/stay-crawl && sudo -u www npm ci</code>
+          {!statusQuery.data.node_bin ? (
+            <>
+              {' '}
+              + đặt <code>STAY_CRAWL_NODE</code> trong .env
+            </>
+          ) : null}
+        </p>
+      ) : null}
+      {!canCreate ? (
+        <p className="body-text" style={{ color: 'var(--admin-warning)' }}>
+          ⚠ Thiếu quyền <code>services.create</code> — nút crawler bị khóa.
         </p>
       ) : null}
       <Button
         type="button"
-        disabled={!categoryId || !canCreate || !url.trim() || progress.state.open || statusQuery.data?.browser_ready === false}
+        disabled={
+          !categoryId ||
+          !canCreate ||
+          !url.trim() ||
+          progress.state.open ||
+          statusQuery.data?.browser_ready === false
+        }
         loading={progress.state.open}
         onClick={() => void run()}
       >

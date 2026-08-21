@@ -329,6 +329,11 @@ export const stayCrawlsApi = {
     apiRequest<{
       driver: string;
       browser_ready: boolean;
+      node_bin?: string | null;
+      puppeteer_installed?: boolean;
+      script_ok?: boolean;
+      ready_hint?: string | null;
+      chrome_bin?: string | null;
       proxy_configured: boolean;
       proxy_enabled_default: boolean;
       headless?: boolean;

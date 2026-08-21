@@ -386,6 +386,37 @@ export default function StayCrawlerPage() {
 
   const items: StayCrawlItem[] = jobQuery.data?.items ?? [];
   const categories = categoriesQuery.data?.items ?? [];
+  const browserReady = statusQuery.data?.browser_ready === true;
+  const browserBlocked = statusQuery.data?.browser_ready === false;
+  const crawlDisabled =
+    !categoryId || !canCreate || !url.trim() || running || Boolean(exists) || browserBlocked;
+  const crawlBlockHints: string[] = [];
+  if (!canCreate) {
+    crawlBlockHints.push('Tài khoản thiếu quyền services.create — không thể chạy crawler.');
+  }
+  if (statusQuery.isError) {
+    crawlBlockHints.push(
+      `Không gọi được /stay-crawls/status: ${(statusQuery.error as Error)?.message || 'lỗi mạng/API'}. Kiểm tra đăng nhập admin + X-Project-Code.`,
+    );
+  } else if (statusQuery.isLoading || statusQuery.isFetching) {
+    crawlBlockHints.push('Đang kiểm tra môi trường Chrome trên server…');
+  } else if (browserBlocked) {
+    crawlBlockHints.push(
+      statusQuery.data?.ready_hint ||
+        'Chưa sẵn sàng Chrome/Puppeteer. Trên VPS: cd scripts/stay-crawl && sudo -u www npm ci; đặt STAY_CRAWL_NODE nếu PHP không thấy node.',
+    );
+  }
+  if (!categoryId && categories.length === 0 && !categoriesQuery.isLoading) {
+    crawlBlockHints.push('Chưa có danh mục cluster=stay — tạo danh mục lưu trú trước.');
+  } else if (!categoryId) {
+    crawlBlockHints.push('Chọn danh mục lưu trú.');
+  }
+  if (!url.trim()) {
+    crawlBlockHints.push('Dán URL Booking.com.');
+  }
+  if (exists) {
+    crawlBlockHints.push('URL đã cào — chọn hành động trong hộp thoại (hoặc Hủy).');
+  }
 
   return (
     <div>
@@ -463,7 +494,14 @@ export default function StayCrawlerPage() {
 
         {statusQuery.data && !statusQuery.data.browser_ready ? (
           <p className="ui-field__hint" style={{ color: 'var(--admin-warning)' }}>
-            ⚠ Chưa cài crawler Chrome. Trên server chạy: <code>cd scripts/stay-crawl && npm ci</code>
+            ⚠ {statusQuery.data.ready_hint || 'Chưa cài crawler Chrome.'}{' '}
+            {statusQuery.data.node_bin ? (
+              <>(node: <code>{statusQuery.data.node_bin}</code>)</>
+            ) : (
+              <>(chưa thấy node — đặt <code>STAY_CRAWL_NODE</code>)</>
+            )}{' '}
+            Trên server: <code>cd scripts/stay-crawl && sudo -u www npm ci</code> rồi{' '}
+            <code>php artisan config:cache</code>.
           </p>
         ) : null}
 
@@ -473,22 +511,41 @@ export default function StayCrawlerPage() {
           </p>
         ) : statusQuery.data?.browser_ready ? (
           <p className="ui-field__hint">
-            Chrome đang chạy ẩn (headless). Để xem thao tác, đặt <code>STAY_CRAWL_HEADLESS=false</code> trong .env rồi <code>php artisan config:clear</code>.
+            Chrome đang chạy ẩn (headless)
+            {statusQuery.data.chrome_bin ? (
+              <>
+                {' '}
+                — <code>{statusQuery.data.chrome_bin}</code>
+              </>
+            ) : null}
+            . Để xem thao tác, đặt <code>STAY_CRAWL_HEADLESS=false</code> trong .env rồi <code>php artisan config:clear</code>.
           </p>
+        ) : null}
+
+        {crawlBlockHints.length > 0 && !running ? (
+          <ul className="ui-field__hint" style={{ color: 'var(--admin-warning)', margin: '0.5rem 0', paddingLeft: '1.2rem' }}>
+            {crawlBlockHints.map((h) => (
+              <li key={h}>{h}</li>
+            ))}
+          </ul>
         ) : null}
 
         <Button
           type="button"
-          disabled={!categoryId || !canCreate || !url.trim() || running || Boolean(exists) || !statusQuery.data?.browser_ready}
+          disabled={crawlDisabled || statusQuery.isLoading}
           loading={running}
           onClick={() => {
             if (exists) {
               return;
             }
+            if (crawlBlockHints.length && crawlDisabled) {
+              toast.error(crawlBlockHints[0]);
+              return;
+            }
             void runCrawl();
           }}
         >
-          {running ? 'Đang chạy…' : 'Bắt đầu crawler'}
+          {running ? 'Đang chạy…' : browserReady ? 'Bắt đầu crawler' : statusQuery.isLoading ? 'Đang kiểm tra…' : 'Bắt đầu crawler'}
         </Button>
       </FormSection>
 
