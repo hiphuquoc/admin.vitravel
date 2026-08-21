@@ -173,6 +173,14 @@ function appendProjectQuery(url: string): string {
   }
 }
 
+export type PublicPageUrlOptions = {
+  /**
+   * Bản nháp / chưa publish — thêm `?preview=1` để public local mở được
+   * (ViewDataService + SeoService chỉ bỏ published-only khi preview trên local).
+   */
+  preview?: boolean;
+};
+
 /**
  * Shared builder: list slug chips, SeoBox preview, ViewPublicButton, FormFooter.
  */
@@ -180,6 +188,7 @@ export function publicPageUrl(
   slugFull: string | null | undefined,
   locale = 'vi',
   defaultLocale = 'vi',
+  options?: PublicPageUrlOptions,
 ): string | null {
   if (slugFull == null || !String(slugFull).trim()) return null;
 
@@ -201,5 +210,21 @@ export function publicPageUrl(
     url = localized;
   }
 
-  return appendProjectQuery(url);
+  url = appendProjectQuery(url);
+
+  if (options?.preview) {
+    try {
+      const abs = url.startsWith('http')
+        ? new URL(url)
+        : new URL(url, typeof window !== 'undefined' ? window.location.origin : 'http://localhost');
+      abs.searchParams.set('preview', '1');
+      if (url.startsWith('http')) return abs.toString();
+      return `${abs.pathname}${abs.search}${abs.hash}`;
+    } catch {
+      const sep = url.includes('?') ? '&' : '?';
+      return `${url}${sep}preview=1`;
+    }
+  }
+
+  return url;
 }

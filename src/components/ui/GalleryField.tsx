@@ -35,6 +35,8 @@ type GalleryFieldProps = {
   structure?: boolean;
   /** Giới hạn số ảnh (mặc định 40). */
   maxItems?: number;
+  /** Lưới rộng (form chính) vs sidebar hẹp. */
+  layout?: 'aside' | 'wide';
   ariaLabel?: string;
 };
 
@@ -60,6 +62,7 @@ export function GalleryField({
   disabled,
   structure = true,
   maxItems = 40,
+  layout = 'aside',
   ariaLabel = 'Gallery ảnh',
 }: GalleryFieldProps) {
   const inputId = useId();
@@ -360,6 +363,7 @@ export function GalleryField({
     <div
       className={clsx(
         'ui-gallery-field',
+        layout === 'wide' && 'ui-gallery-field--wide',
         isDisabled && 'ui-gallery-field--disabled',
         uploading && 'ui-gallery-field--busy',
         className,
@@ -486,7 +490,18 @@ export function GalleryField({
               return (
                 <div key={row.key} className="ui-gallery-field__tile">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                  {url ? <img src={url} alt={row.image.media?.alt || `Gallery ${index + 1}`} /> : null}
+                  {url ? (
+                    <img
+                      src={url}
+                      alt=""
+                      title={row.image.media?.alt || `Gallery ${index + 1}`}
+                      loading="lazy"
+                      referrerPolicy="no-referrer"
+                    />
+                  ) : null}
+                  <span className="ui-gallery-field__tile-index" aria-hidden>
+                    {index + 1}
+                  </span>
                   {!isDisabled && !uploading ? (
                     <div className="ui-gallery-field__tile-actions">
                       <button

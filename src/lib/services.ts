@@ -28,6 +28,7 @@ import type {
   ValueLabel,
 } from './types';
 import type { LocaleOption } from './locale';
+import type { StayRoomFormRow } from './aiEnrichFields';
 
 export type PackageType = 'tour' | 'cruise';
 
@@ -217,6 +218,20 @@ export const servicesApi = {
   update: (id: number, body: Record<string, unknown>) =>
     apiRequest<ServiceDetail>(`/services/${id}`, { method: 'PUT', body }),
   remove: (id: number) => apiRequest<null>(`/services/${id}`, { method: 'DELETE' }),
+  createOption: (serviceId: number, body: Record<string, unknown>) =>
+    apiRequest<{ option: StayRoomFormRow }>(`/services/${serviceId}/options`, { method: 'POST', body }),
+  updateOption: (serviceId: number, optionId: number, body: Record<string, unknown>) =>
+    apiRequest<{ option: StayRoomFormRow }>(`/services/${serviceId}/options/${optionId}`, {
+      method: 'PUT',
+      body,
+    }),
+  duplicateOption: (serviceId: number, optionId: number, body?: Record<string, unknown>) =>
+    apiRequest<{ option: StayRoomFormRow }>(`/services/${serviceId}/options/${optionId}/duplicate`, {
+      method: 'POST',
+      body,
+    }),
+  removeOption: (serviceId: number, optionId: number) =>
+    apiRequest<null>(`/services/${serviceId}/options/${optionId}`, { method: 'DELETE' }),
   meta: (locale = 'vi', cluster?: string) =>
     apiRequest<{
       languages: LocaleOption[];
@@ -227,6 +242,7 @@ export const servicesApi = {
       countries: Option[];
       statuses: ValueLabel[];
       property_types: ValueLabel[];
+      deal_labels?: ValueLabel[];
       hub_seo_id: number | null;
       seo_parents: { id: number; label: string; slug_full?: string; reference_id?: number | null }[];
     }>('/services/meta', { query: { locale, cluster } }),
@@ -242,6 +258,26 @@ export type StayCrawlJob = {
   items_count?: number | null;
   service_category_id?: number | null;
   error?: string | null;
+  list?: {
+    max_pages?: number;
+    page_size?: number;
+    pages_done?: number;
+    offset?: number;
+    urls_queued?: number;
+    stopped_reason?: string | null;
+  } | null;
+  worker?: {
+    running?: boolean;
+    paused?: boolean;
+    pid?: number | null;
+    heartbeat_at?: string | null;
+    stop_reason?: string | null;
+    last_message?: string | null;
+    remaining?: number;
+    log?: string | null;
+  } | null;
+  worker_alive?: boolean;
+  worker_paused?: boolean;
   created_at?: string | null;
 };
 
@@ -261,6 +297,14 @@ export type StayCrawlItem = {
   has_extracted?: boolean;
   has_ai?: boolean;
   slug_full?: string | null;
+  enrich?: {
+    gallery?: string;
+    rooms?: string;
+    rooms_next?: number;
+    rooms_total?: number | null;
+    gallery_count?: number;
+    rooms_ok?: number;
+  } | null;
 };
 
 export type StayCrawlServiceRef = {
@@ -287,23 +331,45 @@ export const stayCrawlsApi = {
       browser_ready: boolean;
       proxy_configured: boolean;
       proxy_enabled_default: boolean;
+      headless?: boolean;
+      headed?: boolean;
+      slow_mo?: number;
     }>('/stay-crawls/status'),
   fromCategory: (body: Record<string, unknown>) => {
     const rerun = typeof body.rerun === 'string' ? body.rerun : undefined;
-    const payload = rerun ? { rerun, ...body } : body;
-    return apiRequest<{ job: StayCrawlJob; urls: string[]; items: StayCrawlItem[] }>(
+    const from = typeof body.from === 'string' ? body.from : undefined;
+    const payload = { ...body };
+    const headers: Record<string, string> = {};
+    const query: Record<string, string> = {};
+    if (rerun) {
+      headers['X-Stay-Crawl-Rerun'] = rerun;
+      query.rerun = rerun;
+    }
+    if (from) {
+      headers['X-Stay-Crawl-From'] = from;
+      query.from = from;
+    }
+    return apiRequest<{
+      job: StayCrawlJob;
+      urls: string[];
+      items: StayCrawlItem[];
+      worker?: StayCrawlJob['worker'];
+      worker_hint?: string;
+    }>(
       '/stay-crawls/from-category',
       {
         method: 'POST',
         body: payload,
-        query: rerun ? { rerun } : undefined,
-        headers: rerun ? { 'X-Stay-Crawl-Rerun': rerun } : undefined,
+        query: Object.keys(query).length ? query : undefined,
+        headers: Object.keys(headers).length ? headers : undefined,
+        timeoutMs: 420_000,
       },
     );
   },
   processNext: (id: number, body?: Record<string, unknown>) =>
     apiRequest<{
       done: boolean;
+      busy?: boolean;
       remaining: number;
       imported: number;
       blocked: number;
@@ -312,7 +378,38 @@ export const stayCrawlsApi = {
       job: StayCrawlJob;
       item: StayCrawlItem | null;
       service: StayCrawlServiceRef | null;
-    }>(`/stay-crawls/jobs/${id}/process-next`, { method: 'POST', body }),
+      phase?: string | null;
+      message?: string | null;
+      last_step?: {
+        seq?: number;
+        phase?: string | null;
+        message?: string | null;
+        done?: boolean;
+        imported?: number;
+        blocked?: number;
+        failed?: number;
+        remaining?: number;
+        item_id?: number | null;
+        source_url?: string | null;
+        item_status?: string | null;
+        blocked_reason?: string | null;
+        error?: string | null;
+      } | null;
+    }>(`/stay-crawls/jobs/${id}/process-next`, { method: 'POST', body, timeoutMs: 25_000 }),
+  startWork: (id: number, body?: Record<string, unknown>) =>
+    apiRequest<{ job: StayCrawlJob; worker?: StayCrawlJob['worker']; worker_hint?: string }>(
+      `/stay-crawls/jobs/${id}/work`,
+      { method: 'POST', body },
+    ),
+  pauseWork: (id: number) =>
+    apiRequest<{ job: StayCrawlJob; worker?: StayCrawlJob['worker'] }>(`/stay-crawls/jobs/${id}/pause`, {
+      method: 'POST',
+    }),
+  resumeWork: (id: number, body?: Record<string, unknown>) =>
+    apiRequest<{ job: StayCrawlJob; worker?: StayCrawlJob['worker']; worker_hint?: string }>(
+      `/stay-crawls/jobs/${id}/resume`,
+      { method: 'POST', body },
+    ),
   enqueueHotel: (body: Record<string, unknown>) =>
     apiRequest<{ item: StayCrawlItem }>('/stay-crawls/items', { method: 'POST', body }),
   ingest: (body: Record<string, unknown>) =>

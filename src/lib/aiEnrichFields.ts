@@ -440,6 +440,16 @@ export type StayRoomFormRow = {
   beds_json?: string;
   amenity_groups_json?: string;
   photos_json?: string;
+  /** JSON attrs.rate_options[] từ #hprt-table */
+  rate_options_json?: string;
+  comfort_score?: number | null;
+  comfort_reviews?: number | null;
+  scarcity?: string;
+  scarcity_active?: boolean;
+  deal_key?: string;
+  room_id?: string;
+  hash?: string;
+  crawl_dates_json?: string;
 };
 
 function linesFromUnknown(value: unknown): string {
@@ -461,12 +471,41 @@ export function buildStayEnrichPayload(
     return { title: form.title || '' };
   }
 
-  const attrs = attrsFromForm(form);
-  const amenities = linesFromUnknown(attrs.amenities);
+  const attrs = normalizeStayAttrsForAi(attrsFromForm(form));
+  const roomSummaries = Array.isArray(form.options)
+    ? (form.options as StayRoomFormRow[])
+        .map((row) => ({
+          name: row.name || '',
+          capacity: row.capacity ?? null,
+          size_sqm: row.size_sqm ?? null,
+          view: row.view || '',
+          bed_label: row.bed_label || '',
+          amenities: row.amenities
+            ? row.amenities.split('\n').map((s) => s.trim()).filter(Boolean).slice(0, 8)
+            : [],
+        }))
+        .filter((r) => r.name)
+    : [];
+
+  if (stage === 'property') {
+    // Facts khách sạn chỉ để AI đọc — backend cũng chỉ nhận content.
+    return {
+      title: form.title || '',
+      location_label: form.location_label || '',
+      star_rating: form.star_rating ?? null,
+      price_from: form.price_from || '',
+      currency: form.currency || '',
+      seo_title: form.seo_title || '',
+      seo_description: form.seo_description || '',
+      attrs,
+      options: roomSummaries,
+      content: form.content || '',
+    };
+  }
+
   const base: Record<string, unknown> = {
     title: form.title || '',
     location_label: form.location_label || '',
-    summary: form.summary || '',
     featured_quote_text: form.featured_quote_text || '',
     featured_quote_author: form.featured_quote_author || '',
     seo_slug: form.seo_slug || '',
@@ -475,40 +514,9 @@ export function buildStayEnrichPayload(
     star_rating: form.star_rating ?? null,
     price_from: form.price_from || '',
     currency: form.currency || '',
-    highlights: form.highlights || '',
-    inclusions: form.inclusions || '',
-    exclusions: form.exclusions || '',
-    notes: form.notes || '',
-    content: stage === 'faq' ? String(form.content ?? '') : '',
-    attrs: {
-      ...attrs,
-      amenities: amenities ? amenities.split('\n').map((s) => s.trim()).filter(Boolean) : [],
-    },
-    options: Array.isArray(form.options)
-      ? (form.options as StayRoomFormRow[]).map((row) => ({
-          code: row.code || '',
-          name: row.name || '',
-          description: row.description || '',
-          price_from: row.price_from ?? null,
-          capacity: row.capacity ?? null,
-          bed_label: row.bed_label || '',
-          size_sqm: row.size_sqm ?? null,
-          view: row.view || '',
-          amenities: row.amenities
-            ? row.amenities.split('\n').map((s) => s.trim()).filter(Boolean)
-            : [],
-          unit_type: row.unit_type || '',
-          bathroom_count: row.bathroom_count ?? null,
-          bedroom_count: row.bedroom_count ?? null,
-          smoking: row.smoking || '',
-          highlights: row.highlights
-            ? row.highlights.split('\n').map((s) => s.trim()).filter(Boolean)
-            : [],
-          beds_json: row.beds_json || '',
-          amenity_groups_json: row.amenity_groups_json || '',
-          photos_json: row.photos_json || '',
-        }))
-      : [],
+    content: String(form.content ?? ''),
+    attrs,
+    options: roomSummaries,
   };
 
   if (stage === 'faq') {
@@ -519,46 +527,51 @@ export function buildStayEnrichPayload(
   return base;
 }
 
+function tryParseJson(raw: unknown): unknown {
+  if (typeof raw !== 'string' || !raw.trim()) return raw;
+  try {
+    return JSON.parse(raw);
+  } catch {
+    return raw;
+  }
+}
+
+/** Decode *_json form fields so the model reads structured facts. */
+function normalizeStayAttrsForAi(attrs: Record<string, unknown>): Record<string, unknown> {
+  const out = { ...attrs };
+  for (const [from, to] of [
+    ['amenity_groups_json', 'amenity_groups'],
+    ['nearby_groups_json', 'nearby_groups'],
+    ['review_scores_json', 'review_scores'],
+    ['nearby_json', 'nearby'],
+  ] as const) {
+    if (out[from] != null && out[from] !== '') {
+      const parsed = tryParseJson(out[from]);
+      if (parsed !== undefined) out[to] = parsed;
+    }
+    delete out[from];
+  }
+  delete out.nearby;
+  return out;
+}
+
 /** Merge kết quả AI lưu trú vào form admin. */
 export function mergeStayEnrichFields<T extends Record<string, unknown>>(
   prev: T,
   fields: Record<string, unknown>,
 ): T {
-  const out: Record<string, unknown> = { ...prev, ...mergeEnrichFields(prev, fields) };
+  const filtered = { ...fields };
+  delete filtered.summary;
+  delete filtered.highlights;
+  delete filtered.inclusions;
+  delete filtered.exclusions;
+  delete filtered.notes;
+  // Facts khách sạn (tiện ích / phòng / chính sách) không nhận từ AI.
+  delete filtered.attrs;
+  delete filtered.options;
+  delete filtered.stay_attrs;
 
-  if (isPlainObject(fields.attrs)) {
-    const prevAttrs = attrsFromForm(prev);
-    out.stay_attrs = { ...prevAttrs, ...fields.attrs };
-    out.attrs = out.stay_attrs;
-  }
-
-  if (Array.isArray(fields.options) && fields.options.length > 0) {
-    out.options = fields.options.map((row, i) => {
-      const cell = isPlainObject(row) ? row : {};
-      const oldList = Array.isArray(prev.options) ? (prev.options as Record<string, unknown>[]) : [];
-      const old = isPlainObject(oldList[i]) ? oldList[i] : {};
-      return {
-        id: old.id ?? null,
-        code: cell.code ?? old.code ?? '',
-        name: cell.name ?? old.name ?? '',
-        description: cell.description ?? old.description ?? '',
-        price_from: cell.price_from ?? old.price_from ?? '',
-        capacity: cell.capacity ?? old.capacity ?? null,
-        bed_label: cell.bed_label ?? old.bed_label ?? '',
-        size_sqm: cell.size_sqm ?? old.size_sqm ?? null,
-        view: cell.view ?? old.view ?? '',
-          unit_type: cell.unit_type ?? old.unit_type ?? '',
-          bathroom_count: cell.bathroom_count ?? old.bathroom_count ?? null,
-          bedroom_count: cell.bedroom_count ?? old.bedroom_count ?? null,
-          smoking: cell.smoking ?? old.smoking ?? '',
-          highlights: linesFromUnknown(cell.highlights ?? old.highlights),
-          beds_json: String(cell.beds_json ?? old.beds_json ?? ''),
-          amenity_groups_json: String(cell.amenity_groups_json ?? old.amenity_groups_json ?? ''),
-          photos_json: String(cell.photos_json ?? old.photos_json ?? ''),
-          amenities: linesFromUnknown(cell.amenities ?? old.amenities),
-      };
-    });
-  }
+  const out: Record<string, unknown> = { ...prev, ...mergeEnrichFields(prev, filtered) };
 
   return out as T;
 }

@@ -32,7 +32,7 @@ type Props = {
 
 const STAGE_OPTIONS = [
   { value: 'meta', label: '1. Thông tin + SEO (chỉ tên chỗ nghỉ)' },
-  { value: 'property', label: '2. Giới thiệu, tiện ích, phòng, chính sách' },
+  { value: 'property', label: '2. Giới thiệu chỗ nghỉ (bài SEO HTML)' },
   { value: 'faq', label: '3. Câu hỏi thường gặp' },
 ];
 
@@ -40,7 +40,7 @@ const STAGE_ORDER: StayEnrichStage[] = ['meta', 'property', 'faq'];
 
 const STAGE_META: Record<StayEnrichStage, { title: string; detail: string }> = {
   meta: { title: 'Thông tin + SEO', detail: 'Đang soạn summary, vị trí, meta…' },
-  property: { title: 'Nội dung lưu trú', detail: 'Đang soạn giới thiệu, tiện ích, hạng phòng…' },
+  property: { title: 'Giới thiệu chỗ nghỉ', detail: 'Đang viết bài SEO từ tiện ích / lân cận / phòng (không sửa dữ liệu gốc)…' },
   faq: { title: 'FAQ đặt phòng', detail: 'Đang soạn FAQ từ nội dung đã có…' },
 };
 
@@ -155,7 +155,7 @@ export function AiEnrichStayButton({ locale, getForm, applyFields, className }: 
         open={confirmOpen}
         mode="enrich"
         title="Xây dựng trang lưu trí bằng AI"
-        description="Mặc định chạy cả 3 bước: meta → nội dung & phòng → FAQ. Bước sau dùng dữ liệu vừa ghi trên form."
+        description="Mặc định chạy cả 3 bước: meta → bài giới thiệu SEO → FAQ. Bước 2 chỉ viết content — không đụng tiện ích / phòng / chính sách."
         showInstructions
         stageOptions={STAGE_OPTIONS}
         confirmLabel="Chạy AI"

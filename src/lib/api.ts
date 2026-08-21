@@ -102,6 +102,8 @@ type RequestOptions = {
   signal?: AbortSignal;
   /** Skip JSON Content-Type (FormData uploads). */
   formData?: boolean;
+  /** Client abort after this many ms (Chrome crawler steps). */
+  timeoutMs?: number;
 };
 
 function buildQuery(query?: RequestOptions['query']): string {
@@ -116,7 +118,16 @@ function buildQuery(query?: RequestOptions['query']): string {
 }
 
 export async function apiRequest<T>(path: string, options: RequestOptions = {}): Promise<T> {
-  const { method = 'GET', body, query, auth = true, signal, formData = false, headers: extraHeaders } = options;
+  const {
+    method = 'GET',
+    body,
+    query,
+    auth = true,
+    signal,
+    formData = false,
+    headers: extraHeaders,
+    timeoutMs,
+  } = options;
   const headers: Record<string, string> = {
     Accept: 'application/json',
     ...extraHeaders,
@@ -134,6 +145,18 @@ export async function apiRequest<T>(path: string, options: RequestOptions = {}):
   }
 
   const url = `${getApiBase()}${path}${buildQuery(query)}`;
+  const startedAt = Date.now();
+  let timeoutHandle: ReturnType<typeof setTimeout> | undefined;
+  let fetchSignal = signal;
+  if (timeoutMs && timeoutMs > 0) {
+    const ac = new AbortController();
+    timeoutHandle = setTimeout(() => ac.abort(), timeoutMs);
+    if (signal) {
+      if (signal.aborted) ac.abort();
+      else signal.addEventListener('abort', () => ac.abort(), { once: true });
+    }
+    fetchSignal = ac.signal;
+  }
 
   let res: Response;
   try {
@@ -146,20 +169,26 @@ export async function apiRequest<T>(path: string, options: RequestOptions = {}):
           : body instanceof FormData || formData
             ? (body as BodyInit)
             : JSON.stringify(body),
-      signal,
+      signal: fetchSignal,
     });
   } catch (err) {
+    const elapsed = Date.now() - startedAt;
     const base = getApiBase();
+    const aborted = err instanceof Error && (err.name === 'AbortError' || /aborted/i.test(err.message));
     const hint =
-      typeof window !== 'undefined' && base.startsWith('http') && !base.includes(window.location.host)
-        ? ' Thường do CORS: thêm origin admin vào Laravel CORS_ALLOWED_ORIGINS / ADMIN_APP_URL, rồi php artisan config:cache.'
-        : ' Kiểm tra Laravel đang chạy, hoặc npm run dev còn sống.';
+      aborted || elapsed >= 50000
+        ? ' Crawler Chrome thường > 60s: Nginx/php-fpm cắt kết nối (proxy_read_timeout / max_execution_time), không phải CORS. Job có thể vẫn chạy trên server — thử lại cùng job.'
+        : typeof window !== 'undefined' && base.startsWith('http') && !base.includes(window.location.host)
+          ? ' Thường do CORS: thêm origin admin vào Laravel CORS_ALLOWED_ORIGINS / ADMIN_APP_URL, rồi php artisan config:cache.'
+          : ' Kiểm tra Laravel đang chạy, hoặc npm run dev còn sống.';
     throw new ApiClientError(
       `Không kết nối được API (${base}).${hint}`,
-      'NETWORK_ERROR',
+      aborted ? 'TIMEOUT' : 'NETWORK_ERROR',
       0,
       err instanceof Error ? err.message : err,
     );
+  } finally {
+    if (timeoutHandle) clearTimeout(timeoutHandle);
   }
 
   const raw = await res.text();

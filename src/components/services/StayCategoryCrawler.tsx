@@ -82,6 +82,7 @@ export function StayCategoryCrawler({
   const [url, setUrl] = useState('');
   const [html, setHtml] = useState('');
   const [useProxy, setUseProxy] = useState(false);
+  const [maxPages, setMaxPages] = useState(5);
 
   const statusQuery = useQuery({
     queryKey: ['stay-crawls-status'],
@@ -144,6 +145,7 @@ export function StayCategoryCrawler({
         service_category_id: categoryId,
         url: listUrl,
         html: html.trim() || undefined,
+        max_pages: hotelDump ? 1 : maxPages,
         use_proxy: useProxy || undefined,
       });
       const total = started.urls.length || started.job.items_found || 0;
@@ -160,12 +162,16 @@ export function StayCategoryCrawler({
       progress.update({
         indeterminate: false,
         percent: 12,
-        detail: `Đã lưu ${total} URL — bắt đầu tạo trang con dưới ${parentPath || 'danh mục này'}…`,
+        detail:
+          (started.worker_hint
+            ? `${started.worker_hint} — `
+            : '') + `Đã lưu ${total} URL — tạo trang con dưới ${parentPath || 'danh mục này'}…`,
       });
 
       let htmlOnce = hotelDump ? html.trim() || undefined : undefined;
       let guard = 0;
-      while (guard < 40) {
+      const maxGuard = hotelDump ? 200 : 50_000;
+      while (guard < maxGuard) {
         guard += 1;
         const step = await stayCrawlsApi.processNext(started.job.id, {
           locale,
@@ -176,14 +182,21 @@ export function StayCategoryCrawler({
         const doneCount = step.imported + step.blocked + step.failed;
         const pct = step.total ? Math.min(96, Math.round((doneCount / step.total) * 100)) : 50;
         const label = step.item ? hotelLabel(step.item.source_url) : 'chỗ nghỉ';
+        const phase = String(step.phase || step.last_step?.phase || '');
+        const isWorker = /worker/i.test(String(step.message || '')) || Boolean(step.job?.worker_alive);
         progress.update({
           percent: pct,
-          detail:
-            step.service?.slug_full
-              ? `Đã tạo ${step.service.slug_full} (${step.imported}/${step.total})`
-              : `Đang xử lý ${label} — ${step.imported}/${step.total} trang con`,
+          detail: step.busy
+            ? isWorker
+              ? `Worker nền còn ~${step.remaining} bước — có thể đóng tab (log stay-crawl-work-${started.job.id}.log)`
+              : `Chrome đang chạy (${phase || '…'}) — gallery/phòng có thể vài phút`
+            : step.message
+              ? `${phase ? `[${phase}] ` : ''}${step.message}`
+              : step.service?.slug_full
+                ? `Đã tạo ${step.service.slug_full} (${step.imported}/${step.total})`
+                : `Đang xử lý ${label} — ${step.imported}/${step.total} trang con`,
         });
-        if (step.done) {
+        if (step.done && !step.busy) {
           const extra = [
             step.blocked ? `${step.blocked} bị chặn` : '',
             step.failed ? `${step.failed} lỗi` : '',
@@ -199,10 +212,15 @@ export function StayCategoryCrawler({
           });
           break;
         }
+        if (step.busy) {
+          await new Promise((r) => setTimeout(r, isWorker ? 5000 : 2500));
+          continue;
+        }
         if (!step.item && !step.done) {
           await progress.fail({ title: 'Dừng crawler', detail: 'Không còn item để xử lý.', holdMs: 1600 });
           break;
         }
+        await new Promise((r) => setTimeout(r, 400));
       }
       await refresh();
     } catch (e) {
@@ -240,6 +258,14 @@ export function StayCategoryCrawler({
             void run();
           }
         }}
+      />
+      <Input
+        label="Số trang listing (max_pages)"
+        type="number"
+        hint="Mỗi trang ~25 URL. Tối đa 80. Worker nền chạy lần lượt sau khi xếp hàng."
+        value={String(maxPages)}
+        disabled={!categoryId || !canCreate}
+        onChange={(e) => setMaxPages(Math.max(1, Math.min(80, Number(e.target.value) || 1)))}
       />
       <Textarea
         label="HTML đã lưu (tuỳ chọn)"
@@ -284,7 +310,7 @@ export function StayCategoryCrawler({
                 slug={item.slug_full || item.canonical_url}
                 publicHref={
                   item.slug_full
-                    ? publicPageUrl(item.slug_full, locale, defaultLocale)
+                    ? publicPageUrl(item.slug_full, locale, defaultLocale, { preview: true })
                     : item.source_url
                 }
                 badges={<Badge tone={statusTone(item.status)}>{statusLabel(item.status)}</Badge>}
@@ -315,7 +341,9 @@ export function StayCategoryCrawler({
                     size="sm"
                     variant="ghost"
                     onClick={() => {
-                      const href = publicPageUrl(item.slug_full, locale, defaultLocale);
+                      const href = publicPageUrl(item.slug_full, locale, defaultLocale, {
+                        preview: true,
+                      });
                       if (href) window.open(href, '_blank', 'noopener,noreferrer');
                     }}
                   >

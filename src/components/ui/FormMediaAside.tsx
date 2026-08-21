@@ -133,7 +133,7 @@ type FormMediaAsideProps = {
 };
 
 /**
- * Cột phải form — sticky stack các FormMediaCard / FormThumbCard / FormBannerCard.
+ * Cột phải form — stack các FormMediaCard / FormThumbCard / FormBannerCard (cột riêng, không chồng main).
  */
 export function FormMediaAside({ children, className }: FormMediaAsideProps) {
   return <aside className={clsx('ui-form-layout__aside', className)}>{children}</aside>;

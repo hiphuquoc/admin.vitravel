@@ -211,10 +211,17 @@ function FormInner() {
         gallery_media_ids: form.gallery
           .map((row) => row.image.media?.id)
           .filter((id): id is number => typeof id === 'number' && id > 0),
-        price_table: {
-          ...serializePriceTable(form.price_table),
-          currency: form.currency || 'VND',
-        },
+        ...(isStay
+          ? {
+              summary: null,
+              highlights: '',
+            }
+          : {
+              price_table: {
+                ...serializePriceTable(form.price_table),
+                currency: form.currency || 'VND',
+              },
+            }),
         locale,
       };
       return isNew ? servicesApi.create(payload) : servicesApi.update(id!, payload);
@@ -399,84 +406,104 @@ function FormInner() {
               value={form.location_label}
               onChange={(e) => set('location_label', e.target.value)}
             />
-            <Textarea
-              label="Tóm tắt"
-              name="summary"
-              value={form.summary}
-              onChange={(e) => set('summary', e.target.value)}
-            />
-            {isStay ? (
-              <StayProductFields
-                attrs={form.stay_attrs}
-                options={form.options}
-                starRating={form.star_rating}
-                discountBadge={form.discount_badge}
-                propertyTypes={metaQuery.data?.property_types ?? []}
-                onChangeAttrs={(stay_attrs) => setForm((p) => ({ ...p, stay_attrs }))}
-                onChangeOptions={(options) => setForm((p) => ({ ...p, options }))}
-                onChangeStarRating={(star_rating) => setForm((p) => ({ ...p, star_rating }))}
-                onChangeDiscountBadge={(discount_badge) => setForm((p) => ({ ...p, discount_badge }))}
+            {!isStay ? (
+              <Textarea
+                label="Tóm tắt"
+                name="summary"
+                value={form.summary}
+                onChange={(e) => set('summary', e.target.value)}
               />
             ) : null}
-            <ArticleContentEditor
-              key={`service-content-${id ?? 'new'}-${contentEditorEpoch}`}
-              label={isStay ? 'Giới thiệu chỗ nghỉ (HTML)' : 'Nội dung chi tiết'}
-              hint={isStay ? 'Tab «Về chỗ nghỉ» trên trang public — AI luồng property ghi vào đây.' : 'HTML lịch trình / mô tả dịch vụ — AI chương trình ghi vào đây. Public render an toàn.'}
-              format="html"
-              compact
-              aiFieldKey="content"
-              value={form.content}
-              onChange={(next) => set('content', next)}
-            />
-            <Textarea
-              label="Điểm nổi bật (mỗi dòng)"
-              name="highlights"
-              value={form.highlights}
-              onChange={(e) => set('highlights', e.target.value)}
-            />
-            <Textarea
-              label="Bao gồm"
-              name="inclusions"
-              value={form.inclusions}
-              onChange={(e) => set('inclusions', e.target.value)}
-            />
-            <Textarea
-              label="Không bao gồm"
-              name="exclusions"
-              value={form.exclusions}
-              onChange={(e) => set('exclusions', e.target.value)}
-            />
-            <Textarea
-              label="Lưu ý"
-              name="notes"
-              value={form.notes}
-              onChange={(e) => set('notes', e.target.value)}
-            />
-            <div className="ui-form-flags">
-              <Switch
-                label="Nổi bật"
-                checked={form.is_featured}
-                onChange={(v) => set('is_featured', v)}
-              />
-              <Switch
-                label="Ưu đãi hot"
-                checked={form.is_hot_deal}
-                onChange={(v) => set('is_hot_deal', v)}
-              />
-            </div>
           </FormSection>
 
-          <FormSection
-            icon={Wallet}
-            title="Bảng giá chi tiết"
-            description="Theo ngày / khoảng / năm × tuỳ chọn × đối tượng khách × khuyến mãi. Giá “từ” dùng cho listing."
-          >
-            <PriceTableEditor
-              value={form.price_table}
-              onChange={(price_table) => set('price_table', price_table)}
+          {isStay ? (
+            <StayProductFields
+              attrs={form.stay_attrs}
+              options={form.options}
+              starRating={form.star_rating}
+              discountBadge={form.discount_badge}
+              propertyTypes={metaQuery.data?.property_types ?? []}
+              content={form.content}
+              contentEditorKey={`service-content-${id ?? 'new'}-${contentEditorEpoch}`}
+              isFeatured={form.is_featured}
+              isHotDeal={form.is_hot_deal}
+              serviceId={id}
               locale={locale}
+              dealLabels={metaQuery.data?.deal_labels ?? []}
+              onChangeAttrs={(stay_attrs) => setForm((p) => ({ ...p, stay_attrs }))}
+              onChangeOptions={(options) => setForm((p) => ({ ...p, options }))}
+              onChangeStarRating={(star_rating) => setForm((p) => ({ ...p, star_rating }))}
+              onChangeDiscountBadge={(discount_badge) => setForm((p) => ({ ...p, discount_badge }))}
+              onChangeContent={(content) => set('content', content)}
+              onChangeFeatured={(is_featured) => set('is_featured', is_featured)}
+              onChangeHotDeal={(is_hot_deal) => set('is_hot_deal', is_hot_deal)}
             />
-          </FormSection>
+          ) : null}
+
+          {!isStay ? (
+            <FormSection title="Nội dung chi tiết">
+              <ArticleContentEditor
+                key={`service-content-${id ?? 'new'}-${contentEditorEpoch}`}
+                label="Nội dung chi tiết"
+                hint="HTML lịch trình / mô tả dịch vụ — AI chương trình ghi vào đây. Public render an toàn."
+                format="html"
+                compact
+                aiFieldKey="content"
+                value={form.content}
+                onChange={(next) => set('content', next)}
+              />
+              <Textarea
+                label="Điểm nổi bật (mỗi dòng)"
+                name="highlights"
+                value={form.highlights}
+                onChange={(e) => set('highlights', e.target.value)}
+              />
+              <Textarea
+                label="Bao gồm"
+                name="inclusions"
+                value={form.inclusions}
+                onChange={(e) => set('inclusions', e.target.value)}
+              />
+              <Textarea
+                label="Không bao gồm"
+                name="exclusions"
+                value={form.exclusions}
+                onChange={(e) => set('exclusions', e.target.value)}
+              />
+              <Textarea
+                label="Lưu ý"
+                name="notes"
+                value={form.notes}
+                onChange={(e) => set('notes', e.target.value)}
+              />
+              <div className="ui-form-flags">
+                <Switch
+                  label="Nổi bật"
+                  checked={form.is_featured}
+                  onChange={(v) => set('is_featured', v)}
+                />
+                <Switch
+                  label="Ưu đãi hot"
+                  checked={form.is_hot_deal}
+                  onChange={(v) => set('is_hot_deal', v)}
+                />
+              </div>
+            </FormSection>
+          ) : null}
+
+          {!isStay ? (
+            <FormSection
+              icon={Wallet}
+              title="Bảng giá chi tiết"
+              description="Theo ngày / khoảng / năm × tuỳ chọn × đối tượng khách × khuyến mãi. Giá “từ” dùng cho listing."
+            >
+              <PriceTableEditor
+                value={form.price_table}
+                onChange={(price_table) => set('price_table', price_table)}
+                locale={locale}
+              />
+            </FormSection>
+          ) : null}
 
           <FormFooter
             cancelHref={
@@ -489,6 +516,7 @@ function FormInner() {
               detailQuery.data?.seo?.slug_full,
               locale,
               metaQuery.data?.default_locale || 'vi',
+              { preview: form.status !== 'published' },
             )}
             preActions={
               isStay ? (
@@ -540,6 +568,7 @@ function FormInner() {
               role="gallery"
               value={form.gallery}
               onChange={(gallery) => set('gallery', gallery)}
+              maxItems={isStay ? 120 : 40}
             />
           </FormGalleryCard>
         </FormMediaAside>

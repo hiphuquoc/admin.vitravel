@@ -60,16 +60,64 @@ function hotelLabel(url: string): string {
 }
 
 function previewUrl(slugFull: string | null | undefined, locale: string, defaultLocale: string): string | null {
-  const base = publicPageUrl(slugFull, locale, defaultLocale);
-  if (!base) return null;
-  const sep = base.includes('?') ? '&' : '?';
-  return `${base}${sep}preview=1`;
+  return publicPageUrl(slugFull, locale, defaultLocale, { preview: true });
 }
 
 type ExistsDetails = {
   count: number;
   items: { source_url: string; status: string; slug_full?: string | null }[];
 };
+
+type ImproveFrom = 'basic' | 'gallery' | 'rooms' | 'rooms_modals';
+
+type ExistsChoiceId = 'replace' | ImproveFrom;
+
+const EXISTS_CHOICES: {
+  id: ExistsChoiceId;
+  rerun: 'improve' | 'replace';
+  from?: ImproveFrom;
+  label: string;
+  hint: string;
+}[] = [
+  {
+    id: 'replace',
+    rerun: 'replace',
+    label: 'Xóa sạch — cào lại hết',
+    hint: 'Xóa draft + SEO + hạng phòng, rồi cào mới',
+  },
+  {
+    id: 'basic',
+    rerun: 'improve',
+    from: 'basic',
+    label: 'Cải thiện — từ đầu (property)',
+    hint: 'Giữ draft; cào lại property → gallery → phòng',
+  },
+  {
+    id: 'gallery',
+    rerun: 'improve',
+    from: 'gallery',
+    label: 'Cải thiện — gallery + phòng',
+    hint: 'Giữ draft; chỉ tải lại ảnh và hạng phòng',
+  },
+  {
+    id: 'rooms',
+    rerun: 'improve',
+    from: 'rooms',
+    label: 'Cải thiện — chỉ phòng',
+    hint: 'Rate table + modal phòng (bỏ qua gallery)',
+  },
+  {
+    id: 'rooms_modals',
+    rerun: 'improve',
+    from: 'rooms_modals',
+    label: 'Cải thiện — chỉ modal phòng',
+    hint: 'Giữ danh sách hash; scrape lại từng phòng',
+  },
+];
+
+function existsChoiceLabel(id: ExistsChoiceId): string {
+  return EXISTS_CHOICES.find((o) => o.id === id)?.label || id;
+}
 
 export default function StayCrawlerPage() {
   const { can } = useAuth();
@@ -81,11 +129,13 @@ export default function StayCrawlerPage() {
   const [mode, setMode] = useState<'hotel' | 'list'>('hotel');
   const [url, setUrl] = useState('');
   const [html, setHtml] = useState('');
-  const [maxPages, setMaxPages] = useState(1);
+  const [maxPages, setMaxPages] = useState(5);
   const [useProxy, setUseProxy] = useState(false);
   const [running, setRunning] = useState(false);
   const runningRef = useRef(false);
   const pendingRerunRef = useRef<'improve' | 'replace' | null>(null);
+  const pendingFromRef = useRef<ImproveFrom>('basic');
+  const [existsChoice, setExistsChoice] = useState<ExistsChoiceId>('basic');
   const [log, setLog] = useState<string[]>([]);
   const [exists, setExists] = useState<ExistsDetails | null>(null);
 
@@ -128,8 +178,12 @@ export default function StayCrawlerPage() {
     await qc.invalidateQueries({ queryKey: ['stay-crawls-job'] });
   };
 
-  const runCrawl = async (rerun?: 'improve' | 'replace') => {
+  const runCrawl = async (rerun?: 'improve' | 'replace', from?: ImproveFrom) => {
     const resolvedRerun = rerun ?? pendingRerunRef.current ?? undefined;
+    const resolvedFrom =
+      resolvedRerun === 'improve'
+        ? (from ?? pendingFromRef.current)
+        : undefined;
     if (runningRef.current) {
       return;
     }
@@ -152,6 +206,7 @@ export default function StayCrawlerPage() {
     }
 
     pendingRerunRef.current = null;
+    pendingFromRef.current = 'basic';
     runningRef.current = true;
     setRunning(true);
     setExists(null);
@@ -159,9 +214,9 @@ export default function StayCrawlerPage() {
     const runList = mode === 'list' && !hotelUrl;
     const rerunLabel =
       resolvedRerun === 'improve'
-        ? 'cải thiện (bổ sung / ghi đè phần có dữ liệu)'
+        ? existsChoiceLabel((resolvedFrom || 'basic') as ExistsChoiceId)
         : resolvedRerun === 'replace'
-          ? 'xóa sạch rồi cào lại'
+          ? existsChoiceLabel('replace')
           : null;
     appendLog(
       (runList ? `Bắt đầu crawler danh mục: ${listUrl}` : `Bắt đầu crawler 1 chỗ nghỉ: ${listUrl}`) +
@@ -169,7 +224,7 @@ export default function StayCrawlerPage() {
     );
 
     try {
-      appendLog('Đang lấy danh sách chỗ nghỉ…');
+      appendLog(runList ? 'Đang lấy danh sách chỗ nghỉ…' : 'Đã nhận URL — xếp hàng, Chrome sẽ chạy từng bước…');
       const started = await stayCrawlsApi.fromCategory({
         service_category_id: categoryId,
         url: listUrl,
@@ -177,6 +232,7 @@ export default function StayCrawlerPage() {
         max_pages: runList ? maxPages : 1,
         use_proxy: useProxy || undefined,
         ...(resolvedRerun ? { rerun: resolvedRerun } : {}),
+        ...(resolvedRerun === 'improve' && resolvedFrom ? { from: resolvedFrom } : {}),
       });
       const jobId = started.job?.id;
       const total =
@@ -193,32 +249,62 @@ export default function StayCrawlerPage() {
       } else {
         appendLog('⚠ Chưa thấy URL trong phản hồi — vẫn xử lý item đã xếp hàng…');
       }
+      if (started.worker_hint) {
+        appendLog(`• ${started.worker_hint}`);
+      }
+      if (started.job?.list?.pages_done) {
+        appendLog(
+          `• Listing: ${started.job.list.pages_done}/${started.job.list.max_pages || '?'} trang` +
+            (started.job.list.stopped_reason ? ` (dừng: ${started.job.list.stopped_reason})` : ''),
+        );
+      }
 
       let guard = 0;
       let networkFails = 0;
-      const maxSteps = runList ? 200 : 12;
-      while (guard < maxSteps) {
-        guard++;
+      let lastSeq = 0;
+      let loggedBusy = false;
+      let busySince = 0;
+      const workerMode = Boolean(started.worker?.running || started.job?.worker_alive || runList);
+      // Gallery 80 ảnh có thể >5 phút; không đếm poll "busy" vào giới hạn bước.
+      // Danh mục + worker: poll chỉ theo dõi — không cắt sớm (có thể chạy nhiều ngày).
+      const maxCompletedSteps = workerMode ? 50_000 : runList ? 400 : 120;
+      const maxWallMs = workerMode ? 7 * 24 * 60 * 60_000 : runList ? 90 * 60_000 : 45 * 60_000;
+      const startedAt = Date.now();
+      while (guard < maxCompletedSteps && Date.now() - startedAt < maxWallMs) {
         try {
           const step = await stayCrawlsApi.processNext(jobId, {
             locale,
-            html: guard === 1 && html.trim() ? html.trim() : undefined,
+            html: lastSeq === 0 && html.trim() ? html.trim() : undefined,
             use_proxy: useProxy || undefined,
           });
           networkFails = 0;
 
-          const itemLabel = step.item ? hotelLabel(step.item.source_url) : '?';
-          if (step.item?.status === 'blocked') {
-            appendLog(`✗ ${itemLabel} — bị chặn (${step.item.blocked_reason || 'unknown'})`);
-          } else if (step.item?.status === 'failed') {
-            appendLog(`✗ ${itemLabel} — lỗi: ${step.item.error || 'unknown'}`);
-          } else if (step.service?.slug_full) {
-            appendLog(`✓ ${itemLabel} → /${step.service.slug_full}`);
-          } else if (step.item) {
-            appendLog(`• ${itemLabel} — ${statusLabel(step.item.status || 'processing')}`);
+          const seq = Number(step.last_step?.seq || 0);
+          if (seq > lastSeq) {
+            lastSeq = seq;
+            guard++;
+            loggedBusy = false;
+            busySince = 0;
+            const itemLabel = step.item
+              ? hotelLabel(step.item.source_url)
+              : hotelLabel(String(step.last_step?.source_url || listUrl));
+            const status = step.item?.status || step.last_step?.item_status;
+            const phase = String(step.phase || step.last_step?.phase || '');
+            if (status === 'blocked') {
+              appendLog(
+                `✗ ${itemLabel} — bị chặn (${step.item?.blocked_reason || step.last_step?.blocked_reason || 'unknown'})`,
+              );
+            } else if (status === 'failed') {
+              appendLog(`✗ ${itemLabel} — lỗi: ${step.item?.error || step.last_step?.error || 'unknown'}`);
+            } else if (step.service?.slug_full && phase === 'basic') {
+              appendLog(`✓ ${itemLabel} → /${step.service.slug_full}`);
+            } else if (step.message || step.last_step?.message) {
+              const msg = String(step.message || step.last_step?.message || '');
+              appendLog(`• ${itemLabel} — ${phase ? `[${phase}] ` : ''}${msg}`);
+            }
           }
 
-          if (step.done) {
+          if (step.done && !step.busy) {
             if (!step.item && step.imported === 0 && step.blocked === 0 && step.failed === 0) {
               appendLog('⚠ Không xử lý được chỗ nghỉ nào. Thử Cải thiện hoặc Xóa sạch rồi cào lại.');
             } else {
@@ -227,6 +313,35 @@ export default function StayCrawlerPage() {
             }
             break;
           }
+
+          if (step.busy) {
+            if (!busySince) {
+              busySince = Date.now();
+            }
+            const waitedSec = Math.round((Date.now() - busySince) / 1000);
+            const msg = String(step.message || '');
+            const isWorker = /worker/i.test(msg) || Boolean(step.job?.worker_alive);
+            if (!loggedBusy) {
+              appendLog(
+                isWorker
+                  ? 'Worker nền đang chạy — có thể đóng tab; poll chỉ theo dõi tiến độ…'
+                  : 'Chrome đang chạy nền (gallery/phòng có thể 2–8 phút/bước)…',
+              );
+              loggedBusy = true;
+            } else if (waitedSec > 0 && waitedSec % 60 < 5) {
+              const rem = step.remaining ?? step.job?.worker?.remaining;
+              appendLog(
+                isWorker
+                  ? `… worker còn ~${rem ?? '?'} bước (${waitedSec}s) — log: storage/logs/stay-crawl-work-${jobId}.log`
+                  : `… vẫn chạy nền (${waitedSec}s) — đợi gallery/phòng`,
+              );
+            }
+            await new Promise((r) => setTimeout(r, isWorker ? 5000 : 2500));
+            continue;
+          }
+
+          busySince = 0;
+          await new Promise((r) => setTimeout(r, 400));
         } catch (e) {
           const err = e as ApiClientError;
           networkFails++;
@@ -238,12 +353,22 @@ export default function StayCrawlerPage() {
           await new Promise((r) => setTimeout(r, 4000));
         }
       }
+      if (guard >= maxCompletedSteps || Date.now() - startedAt >= maxWallMs) {
+        appendLog(
+          workerMode
+            ? '⚠ Đã dừng poll UI — worker nền (nếu còn chạy) vẫn tiếp tục. Resume: API work hoặc `php artisan stay-crawl:work ' +
+                jobId +
+                '`.'
+            : '⚠ Hết thời gian chờ poll — nếu gallery đã xong mà thiếu phòng, bấm Cải thiện để chạy tiếp enrich.',
+        );
+      }
 
       await refresh();
     } catch (e) {
       const err = e as ApiClientError;
       if (err.code === 'STAY_CRAWL_EXISTS') {
         const details = err.details as ExistsDetails | undefined;
+        setExistsChoice('basic');
         setExists({
           count: details?.count || 1,
           items: details?.items || [],
@@ -306,10 +431,10 @@ export default function StayCrawlerPage() {
             <Input
               label="Số trang list"
               type="number"
-              hint="Chỉ dùng khi cào searchresults (1–5)."
+              hint="Phân trang offset Booking (~25 URL/trang). Tối đa 80; worker nền chạy lần lượt."
               value={String(maxPages)}
               disabled={running || !canCreate}
-              onChange={(e) => setMaxPages(Math.min(5, Math.max(1, Number(e.target.value) || 1)))}
+              onChange={(e) => setMaxPages(Math.min(80, Math.max(1, Number(e.target.value) || 1)))}
             />
           ) : null}
         </div>
@@ -339,6 +464,16 @@ export default function StayCrawlerPage() {
         {statusQuery.data && !statusQuery.data.browser_ready ? (
           <p className="ui-field__hint" style={{ color: 'var(--admin-warning)' }}>
             ⚠ Chưa cài crawler Chrome. Trên server chạy: <code>cd scripts/stay-crawl && npm ci</code>
+          </p>
+        ) : null}
+
+        {statusQuery.data?.browser_ready && (statusQuery.data.headed || statusQuery.data.headless === false) ? (
+          <p className="ui-field__hint">
+            Chrome sẽ <strong>mở cửa sổ trên màn hình</strong> để bạn xem thao tác. Mỗi bước crawler mở một cửa sổ rồi đóng.
+          </p>
+        ) : statusQuery.data?.browser_ready ? (
+          <p className="ui-field__hint">
+            Chrome đang chạy ẩn (headless). Để xem thao tác, đặt <code>STAY_CRAWL_HEADLESS=false</code> trong .env rồi <code>php artisan config:clear</code>.
           </p>
         ) : null}
 
@@ -437,72 +572,104 @@ export default function StayCrawlerPage() {
 
       {exists && !running ? (
         <div className="ui-modal ui-modal--open" role="dialog" aria-modal="true">
-          <button type="button" className="ui-modal__veil" aria-label="Đóng" onClick={() => {
-            pendingRerunRef.current = null;
-            setExists(null);
-          }} />
-          <div className="ui-modal__card ui-modal__card--form">
+          <button
+            type="button"
+            className="ui-modal__veil"
+            aria-label="Đóng"
+            onClick={() => {
+              pendingRerunRef.current = null;
+              setExistsChoice('basic');
+              setExists(null);
+            }}
+          />
+          <div className="ui-modal__card ui-modal__card--form" style={{ width: 'min(28rem, 100%)' }}>
             <header className="ui-modal__head">
-              <p className="ui-modal__eyebrow">Crawler Booking.com</p>
-              <h2 className="ui-modal__title">URL đã cào trước đó</h2>
-              <p className="ui-modal__desc">
-                {exists.count} chỗ nghỉ đã có trong hệ thống. Chọn cách chạy lại — không bỏ qua im lặng.
+              <h2 className="ui-modal__title">URL đã cào</h2>
+              <p className="ui-modal__desc" style={{ marginBottom: 0 }}>
+                {exists.items[0]
+                  ? hotelLabel(exists.items[0].source_url)
+                  : `${exists.count} chỗ nghỉ`}
+                {exists.count > 1 ? ` (+${exists.count - 1})` : ''}
               </p>
             </header>
-            <div className="ui-modal__body">
-              <ul className="ui-field__hint" style={{ margin: 0, paddingLeft: '1.1rem' }}>
-                {exists.items.slice(0, 8).map((row) => (
-                  <li key={row.source_url}>
-                    {hotelLabel(row.source_url)}
-                    {row.slug_full ? ` — /${row.slug_full}` : ` (${row.status})`}
-                  </li>
-                ))}
-              </ul>
-              <p className="ui-field__hint">
-                <strong>Cải thiện:</strong> cào lại, điền box còn thiếu; chỗ crawler có dữ liệu thì ghi đè. Giữ FAQ /
-                hạng phòng cũ nếu lần này không tách được.
-                <br />
-                <strong>Xóa sạch:</strong> xóa trang chỗ nghỉ + SEO + hạng phòng + FAQ rồi cào mới, không để bản ghi rác.
-              </p>
+            <div className="ui-modal__body" style={{ paddingTop: '0.75rem' }}>
+              <fieldset style={{ border: 0, margin: 0, padding: 0 }}>
+                <legend className="ui-field__label" style={{ marginBottom: '0.5rem' }}>
+                  Chọn hành động
+                </legend>
+                <div style={{ display: 'grid', gap: '0.4rem' }}>
+                  {EXISTS_CHOICES.map((opt) => {
+                    const active = existsChoice === opt.id;
+                    return (
+                      <label
+                        key={opt.id}
+                        style={{
+                          display: 'flex',
+                          gap: '0.55rem',
+                          alignItems: 'flex-start',
+                          cursor: 'pointer',
+                          padding: '0.5rem 0.6rem',
+                          borderRadius: '0.45rem',
+                          border: active
+                            ? '1px solid var(--color-accent, #3b82f6)'
+                            : '1px solid var(--color-line, #e5e5e5)',
+                          background: active
+                            ? 'color-mix(in srgb, var(--color-accent, #3b82f6) 8%, transparent)'
+                            : undefined,
+                        }}
+                      >
+                        <input
+                          type="radio"
+                          name="exists-choice"
+                          value={opt.id}
+                          checked={active}
+                          onChange={() => setExistsChoice(opt.id)}
+                          style={{ marginTop: '0.15rem' }}
+                        />
+                        <span>
+                          <strong style={{ display: 'block', fontSize: '0.9rem' }}>{opt.label}</strong>
+                          <span className="ui-field__hint" style={{ display: 'block', marginTop: '0.1rem' }}>
+                            {opt.hint}
+                          </span>
+                        </span>
+                      </label>
+                    );
+                  })}
+                </div>
+              </fieldset>
             </div>
             <footer className="ui-modal__foot">
-              <Button type="button" variant="ghost" disabled={running} onClick={() => {
-                pendingRerunRef.current = null;
-                setExists(null);
-              }}>
-                Hủy
-              </Button>
               <Button
                 type="button"
                 variant="ghost"
                 disabled={running}
-                loading={running}
-                onMouseDown={() => {
-                  pendingRerunRef.current = 'improve';
-                }}
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  void runCrawl('improve');
+                onClick={() => {
+                  pendingRerunRef.current = null;
+                  setExistsChoice('basic');
+                  setExists(null);
                 }}
               >
-                Cải thiện
+                Hủy
               </Button>
               <Button
                 type="button"
-                variant="danger"
+                variant={existsChoice === 'replace' ? 'danger' : 'primary'}
                 disabled={running}
                 loading={running}
-                onMouseDown={() => {
-                  pendingRerunRef.current = 'replace';
-                }}
                 onClick={(e) => {
                   e.preventDefault();
                   e.stopPropagation();
-                  void runCrawl('replace');
+                  const chosen = EXISTS_CHOICES.find((o) => o.id === existsChoice) || EXISTS_CHOICES[1];
+                  pendingRerunRef.current = chosen.rerun;
+                  if (chosen.rerun === 'improve' && chosen.from) {
+                    pendingFromRef.current = chosen.from;
+                    void runCrawl('improve', chosen.from);
+                  } else {
+                    void runCrawl('replace');
+                  }
                 }}
               >
-                Xóa sạch rồi cào lại
+                Xác nhận
               </Button>
             </footer>
           </div>

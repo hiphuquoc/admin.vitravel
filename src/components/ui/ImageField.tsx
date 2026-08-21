@@ -230,7 +230,7 @@ export function ImageField({
         {hasImage ? (
           <div className="ui-image-field__preview" style={{ aspectRatio }}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={displayUrl!} alt={value.media?.alt || a11y} />
+            <img src={displayUrl!} alt={value.media?.alt || a11y} referrerPolicy="no-referrer" />
             {uploading ? (
               <div className="ui-image-field__progress">
                 <div className="ui-image-field__progress-bar" style={{ width: `${progress}%` }} />
