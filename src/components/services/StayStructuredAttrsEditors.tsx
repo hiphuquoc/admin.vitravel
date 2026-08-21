@@ -154,8 +154,10 @@ function serializeNearbyGroups(rows: { key: string; items: NearbyItem[] }[]): st
       .map((r) => {
         const name = r.name.trim();
         if (!name) return null;
-        const item: NearbyItem = { name };
-        if (r.distance.trim()) item.distance = r.distance.trim();
+        const item: NearbyItem = {
+          name,
+          distance: r.distance.trim(),
+        };
         if (r.icon?.trim()) item.icon = r.icon.trim();
         if (r.category?.trim()) item.category = r.category.trim();
         return item;

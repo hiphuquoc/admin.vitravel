@@ -85,3 +85,4 @@ Import trace for requested module:
  GET /services/products/form/?id=243&cluster=stay 200 in 2954ms
  ✓ Compiled in 13s (2074 modules)
  ✓ Compiled in 1976ms (2074 modules)
+ ✓ Compiled in 31.9s (2074 modules)
