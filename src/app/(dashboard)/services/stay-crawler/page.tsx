@@ -19,6 +19,7 @@ import { EntityList, EntityMain, EntityRow, EntityActions } from '@/components/u
 import { useAuth } from '@/lib/auth-context';
 import { publicPageUrl } from '@/lib/publicUrl';
 import { DEFAULT_LOCALE } from '@/lib/locale';
+import { CrawlerTerminalLog } from '@/components/services/CrawlerTerminalLog';
 
 function statusTone(status: string): 'success' | 'warning' | 'danger' | 'neutral' | 'primary' {
   if (status === 'imported' || status === 'ai_done' || status === 'done') return 'success';
@@ -555,9 +556,7 @@ export default function StayCrawlerPage() {
       {/* Live log */}
       {log.length > 0 && (
         <FormSection icon={RefreshCw} title="Live Log" description={running ? 'Đang chạy…' : 'Hoàn tất'}>
-          <pre className="ui-code-block" style={{ maxHeight: '320px', overflow: 'auto', fontSize: '12px', lineHeight: 1.7 }}>
-            {log.join('\n')}
-          </pre>
+          <CrawlerTerminalLog logs={log} running={running} maxHeight="24rem" />
         </FormSection>
       )}
 
@@ -615,21 +614,31 @@ export default function StayCrawlerPage() {
       {running ? (
         <div className="ui-modal ui-modal--open" role="dialog" aria-modal="true">
           <div className="ui-modal__veil" />
-          <div className="ui-modal__card ui-modal__card--form" style={{ width: 'min(40rem, 100%)' }}>
-            <header className="ui-modal__head">
-              <p className="ui-modal__eyebrow">Crawler Booking.com</p>
-              <h2 className="ui-modal__title">Đang cào…</h2>
-              <p className="ui-modal__desc">Giữ trang này mở đến khi xong. Chrome đang lấy HTML rồi map sang draft.</p>
+          <div className="ui-crawler-modal" role="document">
+            <header className="ui-crawler-modal__head">
+              <div className="ui-crawler-modal__brand">
+                <div className="ui-crawler-modal__icon-box">
+                  <RefreshCw size={18} className="animate-spin" />
+                </div>
+                <div className="ui-crawler-modal__titles">
+                  <p className="ui-crawler-modal__eyebrow\">Booking.com Crawler Engine</p>
+                  <h2 className="ui-crawler-modal__title\">Tiến trình cào dữ liệu</h2>
+                </div>
+              </div>
+              <div className="ui-crawler-modal__badge">
+                <span className="ui-crawler-modal__pulse-dot" />
+                <span>Đang xử lý</span>
+              </div>
             </header>
-            <div className="ui-modal__body">
-              <pre className="ui-code-block" style={{ maxHeight: '280px', overflow: 'auto', fontSize: '12px', lineHeight: 1.7, margin: 0 }}>
-                {log.join('\n') || 'Khởi chạy…'}
-              </pre>
+            <div className="ui-crawler-modal__body">
+              <p className="ui-crawler-modal__hint">
+                Hệ thống đang điều khiển Chrome lấy HTML, ảnh gallery & tiện ích phòng. Vui lòng giữ cửa sổ này mở.
+              </p>
+              <CrawlerTerminalLog logs={log} running={running} maxHeight="min(50vh, 22rem)" />
             </div>
           </div>
         </div>
       ) : null}
-
       {exists && !running ? (
         <div className="ui-modal ui-modal--open" role="dialog" aria-modal="true">
           <button

@@ -8232,3 +8232,317 @@ html.is-navigating {
   }
 }
 
+
+/* ── Crawler Terminal / Live Log Modal & Console ── */
+.ui-crawler-modal {
+  width: min(48rem, calc(100vw - 2rem)) !important;
+  max-height: calc(100vh - 2.5rem);
+  display: flex !important;
+  flex-direction: column;
+  background: var(--admin-surface);
+  border: 1px solid var(--admin-line);
+  border-radius: var(--admin-radius-xl);
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.4), var(--admin-shadow-lg);
+  overflow: hidden;
+  animation: uiBlockingIn 220ms var(--admin-ease) both;
+
+  &__head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 1.1rem 1.4rem;
+    background: var(--admin-surface);
+    border-bottom: 1px solid var(--admin-line);
+    flex-shrink: 0;
+  }
+
+  &__brand {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+  }
+
+  &__icon-box {
+    display: grid;
+    place-items: center;
+    width: 2.35rem;
+    height: 2.35rem;
+    border-radius: var(--admin-radius-md);
+    background: color-mix(in srgb, var(--admin-primary-500) 14%, transparent);
+    color: var(--admin-primary-500);
+    border: 1px solid color-mix(in srgb, var(--admin-primary-500) 25%, transparent);
+    flex-shrink: 0;
+  }
+
+  &__titles {
+    display: grid;
+    gap: 0.15rem;
+  }
+
+  &__eyebrow {
+    margin: 0;
+    font-size: 0.7rem;
+    font-weight: 750;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--admin-primary-600);
+  }
+
+  &__title {
+    margin: 0;
+    font-size: 1.08rem;
+    font-weight: 750;
+    letter-spacing: -0.02em;
+    color: var(--admin-ink);
+  }
+
+  &__badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    padding: 0.35rem 0.75rem;
+    border-radius: 999px;
+    font-size: 0.76rem;
+    font-weight: 650;
+    letter-spacing: 0.02em;
+    background: color-mix(in srgb, var(--admin-primary-500) 12%, transparent);
+    color: var(--admin-primary-600);
+    border: 1px solid color-mix(in srgb, var(--admin-primary-500) 26%, transparent);
+
+    &--done {
+      background: color-mix(in srgb, var(--admin-success) 12%, transparent);
+      color: var(--admin-success);
+      border-color: color-mix(in srgb, var(--admin-success) 26%, transparent);
+    }
+  }
+
+  &__pulse-dot {
+    width: 0.5rem;
+    height: 0.5rem;
+    border-radius: 50%;
+    background: var(--admin-primary-500);
+    box-shadow: 0 0 0 0 rgba(107, 143, 63, 0.7);
+    animation: crawlerPulse 1.8s infinite;
+  }
+
+  &__body {
+    padding: 1.25rem 1.4rem;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    gap: 0.85rem;
+    flex: 1 1 auto;
+    min-height: 0;
+  }
+
+  &__hint {
+    margin: 0;
+    font-size: 0.84rem;
+    line-height: 1.5;
+    color: var(--admin-muted);
+  }
+
+  &__foot {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.85rem 1.4rem;
+    background: color-mix(in srgb, var(--admin-surface-tint) 50%, var(--admin-surface));
+    border-top: 1px solid var(--admin-line);
+    flex-shrink: 0;
+  }
+}
+
+@keyframes crawlerPulse {
+  0% {
+    transform: scale(0.95);
+    box-shadow: 0 0 0 0 rgba(107, 143, 63, 0.7);
+  }
+  70% {
+    transform: scale(1.15);
+    box-shadow: 0 0 0 6px rgba(107, 143, 63, 0);
+  }
+  100% {
+    transform: scale(0.95);
+    box-shadow: 0 0 0 0 rgba(107, 143, 63, 0);
+  }
+}
+
+/* Dark Tech Terminal Box */
+.ui-crawler-terminal {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  border-radius: var(--admin-radius-lg);
+  background: #090c09;
+  border: 1px solid rgba(107, 143, 63, 0.22);
+  box-shadow: inset 0 2px 10px rgba(0, 0, 0, 0.6), 0 8px 24px rgba(0, 0, 0, 0.25);
+  overflow: hidden;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
+  max-height: 25rem;
+  min-height: 12rem;
+  flex: 1 1 auto;
+
+  &--expanded {
+    max-height: 32rem;
+  }
+
+  &__bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.55rem 0.9rem;
+    background: #050705;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+    flex-shrink: 0;
+    user-select: none;
+  }
+
+  &__dots {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+
+    span {
+      width: 0.65rem;
+      height: 0.65rem;
+      border-radius: 50%;
+      display: block;
+
+      &:nth-child(1) { background: #ff5f56; }
+      &:nth-child(2) { background: #ffbd2e; }
+      &:nth-child(3) { background: #27c93f; }
+    }
+  }
+
+  &__label {
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.45);
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+
+  &__lines {
+    padding: 0.85rem 1rem 1rem;
+    margin: 0;
+    list-style: none;
+    overflow-y: auto;
+    overflow-x: hidden;
+    flex: 1 1 auto;
+    font-size: 0.8rem;
+    line-height: 1.65;
+    word-break: break-word;
+    white-space: pre-wrap;
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+
+    /* Custom Tech Scrollbar */
+    scrollbar-width: thin;
+    scrollbar-color: rgba(107, 143, 63, 0.4) rgba(0, 0, 0, 0.3);
+
+    &::-webkit-scrollbar {
+      width: 6px;
+    }
+    &::-webkit-scrollbar-track {
+      background: rgba(0, 0, 0, 0.2);
+    }
+    &::-webkit-scrollbar-thumb {
+      background: linear-gradient(180deg, var(--admin-primary-500) 0%, var(--admin-primary-700) 100%);
+      border-radius: 999px;
+    }
+    &::-webkit-scrollbar-thumb:hover {
+      background: linear-gradient(180deg, var(--admin-primary-400) 0%, var(--admin-primary-600) 100%);
+    }
+  }
+
+  &__row {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.65rem;
+    min-width: 0;
+    transition: background var(--admin-dur-fast) ease;
+    padding: 0.1rem 0.25rem;
+    border-radius: 0.25rem;
+
+    &:hover {
+      background: rgba(255, 255, 255, 0.03);
+    }
+  }
+
+  &__time {
+    color: rgba(255, 255, 255, 0.35);
+    font-size: 0.74rem;
+    flex-shrink: 0;
+    font-variant-numeric: tabular-nums;
+  }
+
+  &__text {
+    flex: 1 1 auto;
+    min-width: 0;
+    color: #d1d5db; /* Default light silver */
+
+    /* Token highlights */
+    &--success {
+      color: #7dca94; /* Brand/Success green */
+      font-weight: 600;
+    }
+
+    &--error {
+      color: #f87171; /* High-tech vivid red */
+      font-weight: 600;
+    }
+
+    &--warn {
+      color: #fbbf24; /* Vivid amber */
+    }
+
+    &--info {
+      color: #93c5fd; /* Soft tech blue */
+    }
+
+    &--brand {
+      color: #a3e635; /* Lime / Leaf brand accent */
+    }
+
+    &--url {
+      color: #67e8f9; /* Cyan for URLs */
+      text-decoration: underline;
+      text-underline-offset: 2px;
+      word-break: break-all;
+    }
+  }
+
+  &__cursor {
+    display: inline-block;
+    width: 0.45rem;
+    height: 0.95rem;
+    background: var(--admin-primary-500);
+    margin-left: 0.35rem;
+    vertical-align: middle;
+    animation: terminalBlink 1s infinite;
+  }
+}
+
+@keyframes terminalBlink {
+  0%, 49% { opacity: 1; }
+  50%, 100% { opacity: 0; }
+}
+
+[data-theme='dark'] .ui-crawler-modal {
+  background: var(--admin-surface-raised);
+  border-color: var(--admin-line-strong);
+
+  &__head {
+    background: var(--admin-surface-raised);
+    border-color: var(--admin-line-strong);
+  }
+
+  &__foot {
+    background: var(--admin-surface);
+    border-color: var(--admin-line-strong);
+  }
+}

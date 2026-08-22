@@ -13,47 +13,24 @@ nohup: ignoring input
    - Environments: .env.local
 
  ✓ Starting...
- ✓ Ready in 2.6s
- ○ Compiling /tours/packages ...
- ✓ Compiled /tours/packages in 2.8s (923 modules)
- GET /tours/packages/ 200 in 3556ms
- ○ Compiling /tours/packages/form ...
- ✓ Compiled /tours/packages/form in 2.5s (1236 modules)
- GET /tours/packages/form/?id=96 200 in 2836ms
- GET /tours/packages/ 200 in 83ms
- ○ Compiling /cruises/packages ...
- ✓ Compiled /cruises/packages in 930ms (1243 modules)
- GET /cruises/packages/ 200 in 1095ms
+ ✓ Ready in 5.3s
+ ○ Compiling / ...
+ ✓ Compiled / in 4.3s (891 modules)
+ GET / 200 in 6219ms
+ ○ Compiling /login ...
+ ✓ Compiled /login in 4.4s (1723 modules)
+ GET /login?next=%2F 200 in 4827ms
+ GET / 200 in 201ms
+ GET / 200 in 168ms
+ ○ Compiling /services/stay-crawler ...
+ ✓ Compiled /services/stay-crawler in 3.2s (1750 modules)
+ GET /services/stay-crawler/ 200 in 3610ms
  ○ Compiling /services/products ...
- ✓ Compiled /services/products in 1326ms (1252 modules)
- GET /services/products/?cluster=ferry 200 in 1450ms
- GET /services/products/?cluster=flight 200 in 42ms
- GET /services/products/?cluster=stay 200 in 40ms
- GET /services/products/?cluster=experience 200 in 43ms
- GET /services/products/?cluster=other 200 in 41ms
- ○ Compiling /services/categories ...
- ✓ Compiled /services/categories in 1015ms (1254 modules)
- GET /services/categories/?cluster=stay 200 in 1206ms
- ○ Compiling /tours/destinations ...
- ✓ Compiled /tours/destinations in 599ms (1261 modules)
- GET /tours/destinations/ 200 in 756ms
- ○ Compiling /tours/categories ...
- ✓ Compiled /tours/categories in 770ms (1268 modules)
- GET /tours/categories/ 200 in 881ms
- ○ Compiling /cruises/types ...
- ✓ Compiled /cruises/types in 627ms (1275 modules)
- GET /cruises/types/ 200 in 738ms
- ○ Compiling /cruises/packages ...
- ✓ Compiled /cruises/packages in 659ms (721 modules)
- GET /cruises/packages/ 200 in 815ms
- GET /cruises/packages/ 200 in 307ms
- GET /tours/packages/ 200 in 63ms
- GET /tours/destinations/ 200 in 55ms
- ○ Compiling /content/blog-categories ...
- ✓ Compiled /content/blog-categories in 1529ms (1272 modules)
- GET /content/blog-categories/ 200 in 1685ms
- ○ Compiling /settings/hubs/[hubKey] ...
- ✓ Compiled /settings/hubs/[hubKey] in 2.7s (1318 modules)
- GET /settings/hubs/guide_hub/ 200 in 4712ms
- GET /settings/hubs/guide_hub/ 200 in 92ms
- GET /content/blog-categories/ 200 in 66ms
+ ✓ Compiled /services/products in 3.2s (1765 modules)
+ GET /services/products/?cluster=stay 200 in 3966ms
+ ○ Compiling /services/products/form ...
+ ✓ Compiled /services/products/form in 4.4s (2076 modules)
+ GET /services/products/form/?id=199&cluster=stay 200 in 4999ms
+ GET /services/products/?cluster=stay 200 in 327ms
+ GET /services/products/?cluster=stay 200 in 1288ms
+ GET /services/products/?cluster=stay 200 in 283ms
