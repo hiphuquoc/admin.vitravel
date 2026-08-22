@@ -265,14 +265,17 @@ export type StayCrawlJob = {
     offset?: number;
     urls_queued?: number;
     stopped_reason?: string | null;
+    mode?: string | null;
   } | null;
   worker?: {
     running?: boolean;
     paused?: boolean;
+    mode?: string | null;
     pid?: number | null;
     heartbeat_at?: string | null;
     stop_reason?: string | null;
     last_message?: string | null;
+    message?: string | null;
     remaining?: number;
     log?: string | null;
   } | null;
@@ -360,6 +363,9 @@ export const stayCrawlsApi = {
       items: StayCrawlItem[];
       worker?: StayCrawlJob['worker'];
       worker_hint?: string;
+      queue_hint?: string | null;
+      queue?: Record<string, unknown> | null;
+      queued?: { dispatched?: number; item_ids?: number[] };
     }>(
       '/stay-crawls/from-category',
       {

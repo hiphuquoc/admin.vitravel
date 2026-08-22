@@ -13,78 +13,47 @@ nohup: ignoring input
    - Environments: .env.local
 
  ✓ Starting...
- ✓ Ready in 8.1s
- ○ Compiling / ...
- ✓ Compiled / in 8.5s (891 modules)
- GET / 200 in 11331ms
- ○ Compiling /login ...
- ✓ Compiled /login in 8.6s (1737 modules)
- GET /login?next=%2F 200 in 8921ms
- GET /login?next=%2F 200 in 60ms
- GET / 200 in 78ms
- GET / 200 in 64ms
- ○ Compiling /services/stay-crawler ...
- ✓ Compiled /services/stay-crawler in 1925ms (1748 modules)
- GET /services/stay-crawler/ 200 in 2152ms
+ ✓ Ready in 2.6s
+ ○ Compiling /tours/packages ...
+ ✓ Compiled /tours/packages in 2.8s (923 modules)
+ GET /tours/packages/ 200 in 3556ms
+ ○ Compiling /tours/packages/form ...
+ ✓ Compiled /tours/packages/form in 2.5s (1236 modules)
+ GET /tours/packages/form/?id=96 200 in 2836ms
+ GET /tours/packages/ 200 in 83ms
+ ○ Compiling /cruises/packages ...
+ ✓ Compiled /cruises/packages in 930ms (1243 modules)
+ GET /cruises/packages/ 200 in 1095ms
  ○ Compiling /services/products ...
- ✓ Compiled /services/products in 1604ms (1763 modules)
- GET /services/products/?cluster=stay 200 in 2056ms
- ✓ Compiled in 13.2s (1777 modules)
- GET /services/products/?cluster=stay 200 in 1127ms
- GET /services/stay-crawler/ 200 in 435ms
- ✓ Compiled in 7.5s (1777 modules)
- GET /services/stay-crawler/ 200 in 989ms
- GET /services/products/?cluster=stay 200 in 943ms
- ○ Compiling /services/products/form ...
- ✓ Compiled /services/products/form in 4.8s (2068 modules)
- GET /services/products/form/?id=243&cluster=stay 200 in 5164ms
- ✓ Compiled in 1559ms (2068 modules)
- ✓ Compiled in 1670ms (2074 modules)
- ✓ Compiled in 785ms (2074 modules)
- ✓ Compiled in 1610ms (2074 modules)
- ✓ Compiled in 2.4s (2074 modules)
- ✓ Compiled in 1584ms (2074 modules)
- ✓ Compiled in 1495ms (2074 modules)
- ✓ Compiled in 813ms (2074 modules)
- ✓ Compiled in 5.1s (974 modules)
- GET /services/products/form/?id=243&cluster=stay 200 in 716ms
- GET /services/stay-crawler/ 200 in 364ms
- ✓ Compiled in 1298ms (2074 modules)
- ✓ Compiled in 1892ms (2074 modules)
- ✓ Compiled in 1165ms (2074 modules)
- ✓ Compiled in 4.1s (974 modules)
- GET /services/stay-crawler/ 200 in 679ms
- GET /services/products/form/?id=243&cluster=stay 200 in 646ms
- ✓ Compiled in 1615ms (2074 modules)
- ⚠ ./src/components/services/StayProductFields.tsx
-Attempted import error: 'StayNearbyEditor' is not exported from '@/components/services/StayStructuredAttrsEditors' (imported as 'StayNearbyEditor').
-
-Import trace for requested module:
-./src/components/services/StayProductFields.tsx
-./src/app/(dashboard)/services/products/form/page.tsx
-
-./src/components/services/StayProductFields.tsx
-Attempted import error: 'StayNearbyEditor' is not exported from '@/components/services/StayStructuredAttrsEditors' (imported as 'StayNearbyEditor').
-
-Import trace for requested module:
-./src/components/services/StayProductFields.tsx
-./src/app/(dashboard)/services/products/form/page.tsx
- ⚠ Fast Refresh had to perform a full reload due to a runtime error.
- GET /services/products/form/?id=243&cluster=stay 200 in 2159ms
- ✓ Compiled in 1413ms (2074 modules)
- ⚠ Fast Refresh had to perform a full reload due to a runtime error.
- GET /services/products/form/?id=243&cluster=stay 200 in 4544ms
- ✓ Compiled in 4.9s (974 modules)
- GET /services/stay-crawler/ 200 in 484ms
- ✓ Compiled in 2.8s (974 modules)
- GET /services/stay-crawler/ 200 in 127ms
- ✓ Compiled in 2.9s (974 modules)
- GET /services/stay-crawler/ 200 in 271ms
- ✓ Compiled in 3.7s (2074 modules)
- ⚠ Fast Refresh had to perform a full reload due to a runtime error.
- GET /services/products/form/?id=243&cluster=stay 200 in 2954ms
- ✓ Compiled in 13s (2074 modules)
- ✓ Compiled in 1976ms (2074 modules)
- ✓ Compiled in 31.9s (2074 modules)
- ✓ Compiled in 68.3s (2074 modules)
- ✓ Compiled in 3.7s (2074 modules)
+ ✓ Compiled /services/products in 1326ms (1252 modules)
+ GET /services/products/?cluster=ferry 200 in 1450ms
+ GET /services/products/?cluster=flight 200 in 42ms
+ GET /services/products/?cluster=stay 200 in 40ms
+ GET /services/products/?cluster=experience 200 in 43ms
+ GET /services/products/?cluster=other 200 in 41ms
+ ○ Compiling /services/categories ...
+ ✓ Compiled /services/categories in 1015ms (1254 modules)
+ GET /services/categories/?cluster=stay 200 in 1206ms
+ ○ Compiling /tours/destinations ...
+ ✓ Compiled /tours/destinations in 599ms (1261 modules)
+ GET /tours/destinations/ 200 in 756ms
+ ○ Compiling /tours/categories ...
+ ✓ Compiled /tours/categories in 770ms (1268 modules)
+ GET /tours/categories/ 200 in 881ms
+ ○ Compiling /cruises/types ...
+ ✓ Compiled /cruises/types in 627ms (1275 modules)
+ GET /cruises/types/ 200 in 738ms
+ ○ Compiling /cruises/packages ...
+ ✓ Compiled /cruises/packages in 659ms (721 modules)
+ GET /cruises/packages/ 200 in 815ms
+ GET /cruises/packages/ 200 in 307ms
+ GET /tours/packages/ 200 in 63ms
+ GET /tours/destinations/ 200 in 55ms
+ ○ Compiling /content/blog-categories ...
+ ✓ Compiled /content/blog-categories in 1529ms (1272 modules)
+ GET /content/blog-categories/ 200 in 1685ms
+ ○ Compiling /settings/hubs/[hubKey] ...
+ ✓ Compiled /settings/hubs/[hubKey] in 2.7s (1318 modules)
+ GET /settings/hubs/guide_hub/ 200 in 4712ms
+ GET /settings/hubs/guide_hub/ 200 in 92ms
+ GET /content/blog-categories/ 200 in 66ms

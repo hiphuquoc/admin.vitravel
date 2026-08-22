@@ -82,7 +82,6 @@ export function StayCategoryCrawler({
   const [url, setUrl] = useState('');
   const [html, setHtml] = useState('');
   const [useProxy, setUseProxy] = useState(false);
-  const [maxPages, setMaxPages] = useState(5);
 
   const statusQuery = useQuery({
     queryKey: ['stay-crawls-status'],
@@ -145,7 +144,6 @@ export function StayCategoryCrawler({
         service_category_id: categoryId,
         url: listUrl,
         html: html.trim() || undefined,
-        max_pages: hotelDump ? 1 : maxPages,
         use_proxy: useProxy || undefined,
       });
       const total = started.urls.length || started.job.items_found || 0;
@@ -259,14 +257,10 @@ export function StayCategoryCrawler({
           }
         }}
       />
-      <Input
-        label="Số trang listing (max_pages)"
-        type="number"
-        hint="Mỗi trang ~25 URL. Tối đa 80. Worker nền chạy lần lượt sau khi xếp hàng."
-        value={String(maxPages)}
-        disabled={!categoryId || !canCreate}
-        onChange={(e) => setMaxPages(Math.max(1, Math.min(80, Number(e.target.value) || 1)))}
-      />
+      <p className="body-text" style={{ opacity: 0.85 }}>
+        Listing tải đủ (scroll + «Tải thêm»). Từng URL vào Laravel queue — cần{' '}
+        <code>queue:work</code> / Supervisor trên VPS.
+      </p>
       <Textarea
         label="HTML đã lưu (tuỳ chọn)"
         hint="Chỉ cần khi Chrome vẫn bị chặn: Save page as HTML rồi dán."

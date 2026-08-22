@@ -129,7 +129,6 @@ export default function StayCrawlerPage() {
   const [mode, setMode] = useState<'hotel' | 'list'>('hotel');
   const [url, setUrl] = useState('');
   const [html, setHtml] = useState('');
-  const [maxPages, setMaxPages] = useState(5);
   const [useProxy, setUseProxy] = useState(false);
   const [running, setRunning] = useState(false);
   const runningRef = useRef(false);
@@ -229,7 +228,6 @@ export default function StayCrawlerPage() {
         service_category_id: categoryId,
         url: listUrl,
         html: html.trim() || undefined,
-        max_pages: runList ? maxPages : 1,
         use_proxy: useProxy || undefined,
         ...(resolvedRerun ? { rerun: resolvedRerun } : {}),
         ...(resolvedRerun === 'improve' && resolvedFrom ? { from: resolvedFrom } : {}),
@@ -245,16 +243,24 @@ export default function StayCrawlerPage() {
         return;
       }
       if (total) {
-        appendLog(`✓ Đã lưu ${total} URL — xử lý chỗ nghỉ (cào HTML + tạo draft)…`);
+        appendLog(
+          runList
+            ? `✓ Đã lưu ${total} URL (listing đủ) — đẩy từng URL vào queue…`
+            : `✓ Đã lưu ${total} URL — xử lý chỗ nghỉ (cào HTML + publish)…`,
+        );
       } else {
         appendLog('⚠ Chưa thấy URL trong phản hồi — vẫn xử lý item đã xếp hàng…');
       }
       if (started.worker_hint) {
         appendLog(`• ${started.worker_hint}`);
       }
-      if (started.job?.list?.pages_done) {
+      if (started.queue_hint) {
+        appendLog(`• Worker: ${started.queue_hint}`);
+      }
+      if (started.job?.list?.urls_queued || started.job?.list?.pages_done) {
+        const q = started.job.list.urls_queued ?? total;
         appendLog(
-          `• Listing: ${started.job.list.pages_done}/${started.job.list.max_pages || '?'} trang` +
+          `• Listing: ${q} URL` +
             (started.job.list.stopped_reason ? ` (dừng: ${started.job.list.stopped_reason})` : ''),
         );
       }
@@ -423,7 +429,7 @@ export default function StayCrawlerPage() {
       <PageHeader
         eyebrow="Lưu trú"
         title="Crawler Booking.com"
-        description="Map HTML Booking.com (không AI) thành draft chỗ nghỉ dưới danh mục đã chọn. Chế độ 1 chỗ nghỉ dùng để test selector."
+        description="Map HTML Booking.com (không AI) thành chỗ nghỉ published dưới danh mục đã chọn. Chế độ 1 chỗ nghỉ dùng để test selector."
       />
 
       <FormSection icon={ScanSearch} title="Cấu hình crawler" description="Chọn danh mục, dán URL, cấu hình tùy chọn rồi bấm chạy.">
@@ -459,14 +465,11 @@ export default function StayCrawlerPage() {
             onChange={(e) => setUrl(e.target.value)}
           />
           {mode === 'list' ? (
-            <Input
-              label="Số trang list"
-              type="number"
-              hint="Phân trang offset Booking (~25 URL/trang). Tối đa 80; worker nền chạy lần lượt."
-              value={String(maxPages)}
-              disabled={running || !canCreate}
-              onChange={(e) => setMaxPages(Math.min(80, Math.max(1, Number(e.target.value) || 1)))}
-            />
+            <p className="ui-field__hint">
+              Listing tải đủ (Chrome scroll + «Tải thêm kết quả»). Mỗi URL được đẩy vào{' '}
+              <strong>Laravel queue</strong> — cần Supervisor <code>queue:work</code> trên server (sống sót
+              sau reboot). Có thể đóng tab sau khi xếp hàng.
+            </p>
           ) : null}
         </div>
 
