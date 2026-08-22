@@ -15,22 +15,20 @@ nohup: ignoring input
  ✓ Starting...
  ✓ Ready in 5.3s
  ○ Compiling / ...
- ✓ Compiled / in 4.3s (891 modules)
- GET / 200 in 6219ms
+ ✓ Compiled / in 5.2s (891 modules)
+ GET / 200 in 6631ms
  ○ Compiling /login ...
- ✓ Compiled /login in 4.4s (1723 modules)
- GET /login?next=%2F 200 in 4827ms
- GET / 200 in 201ms
- GET / 200 in 168ms
+ ✓ Compiled /login in 3.6s (1723 modules)
+ GET /login?next=%2F 200 in 3986ms
+ GET / 200 in 624ms
+ GET / 200 in 239ms
  ○ Compiling /services/stay-crawler ...
- ✓ Compiled /services/stay-crawler in 3.2s (1750 modules)
- GET /services/stay-crawler/ 200 in 3610ms
- ○ Compiling /services/products ...
- ✓ Compiled /services/products in 3.2s (1765 modules)
- GET /services/products/?cluster=stay 200 in 3966ms
- ○ Compiling /services/products/form ...
- ✓ Compiled /services/products/form in 4.4s (2076 modules)
- GET /services/products/form/?id=199&cluster=stay 200 in 4999ms
- GET /services/products/?cluster=stay 200 in 327ms
- GET /services/products/?cluster=stay 200 in 1288ms
- GET /services/products/?cluster=stay 200 in 283ms
+ ✓ Compiled /services/stay-crawler in 2.2s (1750 modules)
+ GET /services/stay-crawler/ 200 in 2603ms
+ ○ Compiling /services/categories ...
+ ✓ Compiled /services/products in 5.8s (1772 modules)
+ GET /services/products/?cluster=stay 200 in 4688ms
+ GET /services/categories/?cluster=stay 200 in 6414ms
+ GET /services/products/?cluster=stay 200 in 132ms
+ GET /services/stay-crawler/ 200 in 348ms
+ GET /services/products/?cluster=stay 200 in 265ms
