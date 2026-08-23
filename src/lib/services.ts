@@ -322,7 +322,13 @@ export type StayCrawlServiceRef = {
 export const stayCrawlsApi = {
   jobs: (query?: Record<string, string | number | undefined>) =>
     apiRequest<{ items: StayCrawlJob[] }>('/stay-crawls/jobs', { query }),
-  job: (id: number) =>
+  job: (id: number, query?: Record<string, string | number | undefined>) =>
+    apiRequest<{ job: StayCrawlJob; items: StayCrawlItem[]; stats?: { total: number; done: number; failed: number; blocked: number; queued: number } }>(`/stay-crawls/jobs/${id}`, { query }),
+  retryItem: (id: number) =>
+    apiRequest<{ item: StayCrawlItem; message: string }>(`/stay-crawls/items/${id}/retry`, { method: 'POST' }),
+  retryFailed: (jobId: number) =>
+    apiRequest<{ retried_count: number; message: string }>(`/stay-crawls/jobs/${jobId}/retry-failed`, { method: 'POST' }),
+  _old_job: (id: number) =>
     apiRequest<{ job: StayCrawlJob; items: StayCrawlItem[] }>(`/stay-crawls/jobs/${id}`),
   items: (query?: Record<string, string | number | undefined>) =>
     apiRequest<{ items: StayCrawlItem[] }>('/stay-crawls/items', { query }),

@@ -1,13 +1,15 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Activity,
+  AlertCircle,
   Building2,
   CheckCircle2,
   Clock,
   ExternalLink,
+  Filter,
   Layers,
   ListOrdered,
   Maximize2,
@@ -15,10 +17,12 @@ import {
   Play,
   Radio,
   RefreshCw,
+  RotateCcw,
   ScanSearch,
   SlidersHorizontal,
   Terminal,
   X,
+  XCircle,
 } from 'lucide-react';
 import toast from '@/lib/toast';
 import { ApiClientError } from '@/lib/api';
@@ -84,20 +88,26 @@ type ExistsDetails = {
 };
 
 type ImproveFrom = 'basic' | 'gallery' | 'rooms' | 'rooms_modals';
-type ExistsChoiceId = 'replace' | ImproveFrom;
+type ExistsChoiceId = 'replace' | 'skip_existing' | ImproveFrom;
 
 const EXISTS_CHOICES: {
   id: ExistsChoiceId;
-  rerun: 'improve' | 'replace';
+  rerun: 'improve' | 'replace' | 'skip';
   from?: ImproveFrom;
   label: string;
   hint: string;
 }[] = [
   {
+    id: 'skip_existing',
+    rerun: 'skip',
+    label: 'Chỉ cào các URL chưa cào / bị lỗi (Khuyên dùng)',
+    hint: 'Tự động bỏ qua các khách sạn đã hoàn tất, chỉ tập trung cào các URL còn thiếu hoặc bị lỗi.',
+  },
+  {
     id: 'replace',
     rerun: 'replace',
-    label: 'Cào lại từ đầu (thay thế)',
-    hint: 'Xóa HTML + ảnh cũ của các URL này rồi cào mới hoàn toàn (như chỗ nghỉ mới).',
+    label: 'Cào lại từ đầu (thay thế toàn bộ)',
+    hint: 'Xóa HTML + ảnh cũ của các URL này rồi cào mới hoàn toàn.',
   },
   {
     id: 'basic',
@@ -120,13 +130,6 @@ const EXISTS_CHOICES: {
     label: 'Chỉ cào lại bảng phòng',
     hint: 'Bỏ qua trang chính + gallery; đọc lại danh sách phòng và tiện ích phòng.',
   },
-  {
-    id: 'rooms_modals',
-    rerun: 'improve',
-    from: 'rooms_modals',
-    label: 'Chỉ cào modal chi tiết từng phòng',
-    hint: 'Mở từng popup phòng để lấy ảnh riêng + diện tích + tiện ích chi tiết.',
-  },
 ];
 
 function existsChoiceLabel(id: ExistsChoiceId): string {
@@ -141,6 +144,7 @@ export default function StayCrawlerPage() {
 
   const [categoryId, setCategoryId] = useState<number | null>(null);
   const [selectedJobId, setSelectedJobId] = useState<number | null>(null);
+  const [statusFilter, setStatusFilter] = useState<'all' | 'done' | 'failed' | 'queued'>('all');
   const [mode, setMode] = useState<'hotel' | 'list'>('hotel');
   const [url, setUrl] = useState('');
   const [html, setHtml] = useState('');
@@ -148,9 +152,9 @@ export default function StayCrawlerPage() {
   const [running, setRunning] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const runningRef = useRef(false);
-  const pendingRerunRef = useRef<'improve' | 'replace' | null>(null);
+  const pendingRerunRef = useRef<'improve' | 'replace' | 'skip' | null>(null);
   const pendingFromRef = useRef<ImproveFrom>('basic');
-  const [existsChoice, setExistsChoice] = useState<ExistsChoiceId>('basic');
+  const [existsChoice, setExistsChoice] = useState<ExistsChoiceId>('skip_existing');
   const [log, setLog] = useState<string[]>([]);
   const [exists, setExists] = useState<ExistsDetails | null>(null);
 
@@ -166,7 +170,7 @@ export default function StayCrawlerPage() {
 
   const jobsQuery = useQuery({
     queryKey: ['stay-crawls-jobs', categoryId],
-    queryFn: () => stayCrawlsApi.jobs({ service_category_id: categoryId ?? undefined, per_page: 15 }),
+    queryFn: () => stayCrawlsApi.jobs({ service_category_id: categoryId ?? undefined, per_page: 20 }),
     refetchInterval: running ? 4000 : 10000,
   });
 
@@ -174,10 +178,32 @@ export default function StayCrawlerPage() {
   const activeJobId = selectedJobId ?? jobsQuery.data?.items?.[0]?.id ?? null;
 
   const jobQuery = useQuery({
-    queryKey: ['stay-crawls-job', activeJobId],
-    queryFn: () => stayCrawlsApi.job(activeJobId!),
+    queryKey: ['stay-crawls-job', activeJobId, statusFilter],
+    queryFn: () =>
+      stayCrawlsApi.job(activeJobId!, {
+        status: statusFilter === 'all' ? undefined : statusFilter,
+        limit: 500,
+      }),
     enabled: !!activeJobId,
-    refetchInterval: running ? 3000 : 8000,
+    refetchInterval: running ? 3000 : 6000,
+  });
+
+  const retryItemMutation = useMutation({
+    mutationFn: (itemId: number) => stayCrawlsApi.retryItem(itemId),
+    onSuccess: (data) => {
+      toast.success(data.message || 'Đã kích hoạt lại URL vào hàng đợi');
+      void refresh();
+    },
+    onError: (e) => toast.error((e as Error).message),
+  });
+
+  const retryFailedMutation = useMutation({
+    mutationFn: (jobId: number) => stayCrawlsApi.retryFailed(jobId),
+    onSuccess: (data) => {
+      toast.success(data.message || `Đã kích hoạt lại ${data.retried_count} URL lỗi`);
+      void refresh();
+    },
+    onError: (e) => toast.error((e as Error).message),
   });
 
   const isCurrentJobRunning =
@@ -201,7 +227,7 @@ export default function StayCrawlerPage() {
     await qc.invalidateQueries({ queryKey: ['stay-crawls-job'] });
   };
 
-  const runCrawl = async (rerun?: 'improve' | 'replace', from?: ImproveFrom) => {
+  const runCrawl = async (rerun?: 'improve' | 'replace' | 'skip', from?: ImproveFrom) => {
     const resolvedRerun = rerun ?? pendingRerunRef.current ?? undefined;
     const resolvedFrom =
       resolvedRerun === 'improve'
@@ -241,20 +267,22 @@ export default function StayCrawlerPage() {
         ? existsChoiceLabel((resolvedFrom || 'basic') as ExistsChoiceId)
         : resolvedRerun === 'replace'
           ? existsChoiceLabel('replace')
-          : null;
+          : resolvedRerun === 'skip'
+            ? existsChoiceLabel('skip_existing')
+            : null;
     appendLog(
       (runList ? `Bắt đầu crawler danh mục: ${listUrl}` : `Bắt đầu crawler 1 chỗ nghỉ: ${listUrl}`) +
         (rerunLabel ? ` — ${rerunLabel}` : ''),
     );
 
     try {
-      appendLog(runList ? 'Đang lấy danh sách chỗ nghỉ…' : 'Đã nhận URL — xếp hàng, Chrome sẽ chạy từng bước…');
+      appendLog(runList ? 'Đang quét danh sách chỗ nghỉ…' : 'Đã nhận URL — đẩy vào queue đa luồng…');
       const started = await stayCrawlsApi.fromCategory({
         service_category_id: categoryId,
         url: listUrl,
         html: html.trim() || undefined,
         use_proxy: useProxy || undefined,
-        ...(resolvedRerun ? { rerun: resolvedRerun } : {}),
+        ...(resolvedRerun && resolvedRerun !== 'skip' ? { rerun: resolvedRerun } : {}),
         ...(resolvedRerun === 'improve' && resolvedFrom ? { from: resolvedFrom } : {}),
       });
       const jobId = started.job?.id;
@@ -271,12 +299,12 @@ export default function StayCrawlerPage() {
         return;
       }
       if (started.is_listing_async) {
-        appendLog('🚀 Đang khởi động Chrome mở danh sách Booking.com ở background (tránh timeout Nginx)…');
+        appendLog('🚀 Đang khởi động Chrome quét danh sách Booking.com ở background (hỗ trợ đa luồng)…');
       } else if (total) {
         appendLog(
           runList
-            ? `✓ Đã lưu ${total} URL — đẩy từng URL vào queue…`
-            : `✓ Đã lưu ${total} URL — xử lý chỗ nghỉ (cào HTML + publish)…`,
+            ? `✓ Đã lưu ${total} URL — đẩy từng URL vào queue (Supervisor tự động chia đa luồng)…`
+            : `✓ Đã lưu ${total} URL — đang xử lý bóc tách HTML + tạo draft…`,
         );
       } else {
         appendLog('• Bắt đầu dò tìm URL chỗ nghỉ…');
@@ -369,7 +397,7 @@ export default function StayCrawlerPage() {
             if (!loggedBusy) {
               appendLog(
                 isWorker
-                  ? 'Worker nền đang chạy — có thể đóng modal hoặc tab này bất cứ lúc nào; hệ thống vẫn tự động xử lý.'
+                  ? 'Worker nền đa luồng đang chạy — có thể đóng modal hoặc tab này bất cứ lúc nào; hệ thống vẫn tự động xử lý.'
                   : 'Chrome đang chạy nền (gallery/phòng có thể 2–8 phút/bước)…',
               );
               loggedBusy = true;
@@ -381,7 +409,7 @@ export default function StayCrawlerPage() {
                   : `… vẫn chạy nền (${waitedSec}s) — đợi gallery/phòng`,
               );
             }
-            await new Promise((r) => setTimeout(r, isWorker ? 5000 : 2500));
+            await new Promise((r) => setTimeout(r, isWorker ? 4000 : 2500));
             continue;
           }
 
@@ -404,7 +432,7 @@ export default function StayCrawlerPage() {
       if (err?.data && typeof err.data === 'object' && 'exists' in err.data) {
         const d = err.data as { exists: ExistsDetails };
         setExists(d.exists);
-        setExistsChoice('basic');
+        setExistsChoice('skip_existing');
       } else {
         appendLog(`✗ Lỗi khởi động: ${err.message || 'Không xác định'}`);
         toast.error(err.message || 'Lỗi khởi động crawler');
@@ -417,6 +445,7 @@ export default function StayCrawlerPage() {
 
   const currentJob = jobQuery.data?.job;
   const items: StayCrawlItem[] = jobQuery.data?.items ?? [];
+  const stats = jobQuery.data?.stats;
   const jobsList: StayCrawlJob[] = jobsQuery.data?.items ?? [];
   const categories = categoriesQuery.data?.items ?? [];
   const browserReady = statusQuery.data?.browser_ready === true;
@@ -496,7 +525,7 @@ export default function StayCrawlerPage() {
             <span className="ui-crawler-modal__pulse-dot" />
             <div>
               <p style={{ margin: 0, fontWeight: 650, fontSize: '0.9rem', color: '#86efac' }}>
-                Tiến trình Crawler (Job #{activeJobId || '...'}) đang chạy ngầm
+                Tiến trình Crawler (Job #{activeJobId || '...'}) đang chạy ngầm đa luồng
               </p>
               <p style={{ margin: 0, fontSize: '0.78rem', color: '#cbd5e1' }}>
                 {log[log.length - 1] || 'Đang phân tích và xử lý các trang con...'}
@@ -710,64 +739,135 @@ export default function StayCrawlerPage() {
         </FormSection>
       )}
 
-      {/* Results List */}
-      {items.length > 0 && (
+      {/* Results List & Stats Bar */}
+      {activeJobId && (
         <FormSection
           icon={Building2}
-          title={`Danh sách khách sạn (${items.length})`}
+          title={`Danh sách khách sạn (${stats?.total ?? items.length})`}
           description="Các khách sạn được bóc tách trong phiên crawl này. Trạng thái được cập nhật thời gian thực."
         >
-          <EntityList>
-            {items.map((item) => (
-              <EntityRow key={item.id}>
-                <EntityMain
-                  title={hotelLabel(item.source_url)}
-                  slug={item.slug_full || item.canonical_url}
-                  badges={<Badge tone={statusTone(item.status)}>{statusLabel(item.status)}</Badge>}
-                  facts={
-                    item.error ? (
-                      <span style={{ color: '#ef4444' }}>{item.error}</span>
-                    ) : item.slug_full ? (
-                      <span>/{item.slug_full}</span>
-                    ) : undefined
+          {/* Stats Bar & Filter Tabs */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.75rem', marginBottom: '0.75rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap' }}>
+              <Button
+                type="button"
+                size="sm"
+                variant={statusFilter === 'all' ? 'primary' : 'ghost'}
+                onClick={() => setStatusFilter('all')}
+              >
+                Tất cả ({stats?.total ?? items.length})
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant={statusFilter === 'done' ? 'primary' : 'ghost'}
+                onClick={() => setStatusFilter('done')}
+              >
+                ✓ Đã hoàn tất ({stats?.done ?? 0})
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant={statusFilter === 'failed' ? 'primary' : 'ghost'}
+                onClick={() => setStatusFilter('failed')}
+              >
+                ✗ Lỗi / Bị chặn ({ (stats?.failed ?? 0) + (stats?.blocked ?? 0) })
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant={statusFilter === 'queued' ? 'primary' : 'ghost'}
+                onClick={() => setStatusFilter('queued')}
+              >
+                ⏱ Chờ cào ({stats?.queued ?? 0})
+              </Button>
+            </div>
+
+            {((stats?.failed ?? 0) > 0 || (stats?.blocked ?? 0) > 0) && (
+              <Button
+                type="button"
+                size="sm"
+                variant="danger"
+                loading={retryFailedMutation.isPending}
+                onClick={() => {
+                  if (activeJobId) {
+                    retryFailedMutation.mutate(activeJobId);
                   }
-                />
-                <EntityActions>
-                  {item.slug_full && (
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="ghost"
-                      onClick={() => {
-                        const href = previewUrl(item.slug_full, locale, DEFAULT_LOCALE);
-                        if (href) window.open(href, '_blank', 'noopener,noreferrer');
-                      }}
-                    >
-                      <ExternalLink size={14} /> Xem trang
-                    </Button>
-                  )}
-                  {item.has_extracted && !item.has_ai && item.status !== 'blocked' && item.status !== 'failed' && (
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="ghost"
-                      onClick={async () => {
-                        try {
-                          await stayCrawlsApi.map(item.id);
-                          toast.success('Đã map HTML: ' + hotelLabel(item.source_url));
-                          await refresh();
-                        } catch (e) {
-                          toast.error((e as Error).message);
-                        }
-                      }}
-                    >
-                      Map HTML
-                    </Button>
-                  )}
-                </EntityActions>
-              </EntityRow>
-            ))}
-          </EntityList>
+                }}
+              >
+                <RotateCcw size={14} /> Thử lại tất cả URL lỗi ({ (stats?.failed ?? 0) + (stats?.blocked ?? 0) })
+              </Button>
+            )}
+          </div>
+
+          {items.length === 0 ? (
+            <p className="body-text" style={{ padding: '1rem', textAlign: 'center', color: 'var(--admin-muted)' }}>
+              Không có khách sạn nào khớp với bộ lọc.
+            </p>
+          ) : (
+            <EntityList>
+              {items.map((item) => (
+                <EntityRow key={item.id}>
+                  <EntityMain
+                    title={hotelLabel(item.source_url)}
+                    slug={item.slug_full || item.canonical_url}
+                    badges={<Badge tone={statusTone(item.status)}>{statusLabel(item.status)}</Badge>}
+                    facts={
+                      item.error ? (
+                        <span style={{ color: '#ef4444' }}>{item.error}</span>
+                      ) : item.slug_full ? (
+                        <span>/{item.slug_full}</span>
+                      ) : undefined
+                    }
+                  />
+                  <EntityActions>
+                    {(item.status === 'failed' || item.status === 'blocked' || item.status === 'queued') && (
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="secondary"
+                        loading={retryItemMutation.isPending && retryItemMutation.variables === item.id}
+                        onClick={() => retryItemMutation.mutate(item.id)}
+                      >
+                        <RotateCcw size={13} /> Thử lại
+                      </Button>
+                    )}
+                    {item.slug_full && (
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => {
+                          const href = previewUrl(item.slug_full, locale, DEFAULT_LOCALE);
+                          if (href) window.open(href, '_blank', 'noopener,noreferrer');
+                        }}
+                      >
+                        <ExternalLink size={14} /> Xem trang
+                      </Button>
+                    )}
+                    {item.has_extracted && !item.has_ai && item.status !== 'blocked' && item.status !== 'failed' && (
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="ghost"
+                        onClick={async () => {
+                          try {
+                            await stayCrawlsApi.map(item.id);
+                            toast.success('Đã map HTML: ' + hotelLabel(item.source_url));
+                            await refresh();
+                          } catch (e) {
+                            toast.error((e as Error).message);
+                          }
+                        }}
+                      >
+                        Map HTML
+                      </Button>
+                    )}
+                  </EntityActions>
+                </EntityRow>
+              ))}
+            </EntityList>
+          )}
         </FormSection>
       )}
 
@@ -849,24 +949,21 @@ export default function StayCrawlerPage() {
             aria-label="Đóng"
             onClick={() => {
               pendingRerunRef.current = null;
-              setExistsChoice('basic');
+              setExistsChoice('skip_existing');
               setExists(null);
             }}
           />
-          <div className="ui-modal__card ui-modal__card--form" style={{ width: 'min(28rem, 100%)' }}>
+          <div className="ui-modal__card ui-modal__card--form" style={{ width: 'min(30rem, 100%)' }}>
             <header className="ui-modal__head">
-              <h2 className="ui-modal__title">URL đã cào</h2>
+              <h2 className="ui-modal__title">URL đã cào trước đó</h2>
               <p className="ui-modal__desc" style={{ marginBottom: 0 }}>
-                {exists.items[0]
-                  ? hotelLabel(exists.items[0].source_url)
-                  : `${exists.count} chỗ nghỉ`}
-                {exists.count > 1 ? ` (+${exists.count - 1})` : ''}
+                Phát hiện {exists.count} chỗ nghỉ trong danh sách đã có dữ liệu trong hệ thống.
               </p>
             </header>
             <div className="ui-modal__body" style={{ paddingTop: '0.75rem' }}>
               <fieldset style={{ border: 0, margin: 0, padding: 0 }}>
                 <legend className="ui-field__label" style={{ marginBottom: '0.5rem' }}>
-                  Chọn hành động
+                  Chọn hướng xử lý thông minh
                 </legend>
                 <div style={{ display: 'grid', gap: '0.4rem' }}>
                   {EXISTS_CHOICES.map((opt) => {
@@ -916,7 +1013,7 @@ export default function StayCrawlerPage() {
                 disabled={running}
                 onClick={() => {
                   pendingRerunRef.current = null;
-                  setExistsChoice('basic');
+                  setExistsChoice('skip_existing');
                   setExists(null);
                 }}
               >
@@ -930,13 +1027,15 @@ export default function StayCrawlerPage() {
                 onClick={(e) => {
                   e.preventDefault();
                   e.stopPropagation();
-                  const chosen = EXISTS_CHOICES.find((o) => o.id === existsChoice) || EXISTS_CHOICES[1];
+                  const chosen = EXISTS_CHOICES.find((o) => o.id === existsChoice) || EXISTS_CHOICES[0];
                   pendingRerunRef.current = chosen.rerun;
                   if (chosen.rerun === 'improve' && chosen.from) {
                     pendingFromRef.current = chosen.from;
                     void runCrawl('improve', chosen.from);
-                  } else {
+                  } else if (chosen.rerun === 'replace') {
                     void runCrawl('replace');
+                  } else {
+                    void runCrawl('skip');
                   }
                 }}
               >
