@@ -13,13 +13,4 @@ nohup: ignoring input
    - Environments: .env.local
 
  ✓ Starting...
- ✓ Ready in 2.6s
- ○ Compiling /services/products ...
- ✓ Compiled /services/products in 2.6s (923 modules)
- ○ Compiling / ...
- ✓ Compiled / in 1173ms (932 modules)
- GET / 200 in 2252ms
- ○ Compiling /services/stay-crawler ...
- ✓ Compiled /services/stay-crawler in 636ms (949 modules)
- GET /services/stay-crawler/ 200 in 806ms
- GET /services/products/?cluster=stay 200 in 66ms
+ ✓ Ready in 7.7s

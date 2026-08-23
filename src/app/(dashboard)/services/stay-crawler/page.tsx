@@ -243,14 +243,16 @@ export default function StayCrawlerPage() {
         await refresh();
         return;
       }
-      if (total) {
+      if (started.is_listing_async) {
+        appendLog('🚀 Đang khởi động Chrome mở danh sách Booking.com ở background (tránh timeout Nginx)…');
+      } else if (total) {
         appendLog(
           runList
-            ? `✓ Đã lưu ${total} URL (listing đủ) — đẩy từng URL vào queue…`
+            ? `✓ Đã lưu ${total} URL — đẩy từng URL vào queue…`
             : `✓ Đã lưu ${total} URL — xử lý chỗ nghỉ (cào HTML + publish)…`,
         );
       } else {
-        appendLog('⚠ Chưa thấy URL trong phản hồi — vẫn xử lý item đã xếp hàng…');
+        appendLog('• Bắt đầu dò tìm URL chỗ nghỉ…');
       }
       if (started.worker_hint) {
         appendLog(`• ${started.worker_hint}`);
@@ -287,6 +289,19 @@ export default function StayCrawlerPage() {
           networkFails = 0;
 
           const seq = Number(step.last_step?.seq || 0);
+          const phase = String(step.phase || step.last_step?.phase || '');
+          const msg = String(step.message || step.last_step?.message || '');
+
+          if (phase === 'listing') {
+            const urlsCount = step.urls_found || step.total || 0;
+            const streamInfo = (step as any).stream;
+            const clickInfo = streamInfo?.load_more_clicks ? ` (click tải thêm: ${streamInfo.load_more_clicks})` : '';
+            appendLog(`🔍 [Listing] ${msg || 'Đang quét danh sách...'} — đã gom ${urlsCount} URL${clickInfo}`);
+            await refresh();
+            await new Promise((r) => setTimeout(r, 2000));
+            continue;
+          }
+
           if (seq > lastSeq) {
             lastSeq = seq;
             guard++;
@@ -296,7 +311,6 @@ export default function StayCrawlerPage() {
               ? hotelLabel(step.item.source_url)
               : hotelLabel(String(step.last_step?.source_url || listUrl));
             const status = step.item?.status || step.last_step?.item_status;
-            const phase = String(step.phase || step.last_step?.phase || '');
             if (status === 'blocked') {
               appendLog(
                 `✗ ${itemLabel} — bị chặn (${step.item?.blocked_reason || step.last_step?.blocked_reason || 'unknown'})`,
@@ -305,8 +319,7 @@ export default function StayCrawlerPage() {
               appendLog(`✗ ${itemLabel} — lỗi: ${step.item?.error || step.last_step?.error || 'unknown'}`);
             } else if (step.service?.slug_full && phase === 'basic') {
               appendLog(`✓ ${itemLabel} → /${step.service.slug_full}`);
-            } else if (step.message || step.last_step?.message) {
-              const msg = String(step.message || step.last_step?.message || '');
+            } else if (msg) {
               appendLog(`• ${itemLabel} — ${phase ? `[${phase}] ` : ''}${msg}`);
             }
           }

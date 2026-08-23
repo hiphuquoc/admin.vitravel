@@ -361,6 +361,7 @@ export const stayCrawlsApi = {
       job: StayCrawlJob;
       urls: string[];
       items: StayCrawlItem[];
+      is_listing_async?: boolean;
       worker?: StayCrawlJob['worker'];
       worker_hint?: string;
       queue_hint?: string | null;
@@ -386,6 +387,8 @@ export const stayCrawlsApi = {
       blocked: number;
       failed: number;
       total: number;
+      urls_found?: number;
+      stream?: Record<string, unknown> | null;
       job: StayCrawlJob;
       item: StayCrawlItem | null;
       service: StayCrawlServiceRef | null;

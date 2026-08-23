@@ -159,11 +159,12 @@ export function StayCategoryCrawler({
 
       progress.update({
         indeterminate: false,
-        percent: 12,
-        detail:
-          (started.worker_hint
-            ? `${started.worker_hint} — `
-            : '') + `Đã lưu ${total} URL — tạo trang con dưới ${parentPath || 'danh mục này'}…`,
+        percent: 8,
+        detail: started.is_listing_async
+          ? 'Đang mở Chrome quét danh sách chỗ nghỉ Booking.com…'
+          : (started.worker_hint
+              ? `${started.worker_hint} — `
+              : '') + `Đã lưu ${total} URL — tạo trang con dưới ${parentPath || 'danh mục này'}…`,
       });
 
       let htmlOnce = hotelDump ? html.trim() || undefined : undefined;
@@ -177,19 +178,33 @@ export function StayCategoryCrawler({
           use_proxy: useProxy || undefined,
         });
         htmlOnce = undefined;
+        const phase = String(step.phase || step.last_step?.phase || '');
+        const msg = String(step.message || step.last_step?.message || '');
+        const isListing = phase === 'listing';
+
+        if (isListing) {
+          const count = step.urls_found || step.total || 0;
+          progress.update({
+            percent: Math.min(30, 8 + Math.round(count * 0.5)),
+            detail: `[Danh sách] ${msg || 'Đang cào URL...'} (đã gom ${count} chỗ nghỉ)`,
+          });
+          await refresh();
+          await new Promise((r) => setTimeout(r, 2000));
+          continue;
+        }
+
         const doneCount = step.imported + step.blocked + step.failed;
         const pct = step.total ? Math.min(96, Math.round((doneCount / step.total) * 100)) : 50;
         const label = step.item ? hotelLabel(step.item.source_url) : 'chỗ nghỉ';
-        const phase = String(step.phase || step.last_step?.phase || '');
-        const isWorker = /worker/i.test(String(step.message || '')) || Boolean(step.job?.worker_alive);
+        const isWorker = /worker/i.test(msg) || Boolean(step.job?.worker_alive);
         progress.update({
           percent: pct,
           detail: step.busy
             ? isWorker
-              ? `Worker nền còn ~${step.remaining} bước — có thể đóng tab (log stay-crawl-work-${started.job.id}.log)`
+              ? `Worker nền còn ~${step.remaining} bước — có thể đóng tab`
               : `Chrome đang chạy (${phase || '…'}) — gallery/phòng có thể vài phút`
-            : step.message
-              ? `${phase ? `[${phase}] ` : ''}${step.message}`
+            : msg
+              ? `${phase ? `[${phase}] ` : ''}${msg}`
               : step.service?.slug_full
                 ? `Đã tạo ${step.service.slug_full} (${step.imported}/${step.total})`
                 : `Đang xử lý ${label} — ${step.imported}/${step.total} trang con`,
