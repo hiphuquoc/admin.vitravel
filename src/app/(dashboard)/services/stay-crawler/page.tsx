@@ -57,7 +57,7 @@ function statusTone(status: string): 'success' | 'warning' | 'danger' | 'neutral
 
 function statusLabel(status: string): string {
   const map: Record<string, string> = {
-    queued: 'Đang chờ Worker bốc',
+    queued: 'Đang trong Queue (Chờ Worker bốc)',
     fetched: 'Đang cào dữ liệu (Worker active)...',
     extracted: 'Đang trích xuất HTML...',
     ai_done: 'Đã map dữ liệu',
@@ -171,12 +171,12 @@ export default function StayCrawlerPage() {
   const [rerunModalItem, setRerunModalItem] = useState<StayCrawlItem | null>(null);
   const [itemRerunChoice, setItemRerunChoice] = useState<ItemRerunChoice>('replace');
 
-  // Mutation Thử lại / Cào lại item
+  // Mutation Thử lại / Cào lại item (Lưu rõ ràng trạng thái và khóa tức thời)
   const retryItemMutation = useMutation({
     mutationFn: ({ itemId, rerun, from }: { itemId: number; rerun?: 'replace' | 'improve'; from?: ImproveFrom }) =>
       stayCrawlsApi.retryItem(itemId, rerun ? { rerun, from } : undefined),
     onMutate: ({ itemId }) => {
-      // Optimistic update: chuyển ngay sang queued
+      // Optimistic update: chuyển ngay sang queued trên cache UI
       qc.setQueryData(['stay-crawls-job', activeJobId, statusFilter], (old: any) => {
         if (!old || !old.items) return old;
         return {
@@ -252,12 +252,11 @@ export default function StayCrawlerPage() {
   const rawItems: StayCrawlItem[] = jobQuery.data?.items ?? [];
   const stats = jobQuery.data?.stats;
 
-  // Số lượng worker đang chạy song song (đếm các item có status là fetched hoặc trích xuất từ meta)
+  // Số lượng worker đang chạy song song
   const activeRunningCount = useMemo(() => {
-    const runningFromItems = rawItems.filter(
+    return rawItems.filter(
       (it) => it.status === 'fetched' || it.status === 'extracted' || it.status === 'crawling',
     ).length;
-    return runningFromItems;
   }, [rawItems]);
 
   // Filter items theo từ khóa tìm kiếm
@@ -787,33 +786,56 @@ export default function StayCrawlerPage() {
                         </Button>
                       )}
 
-                      {/* 2. Nếu lỗi / bị chặn / đang queued: Bấm Thử lại trực tiếp */}
-                      {!isDone && (
+                      {/* 2. Nếu lỗi / bị chặn: Nút Thử lại màu đỏ */}
+                      {isFailedOrBlocked && (
                         <Button
                           type="button"
                           size="sm"
-                          variant={isFailedOrBlocked ? 'danger' : 'secondary'}
+                          variant="danger"
                           disabled={isMutatingThis || isResettingThis}
                           loading={isMutatingThis}
                           onClick={() => retryItemMutation.mutate({ itemId: item.id })}
                         >
-                          <RotateCcw size={13} />
-                          <span>{isQueued ? 'Kích hoạt lại Queue' : isActivelyProcessing ? 'Cào lại' : 'Thử lại'}</span>
+                          <RotateCcw size={13} /> Thử lại
                         </Button>
                       )}
 
-                      {/* 3. Nút Hủy Queue / Đặt lại trạng thái nếu item bị kẹt */}
+                      {/* 3. Nếu đang trong Queue: Hiện trạng thái Đã trong Queue (disabled) + Nút Hủy Queue */}
                       {isQueued && (
+                        <>
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="secondary"
+                            disabled
+                            style={{ opacity: 0.8 }}
+                          >
+                            <Clock size={13} /> Đã trong Queue
+                          </Button>
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="ghost"
+                            title="Hủy khỏi hàng đợi chờ cào và đánh dấu thất bại/dừng"
+                            disabled={isResettingThis || isMutatingThis}
+                            loading={isResettingThis}
+                            onClick={() => resetStatusMutation.mutate({ itemId: item.id, status: 'failed' })}
+                          >
+                            <X size={13} /> Hủy Queue
+                          </Button>
+                        </>
+                      )}
+
+                      {/* 4. Nếu worker đang trực tiếp cào (fetched/extracted) */}
+                      {isActivelyProcessing && (
                         <Button
                           type="button"
                           size="sm"
-                          variant="ghost"
-                          title="Hủy khỏi hàng đợi chờ cào và đánh dấu thất bại/dừng"
-                          disabled={isResettingThis || isMutatingThis}
-                          loading={isResettingThis}
-                          onClick={() => resetStatusMutation.mutate({ itemId: item.id, status: 'failed' })}
+                          variant="secondary"
+                          disabled
+                          style={{ opacity: 0.8 }}
                         >
-                          <X size={13} /> Hủy Queue
+                          <Zap size={13} className="animate-spin" /> Đang cào...
                         </Button>
                       )}
 
