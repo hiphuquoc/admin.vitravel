@@ -44,31 +44,22 @@ import { CrawlerTerminalLog } from '@/components/services/CrawlerTerminalLog';
 function statusTone(status: string): 'success' | 'warning' | 'danger' | 'neutral' | 'primary' {
   if (status === 'imported' || status === 'ai_done' || status === 'done') return 'success';
   if (status === 'blocked' || status === 'failed') return 'danger';
-  if (
-    status === 'extracted' ||
-    status === 'fetched' ||
-    status === 'crawling' ||
-    status === 'running' ||
-    status === 'processing'
-  )
-    return 'primary';
-  return 'warning';
+  if (status === 'queued') return 'warning';
+  return 'neutral';
 }
 
 function statusLabel(status: string): string {
   const map: Record<string, string> = {
-    queued: 'Đang trong Queue (Chờ Worker)',
-    fetched: 'Đang cào dữ liệu',
-    extracted: 'Đang trích xuất HTML',
+    queued: 'Chờ cào (Trong queue)',
+    fetched: 'Đang cào',
+    extracted: 'Đã lấy HTML',
     ai_done: 'Đã map dữ liệu',
     imported: 'Đã tạo trang',
-    blocked: 'Bị chặn (Cloudflare/Captcha)',
+    blocked: 'Bị chặn',
     failed: 'Cào lỗi',
     ready: 'Sẵn sàng',
     done: 'Hoàn tất',
     running: 'Đang chạy',
-    processing: 'Đang xử lý',
-    crawling: 'Đang cào',
   };
   return map[status] || status;
 }
@@ -171,12 +162,11 @@ export default function StayCrawlerPage() {
   const [rerunModalItem, setRerunModalItem] = useState<StayCrawlItem | null>(null);
   const [itemRerunChoice, setItemRerunChoice] = useState<ItemRerunChoice>('replace');
 
-  // Mutation Thử lại / Cào lại item (Lưu rõ ràng trạng thái và khóa tức thời)
+  // Mutation Thử lại / Cào lại item
   const retryItemMutation = useMutation({
     mutationFn: ({ itemId, rerun, from }: { itemId: number; rerun?: 'replace' | 'improve'; from?: ImproveFrom }) =>
       stayCrawlsApi.retryItem(itemId, rerun ? { rerun, from } : undefined),
     onMutate: ({ itemId }) => {
-      // Optimistic update: chuyển ngay sang queued trên cache UI
       qc.setQueryData(['stay-crawls-job', activeJobId, statusFilter], (old: any) => {
         if (!old || !old.items) return old;
         return {
@@ -197,7 +187,7 @@ export default function StayCrawlerPage() {
     },
   });
 
-  // Mutation Hủy / Đặt lại trạng thái item (để reset queue chủ động)
+  // Mutation Hủy / Đặt lại trạng thái item
   const resetStatusMutation = useMutation({
     mutationFn: ({ itemId, status }: { itemId: number; status: string }) =>
       stayCrawlsApi.resetItemStatus(itemId, status),
@@ -252,14 +242,14 @@ export default function StayCrawlerPage() {
   const rawItems: StayCrawlItem[] = jobQuery.data?.items ?? [];
   const stats = jobQuery.data?.stats;
 
-  // Lấy danh sách ID các item đang được worker xử lý từ job meta
+  // Lấy map các item đang chạy worker
   const activeWorkerItemsMap = useMemo(() => {
     const metaWorkers = ((currentJob as any)?.meta)?.worker?.active_items;
     if (metaWorkers && typeof metaWorkers === 'object') {
       return metaWorkers as Record<string, { item_id: number; updated_at?: string; message?: string }>;
     }
     return {};
-  }, [(currentJob as any)?.meta]);
+  }, [((currentJob as any)?.meta)]);
 
   // Số lượng worker đang chạy song song
   const activeRunningCount = useMemo(() => {
@@ -745,7 +735,7 @@ export default function StayCrawlerPage() {
             </div>
           </div>
 
-          {/* Render Danh sách Khách sạn */}
+          {/* Render Danh sách Khách sạn: Gọn gàng, chuẩn xác, không rườm rà */}
           {items.length === 0 ? (
             <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--admin-muted, #64748b)' }}>
               <p style={{ margin: 0, fontSize: '0.92rem' }}>Không có khách sạn nào khớp với bộ lọc hiện tại.</p>
@@ -759,8 +749,8 @@ export default function StayCrawlerPage() {
                 const isDone = item.status === 'imported' || item.status === 'ai_done' || item.status === 'done';
                 const isQueued = item.status === 'queued';
                 
-                // Kiểm tra xem worker có đang thực sự cào item này không (kể cả khi đã có slug/tạo trang xong nhưng đang cào tiếp gallery/phòng)
-                const isWorkerCrawlingThis = Boolean(activeWorkerItemsMap[String(item.id)]) || item.status === 'fetched' || item.status === 'extracted' || item.status === 'crawling';
+                // Item đang có worker chạy thực tế
+                const isQueueRunning = Boolean(activeWorkerItemsMap[String(item.id)]) || item.status === 'fetched' || item.status === 'extracted' || item.status === 'crawling';
 
                 return (
                   <EntityRow key={item.id}>
@@ -769,16 +759,16 @@ export default function StayCrawlerPage() {
                       slug={item.slug_full || item.canonical_url}
                       badges={
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                          {/* 1. Badge trạng thái chính của item */}
+                          {/* 1. Trạng thái cơ bản của item */}
                           <Badge tone={statusTone(item.status)}>
                             {statusLabel(item.status)}
                           </Badge>
 
-                          {/* 2. HUY HIỆU WORKER ĐANG CÀO: LUÔN HIỂN THỊ ĐỘC LẬP SONG SONG KHI WORKER ACTIVE */}
-                          {isWorkerCrawlingThis && (
+                          {/* 2. CHỈ THÊM ĐÚNG 1 THẺ 'Queue đang chạy' KHI WORKER ĐANG CHẠY TRÊN ITEM ĐÓ */}
+                          {isQueueRunning && (
                             <Badge tone="primary">
-                              <span className="ui-crawler-modal__pulse-dot" style={{ marginRight: 5, background: '#38bdf8' }} />
-                              ⚡ Đang cào (Worker active)...
+                              <span className="ui-crawler-modal__pulse-dot" style={{ marginRight: 4 }} />
+                              Queue đang chạy
                             </Badge>
                           )}
                         </div>
@@ -792,19 +782,19 @@ export default function StayCrawlerPage() {
                       }
                     />
                     <EntityActions>
-                      {/* 1. Nếu worker đang trực tiếp cào item này: Nút Đang cào (disabled) */}
-                      {isWorkerCrawlingThis ? (
+                      {/* 1. Nếu worker đang chạy: Khóa nút Đang chạy */}
+                      {isQueueRunning ? (
                         <Button
                           type="button"
                           size="sm"
                           variant="secondary"
                           disabled
-                          style={{ opacity: 0.85, borderColor: '#0284c7', color: '#0369a1' }}
+                          style={{ opacity: 0.8 }}
                         >
-                          <Zap size={13} className="animate-spin" /> Đang cào dữ liệu...
+                          <Zap size={13} className="animate-spin" /> Đang chạy...
                         </Button>
                       ) : isDone ? (
-                        /* 2. Nếu đã hoàn tất và worker không chạy: Nút Cào lại */
+                        /* 2. Nếu đã hoàn tất: Nút Cào lại */
                         <Button
                           type="button"
                           size="sm"
@@ -817,7 +807,7 @@ export default function StayCrawlerPage() {
                           <RotateCcw size={13} /> Cào lại
                         </Button>
                       ) : isFailedOrBlocked ? (
-                        /* 3. Nếu lỗi / bị chặn: Nút Thử lại màu đỏ */
+                        /* 3. Nếu lỗi / bị chặn: Nút Thử lại */
                         <Button
                           type="button"
                           size="sm"
@@ -829,7 +819,7 @@ export default function StayCrawlerPage() {
                           <RotateCcw size={13} /> Thử lại
                         </Button>
                       ) : isQueued ? (
-                        /* 4. Nếu đang trong Queue: Nút Đã trong Queue + Hủy Queue */
+                        /* 4. Nếu đang chờ trong queue: Nút Chờ cào + Nút Hủy */
                         <>
                           <Button
                             type="button"
@@ -838,13 +828,13 @@ export default function StayCrawlerPage() {
                             disabled
                             style={{ opacity: 0.8 }}
                           >
-                            <Clock size={13} /> Đã trong Queue
+                            <Clock size={13} /> Chờ cào
                           </Button>
                           <Button
                             type="button"
                             size="sm"
                             variant="ghost"
-                            title="Hủy khỏi hàng đợi chờ cào"
+                            title="Hủy khỏi hàng đợi"
                             disabled={isResettingThis || isMutatingThis}
                             loading={isResettingThis}
                             onClick={() => resetStatusMutation.mutate({ itemId: item.id, status: 'failed' })}
@@ -868,7 +858,7 @@ export default function StayCrawlerPage() {
                         </Button>
                       )}
 
-                      {item.has_extracted && !item.has_ai && !isFailedOrBlocked && !isWorkerCrawlingThis && (
+                      {item.has_extracted && !item.has_ai && !isFailedOrBlocked && !isQueueRunning && (
                         <Button
                           type="button"
                           size="sm"
