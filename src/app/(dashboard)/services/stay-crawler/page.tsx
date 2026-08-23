@@ -54,17 +54,17 @@ function statusTone(status: string): 'success' | 'warning' | 'danger' | 'neutral
 
 function statusLabel(status: string): string {
   const map: Record<string, string> = {
-    queued: 'Đang xếp hàng cào',
+    queued: 'Chờ cào',
     extracted: 'Đã trích xuất HTML',
     ai_done: 'Đã map dữ liệu',
-    imported: 'Đã tạo trang thành công',
+    imported: 'Đã tạo trang',
     blocked: 'Bị chặn (Cloudflare/Captcha)',
     failed: 'Cào lỗi',
     ready: 'Sẵn sàng',
     done: 'Hoàn tất',
     running: 'Đang cào...',
     processing: 'Đang xử lý...',
-    crawling: 'Đang cào dữ liệu...',
+    crawling: 'Đang cào...',
   };
   return map[status] || status;
 }
@@ -79,11 +79,26 @@ function isHotelUrl(url: string): boolean {
 
 function hotelLabel(url: string): string {
   try {
-    const m = new URL(url).pathname.match(/\/hotel\/[a-z]{2}\/([^/]+)\.html/i);
-    return m?.[1]?.replace(/-/g, ' ') || url;
+    const parsed = new URL(url);
+    const m = parsed.pathname.match(/\/hotel\/[a-z]{2}\/([^/]+)\.html/i);
+    if (m?.[1]) {
+      return m[1].replace(/-/g, ' ');
+    }
+    const ss = parsed.searchParams.get('ss');
+    if (ss) {
+      return `Danh mục: ${ss}`;
+    }
+    return 'Chỗ nghỉ Booking.com';
   } catch {
-    return url;
+    return url.length > 60 ? url.substring(0, 60) + '…' : url;
   }
+}
+
+function jobSummaryLabel(job: StayCrawlJob): string {
+  if (!job) return '';
+  const name = hotelLabel(job.list_url || '');
+  const count = job.items_found || job.items_count || 0;
+  return `Job #${job.id} — ${name} (${count} mục)`;
 }
 
 function previewUrl(slugFull: string | null | undefined, locale: string, defaultLocale: string): string | null {
@@ -109,8 +124,27 @@ export default function StayCrawlerPage() {
   const runningRef = useRef(false);
   const [log, setLog] = useState<string[]>([]);
 
-  // Local state lưu các itemId vừa bấm Thử lại để disable tức thì và đổi UI ngay lập tức
-  const [retryingIds, setRetryingIds] = useState<Record<number, boolean>>({});
+  // Mutation Thử lại 1 item
+  const retryItemMutation = useMutation({
+    mutationFn: (itemId: number) => stayCrawlsApi.retryItem(itemId),
+    onSuccess: (data) => {
+      toast.success(data.message || 'Đã đưa khách sạn vào hàng đợi xử lý');
+      void refresh();
+    },
+    onError: (e) => {
+      toast.error((e as Error).message);
+    },
+  });
+
+  // Mutation Thử lại tất cả item lỗi
+  const retryFailedMutation = useMutation({
+    mutationFn: (jobId: number) => stayCrawlsApi.retryFailed(jobId),
+    onSuccess: (data) => {
+      toast.success(data.message || `Đã kích hoạt lại ${data.retried_count} URL lỗi`);
+      void refresh();
+    },
+    onError: (e) => toast.error((e as Error).message),
+  });
 
   const statusQuery = useQuery({
     queryKey: ['stay-crawls-status'],
@@ -157,48 +191,6 @@ export default function StayCrawlerPage() {
         hotelLabel(item.source_url).toLowerCase().includes(q),
     );
   }, [rawItems, searchFilter]);
-
-  // Mutation Thử lại 1 item
-  const retryItemMutation = useMutation({
-    mutationFn: (itemId: number) => stayCrawlsApi.retryItem(itemId),
-    onMutate: (itemId) => {
-      // Optimistic update: Đổi ngay trạng thái sang queued và khóa nút
-      setRetryingIds((prev) => ({ ...prev, [itemId]: true }));
-      qc.setQueryData(['stay-crawls-job', activeJobId, statusFilter], (old: any) => {
-        if (!old || !old.items) return old;
-        return {
-          ...old,
-          items: old.items.map((it: StayCrawlItem) =>
-            it.id === itemId
-              ? { ...it, status: 'queued', error: null, blocked_reason: null }
-              : it,
-          ),
-        };
-      });
-    },
-    onSuccess: (data) => {
-      toast.success(data.message || 'Đã đưa khách sạn vào hàng đợi xử lý');
-      void refresh();
-    },
-    onError: (e, itemId) => {
-      setRetryingIds((prev) => {
-        const next = { ...prev };
-        delete next[itemId];
-        return next;
-      });
-      toast.error((e as Error).message);
-    },
-  });
-
-  // Mutation Thử lại tất cả item lỗi
-  const retryFailedMutation = useMutation({
-    mutationFn: (jobId: number) => stayCrawlsApi.retryFailed(jobId),
-    onSuccess: (data) => {
-      toast.success(data.message || `Đã kích hoạt lại ${data.retried_count} URL lỗi`);
-      void refresh();
-    },
-    onError: (e) => toast.error((e as Error).message),
-  });
 
   const isCurrentJobRunning =
     running ||
@@ -357,7 +349,7 @@ export default function StayCrawlerPage() {
   const crawlDisabled = !categoryId || !canCreate || !url.trim() || running || browserBlocked;
 
   return (
-    <div className="crawler-page-container" style={{ display: 'grid', gap: '1.25rem' }}>
+    <div className="crawler-page-container" style={{ display: 'grid', gap: '1.25rem', maxWidth: '100%', overflowX: 'hidden' }}>
       <PageHeader
         eyebrow="Lưu trú"
         title="Crawler Booking.com"
@@ -517,7 +509,7 @@ export default function StayCrawlerPage() {
           title={`Danh sách khách sạn (Job #${activeJobId})`}
           description="Toàn bộ danh sách khách sạn được quét trong phiên. Trạng thái cập nhật tự động thời gian thực."
         >
-          {/* Header chọn Job & Thống kê tổng quan */}
+          {/* Header chọn Job & Thống kê tổng quan - Tối ưu chống tràn tuyệt đối */}
           <div
             style={{
               padding: '0.85rem 1.1rem',
@@ -530,21 +522,31 @@ export default function StayCrawlerPage() {
               flexWrap: 'wrap',
               gap: '1rem',
               marginBottom: '1rem',
+              maxWidth: '100%',
+              overflow: 'hidden',
             }}
           >
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
-              <span style={{ fontSize: '0.86rem', fontWeight: 650, color: 'var(--admin-muted, #64748b)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap', maxWidth: '100%', minWidth: 0 }}>
+              <span style={{ fontSize: '0.86rem', fontWeight: 650, color: 'var(--admin-muted, #64748b)', flexShrink: 0 }}>
                 Phiên cào:
               </span>
               <select
                 className="ui-select"
-                style={{ minWidth: '16rem', padding: '0.35rem 0.65rem', fontSize: '0.86rem', borderRadius: '0.45rem' }}
+                style={{
+                  maxWidth: 'min(36rem, 100%)',
+                  padding: '0.35rem 0.65rem',
+                  fontSize: '0.86rem',
+                  borderRadius: '0.45rem',
+                  textOverflow: 'ellipsis',
+                  overflow: 'hidden',
+                  whiteSpace: 'nowrap',
+                }}
                 value={activeJobId}
                 onChange={(e) => setSelectedJobId(Number(e.target.value))}
               >
                 {jobsList.map((j) => (
                   <option key={j.id} value={j.id}>
-                    Job #{j.id} — {hotelLabel(j.list_url || '')} ({j.items_found || j.items_count || 0} mục)
+                    {jobSummaryLabel(j)}
                   </option>
                 ))}
               </select>
@@ -637,8 +639,7 @@ export default function StayCrawlerPage() {
           ) : (
             <EntityList>
               {items.map((item) => {
-                const isRetrying = retryingIds[item.id] || (retryItemMutation.isPending && retryItemMutation.variables === item.id);
-                const isQueued = item.status === 'queued' || item.status === 'crawling' || item.status === 'processing' || isRetrying;
+                const isMutatingThis = retryItemMutation.isPending && retryItemMutation.variables === item.id;
                 const isFailedOrBlocked = item.status === 'failed' || item.status === 'blocked';
                 const isDone = item.status === 'imported' || item.status === 'ai_done' || item.status === 'done';
 
@@ -648,8 +649,8 @@ export default function StayCrawlerPage() {
                       title={hotelLabel(item.source_url)}
                       slug={item.slug_full || item.canonical_url}
                       badges={
-                        <Badge tone={isRetrying ? 'warning' : statusTone(item.status)}>
-                          {isRetrying ? 'Đang xếp hàng cào' : statusLabel(item.status)}
+                        <Badge tone={statusTone(item.status)}>
+                          {statusLabel(item.status)}
                         </Badge>
                       }
                       facts={
@@ -661,17 +662,17 @@ export default function StayCrawlerPage() {
                       }
                     />
                     <EntityActions>
-                      {/* Nút Thử lại: Disable ngay khi đang xếp hàng để tránh bấm trùng */}
+                      {/* Nút Thử lại / Cào lại: Cho phép bấm bất kỳ lúc nào (chỉ disable lúc request đang gửi) */}
                       <Button
                         type="button"
                         size="sm"
                         variant={isFailedOrBlocked ? 'danger' : 'secondary'}
-                        disabled={isQueued || isRetrying}
-                        loading={isRetrying}
+                        disabled={isMutatingThis}
+                        loading={isMutatingThis}
                         onClick={() => retryItemMutation.mutate(item.id)}
                       >
                         <RotateCcw size={13} />
-                        <span>{isQueued ? 'Đang trong Queue' : isDone ? 'Cào lại' : 'Thử lại'}</span>
+                        <span>{isDone ? 'Cào lại' : 'Thử lại'}</span>
                       </Button>
 
                       {item.slug_full && (
