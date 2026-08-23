@@ -57,9 +57,9 @@ function statusTone(status: string): 'success' | 'warning' | 'danger' | 'neutral
 
 function statusLabel(status: string): string {
   const map: Record<string, string> = {
-    queued: 'Đang trong Queue (Chờ Worker bốc)',
-    fetched: 'Đang cào dữ liệu (Worker active)...',
-    extracted: 'Đang trích xuất HTML...',
+    queued: 'Đang trong Queue (Chờ Worker)',
+    fetched: 'Đang cào dữ liệu',
+    extracted: 'Đang trích xuất HTML',
     ai_done: 'Đã map dữ liệu',
     imported: 'Đã tạo trang',
     blocked: 'Bị chặn (Cloudflare/Captcha)',
@@ -231,7 +231,7 @@ export default function StayCrawlerPage() {
   const jobsQuery = useQuery({
     queryKey: ['stay-crawls-jobs', categoryId],
     queryFn: () => stayCrawlsApi.jobs({ service_category_id: categoryId ?? undefined, per_page: 30 }),
-    refetchInterval: running ? 3000 : 8000,
+    refetchInterval: running ? 2500 : 6000,
   });
 
   const jobsList: StayCrawlJob[] = jobsQuery.data?.items ?? [];
@@ -245,19 +245,30 @@ export default function StayCrawlerPage() {
         limit: 500,
       }),
     enabled: !!activeJobId,
-    refetchInterval: 2500,
+    refetchInterval: 2000,
   });
 
   const currentJob = jobQuery.data?.job;
   const rawItems: StayCrawlItem[] = jobQuery.data?.items ?? [];
   const stats = jobQuery.data?.stats;
 
+  // Lấy danh sách ID các item đang được worker xử lý từ job meta
+  const activeWorkerItemsMap = useMemo(() => {
+    const metaWorkers = ((currentJob as any)?.meta)?.worker?.active_items;
+    if (metaWorkers && typeof metaWorkers === 'object') {
+      return metaWorkers as Record<string, { item_id: number; updated_at?: string; message?: string }>;
+    }
+    return {};
+  }, [(currentJob as any)?.meta]);
+
   // Số lượng worker đang chạy song song
   const activeRunningCount = useMemo(() => {
-    return rawItems.filter(
-      (it) => it.status === 'fetched' || it.status === 'extracted' || it.status === 'crawling',
+    const fromMeta = Object.keys(activeWorkerItemsMap).length;
+    const fromItems = rawItems.filter(
+      (it) => it.status === 'fetched' || it.status === 'extracted' || it.status === 'crawling' || Boolean(activeWorkerItemsMap[String(it.id)]),
     ).length;
-  }, [rawItems]);
+    return Math.max(fromMeta, fromItems);
+  }, [activeWorkerItemsMap, rawItems]);
 
   // Filter items theo từ khóa tìm kiếm
   const items = useMemo(() => {
@@ -747,7 +758,9 @@ export default function StayCrawlerPage() {
                 const isFailedOrBlocked = item.status === 'failed' || item.status === 'blocked';
                 const isDone = item.status === 'imported' || item.status === 'ai_done' || item.status === 'done';
                 const isQueued = item.status === 'queued';
-                const isActivelyProcessing = item.status === 'fetched' || item.status === 'extracted' || item.status === 'crawling';
+                
+                // Kiểm tra xem worker có đang thực sự cào item này không (kể cả khi đã có slug/tạo trang xong nhưng đang cào tiếp gallery/phòng)
+                const isWorkerCrawlingThis = Boolean(activeWorkerItemsMap[String(item.id)]) || item.status === 'fetched' || item.status === 'extracted' || item.status === 'crawling';
 
                 return (
                   <EntityRow key={item.id}>
@@ -756,10 +769,18 @@ export default function StayCrawlerPage() {
                       slug={item.slug_full || item.canonical_url}
                       badges={
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                          <Badge tone={isActivelyProcessing ? 'primary' : statusTone(item.status)}>
-                            {isActivelyProcessing && <span className="ui-crawler-modal__pulse-dot" style={{ marginRight: 4 }} />}
+                          {/* 1. Badge trạng thái chính của item */}
+                          <Badge tone={statusTone(item.status)}>
                             {statusLabel(item.status)}
                           </Badge>
+
+                          {/* 2. HUY HIỆU WORKER ĐANG CÀO: LUÔN HIỂN THỊ ĐỘC LẬP SONG SONG KHI WORKER ACTIVE */}
+                          {isWorkerCrawlingThis && (
+                            <Badge tone="primary">
+                              <span className="ui-crawler-modal__pulse-dot" style={{ marginRight: 5, background: '#38bdf8' }} />
+                              ⚡ Đang cào (Worker active)...
+                            </Badge>
+                          )}
                         </div>
                       }
                       facts={
@@ -771,8 +792,19 @@ export default function StayCrawlerPage() {
                       }
                     />
                     <EntityActions>
-                      {/* 1. Nếu đã tạo trang: Bấm Cào lại -> Mở Modal lựa chọn hướng xử lý (Xóa sạch / Cải thiện) */}
-                      {isDone && (
+                      {/* 1. Nếu worker đang trực tiếp cào item này: Nút Đang cào (disabled) */}
+                      {isWorkerCrawlingThis ? (
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="secondary"
+                          disabled
+                          style={{ opacity: 0.85, borderColor: '#0284c7', color: '#0369a1' }}
+                        >
+                          <Zap size={13} className="animate-spin" /> Đang cào dữ liệu...
+                        </Button>
+                      ) : isDone ? (
+                        /* 2. Nếu đã hoàn tất và worker không chạy: Nút Cào lại */
                         <Button
                           type="button"
                           size="sm"
@@ -784,10 +816,8 @@ export default function StayCrawlerPage() {
                         >
                           <RotateCcw size={13} /> Cào lại
                         </Button>
-                      )}
-
-                      {/* 2. Nếu lỗi / bị chặn: Nút Thử lại màu đỏ */}
-                      {isFailedOrBlocked && (
+                      ) : isFailedOrBlocked ? (
+                        /* 3. Nếu lỗi / bị chặn: Nút Thử lại màu đỏ */
                         <Button
                           type="button"
                           size="sm"
@@ -798,10 +828,8 @@ export default function StayCrawlerPage() {
                         >
                           <RotateCcw size={13} /> Thử lại
                         </Button>
-                      )}
-
-                      {/* 3. Nếu đang trong Queue: Hiện trạng thái Đã trong Queue (disabled) + Nút Hủy Queue */}
-                      {isQueued && (
+                      ) : isQueued ? (
+                        /* 4. Nếu đang trong Queue: Nút Đã trong Queue + Hủy Queue */
                         <>
                           <Button
                             type="button"
@@ -816,7 +844,7 @@ export default function StayCrawlerPage() {
                             type="button"
                             size="sm"
                             variant="ghost"
-                            title="Hủy khỏi hàng đợi chờ cào và đánh dấu thất bại/dừng"
+                            title="Hủy khỏi hàng đợi chờ cào"
                             disabled={isResettingThis || isMutatingThis}
                             loading={isResettingThis}
                             onClick={() => resetStatusMutation.mutate({ itemId: item.id, status: 'failed' })}
@@ -824,20 +852,7 @@ export default function StayCrawlerPage() {
                             <X size={13} /> Hủy Queue
                           </Button>
                         </>
-                      )}
-
-                      {/* 4. Nếu worker đang trực tiếp cào (fetched/extracted) */}
-                      {isActivelyProcessing && (
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant="secondary"
-                          disabled
-                          style={{ opacity: 0.8 }}
-                        >
-                          <Zap size={13} className="animate-spin" /> Đang cào...
-                        </Button>
-                      )}
+                      ) : null}
 
                       {item.slug_full && (
                         <Button
@@ -853,7 +868,7 @@ export default function StayCrawlerPage() {
                         </Button>
                       )}
 
-                      {item.has_extracted && !item.has_ai && !isFailedOrBlocked && (
+                      {item.has_extracted && !item.has_ai && !isFailedOrBlocked && !isWorkerCrawlingThis && (
                         <Button
                           type="button"
                           size="sm"
