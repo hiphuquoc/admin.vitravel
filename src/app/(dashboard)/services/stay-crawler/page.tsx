@@ -23,8 +23,10 @@ import {
   SlidersHorizontal,
   Terminal,
   Trash2,
+  Users,
   X,
   XCircle,
+  Zap,
 } from 'lucide-react';
 import toast from '@/lib/toast';
 import { ApiClientError } from '@/lib/api';
@@ -55,17 +57,18 @@ function statusTone(status: string): 'success' | 'warning' | 'danger' | 'neutral
 
 function statusLabel(status: string): string {
   const map: Record<string, string> = {
-    queued: 'Đang trong Queue',
-    extracted: 'Đã trích xuất HTML',
+    queued: 'Đang chờ Worker bốc',
+    fetched: 'Đang cào dữ liệu (Worker active)...',
+    extracted: 'Đang trích xuất HTML...',
     ai_done: 'Đã map dữ liệu',
     imported: 'Đã tạo trang',
     blocked: 'Bị chặn (Cloudflare/Captcha)',
     failed: 'Cào lỗi',
     ready: 'Sẵn sàng',
     done: 'Hoàn tất',
-    running: 'Đang cào...',
-    processing: 'Đang xử lý...',
-    crawling: 'Đang cào...',
+    running: 'Đang chạy',
+    processing: 'Đang xử lý',
+    crawling: 'Đang cào',
   };
   return map[status] || status;
 }
@@ -228,7 +231,7 @@ export default function StayCrawlerPage() {
   const jobsQuery = useQuery({
     queryKey: ['stay-crawls-jobs', categoryId],
     queryFn: () => stayCrawlsApi.jobs({ service_category_id: categoryId ?? undefined, per_page: 30 }),
-    refetchInterval: running ? 4000 : 10000,
+    refetchInterval: running ? 3000 : 8000,
   });
 
   const jobsList: StayCrawlJob[] = jobsQuery.data?.items ?? [];
@@ -242,12 +245,20 @@ export default function StayCrawlerPage() {
         limit: 500,
       }),
     enabled: !!activeJobId,
-    refetchInterval: running ? 2500 : 5000,
+    refetchInterval: 2500,
   });
 
   const currentJob = jobQuery.data?.job;
   const rawItems: StayCrawlItem[] = jobQuery.data?.items ?? [];
   const stats = jobQuery.data?.stats;
+
+  // Số lượng worker đang chạy song song (đếm các item có status là fetched hoặc trích xuất từ meta)
+  const activeRunningCount = useMemo(() => {
+    const runningFromItems = rawItems.filter(
+      (it) => it.status === 'fetched' || it.status === 'extracted' || it.status === 'crawling',
+    ).length;
+    return runningFromItems;
+  }, [rawItems]);
 
   // Filter items theo từ khóa tìm kiếm
   const items = useMemo(() => {
@@ -265,7 +276,8 @@ export default function StayCrawlerPage() {
     running ||
     currentJob?.status === 'running' ||
     currentJob?.status === 'processing' ||
-    Boolean(currentJob?.worker_alive);
+    Boolean(currentJob?.worker_alive) ||
+    activeRunningCount > 0;
 
   useEffect(() => {
     if (statusQuery.data?.proxy_enabled_default && statusQuery.data.proxy_configured) {
@@ -469,11 +481,28 @@ export default function StayCrawlerPage() {
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem' }}>
             <span className="ui-crawler-modal__pulse-dot" />
             <div>
-              <p style={{ margin: 0, fontWeight: 700, fontSize: '0.92rem', color: '#86efac' }}>
-                Tiến trình Crawler (Job #{activeJobId || '...'}) đang chạy ngầm đa luồng
-              </p>
-              <p style={{ margin: 0, fontSize: '0.8rem', color: '#cbd5e1' }}>
-                {log[log.length - 1] || 'Worker đang xử lý các khách sạn trong hàng đợi...'}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <p style={{ margin: 0, fontWeight: 700, fontSize: '0.92rem', color: '#86efac' }}>
+                  Tiến trình Crawler (Job #{activeJobId || '...'}) đang xử lý đa luồng Supervisor
+                </p>
+                {activeRunningCount > 0 && (
+                  <span
+                    style={{
+                      background: 'rgba(34, 197, 94, 0.25)',
+                      border: '1px solid #4ade80',
+                      color: '#bbf7d0',
+                      fontSize: '0.72rem',
+                      fontWeight: 700,
+                      padding: '0.15rem 0.45rem',
+                      borderRadius: '0.35rem',
+                    }}
+                  >
+                    ⚡ {activeRunningCount} worker song song
+                  </span>
+                )}
+              </div>
+              <p style={{ margin: '0.2rem 0 0 0', fontSize: '0.8rem', color: '#cbd5e1' }}>
+                {log[log.length - 1] || 'Các worker Supervisor đang bốc và cào các khách sạn song song...'}
               </p>
             </div>
           </div>
@@ -625,6 +654,12 @@ export default function StayCrawlerPage() {
                   {isCurrentJobRunning ? 'Đang chạy' : statusLabel(currentJob.status)}
                 </Badge>
               )}
+
+              {activeRunningCount > 0 && (
+                <Badge tone="success">
+                  ⚡ {activeRunningCount} worker đang cào song song
+                </Badge>
+              )}
             </div>
 
             {((stats?.failed ?? 0) > 0 || (stats?.blocked ?? 0) > 0) && (
@@ -713,6 +748,7 @@ export default function StayCrawlerPage() {
                 const isFailedOrBlocked = item.status === 'failed' || item.status === 'blocked';
                 const isDone = item.status === 'imported' || item.status === 'ai_done' || item.status === 'done';
                 const isQueued = item.status === 'queued';
+                const isActivelyProcessing = item.status === 'fetched' || item.status === 'extracted' || item.status === 'crawling';
 
                 return (
                   <EntityRow key={item.id}>
@@ -720,9 +756,12 @@ export default function StayCrawlerPage() {
                       title={hotelLabel(item.source_url)}
                       slug={item.slug_full || item.canonical_url}
                       badges={
-                        <Badge tone={statusTone(item.status)}>
-                          {statusLabel(item.status)}
-                        </Badge>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                          <Badge tone={isActivelyProcessing ? 'primary' : statusTone(item.status)}>
+                            {isActivelyProcessing && <span className="ui-crawler-modal__pulse-dot" style={{ marginRight: 4 }} />}
+                            {statusLabel(item.status)}
+                          </Badge>
+                        </div>
                       }
                       facts={
                         item.error ? (
@@ -759,7 +798,7 @@ export default function StayCrawlerPage() {
                           onClick={() => retryItemMutation.mutate({ itemId: item.id })}
                         >
                           <RotateCcw size={13} />
-                          <span>{isQueued ? 'Kích hoạt lại Queue' : 'Thử lại'}</span>
+                          <span>{isQueued ? 'Kích hoạt lại Queue' : isActivelyProcessing ? 'Cào lại' : 'Thử lại'}</span>
                         </Button>
                       )}
 
