@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Activity,
@@ -10,6 +10,7 @@ import {
   Clock,
   ExternalLink,
   Filter,
+  History,
   Layers,
   ListOrdered,
   Maximize2,
@@ -40,23 +41,30 @@ import { CrawlerTerminalLog } from '@/components/services/CrawlerTerminalLog';
 function statusTone(status: string): 'success' | 'warning' | 'danger' | 'neutral' | 'primary' {
   if (status === 'imported' || status === 'ai_done' || status === 'done') return 'success';
   if (status === 'blocked' || status === 'failed') return 'danger';
-  if (status === 'extracted' || status === 'fetched' || status === 'crawling' || status === 'running' || status === 'processing') return 'primary';
+  if (
+    status === 'extracted' ||
+    status === 'fetched' ||
+    status === 'crawling' ||
+    status === 'running' ||
+    status === 'processing'
+  )
+    return 'primary';
   return 'warning';
 }
 
 function statusLabel(status: string): string {
   const map: Record<string, string> = {
-    queued: 'Chờ cào',
-    extracted: 'Đã lọc HTML',
-    ai_done: 'Đã map HTML',
-    imported: 'Đã tạo trang',
-    blocked: 'Bị chặn',
-    failed: 'Lỗi',
+    queued: 'Đang xếp hàng cào',
+    extracted: 'Đã trích xuất HTML',
+    ai_done: 'Đã map dữ liệu',
+    imported: 'Đã tạo trang thành công',
+    blocked: 'Bị chặn (Cloudflare/Captcha)',
+    failed: 'Cào lỗi',
     ready: 'Sẵn sàng',
     done: 'Hoàn tất',
-    running: 'Đang chạy',
-    processing: 'Đang xử lý',
-    crawling: 'Đang cào',
+    running: 'Đang cào...',
+    processing: 'Đang xử lý...',
+    crawling: 'Đang cào dữ liệu...',
   };
   return map[status] || status;
 }
@@ -82,60 +90,6 @@ function previewUrl(slugFull: string | null | undefined, locale: string, default
   return publicPageUrl(slugFull, locale, defaultLocale, { preview: true });
 }
 
-type ExistsDetails = {
-  count: number;
-  items: { source_url: string; status: string; slug_full?: string | null }[];
-};
-
-type ImproveFrom = 'basic' | 'gallery' | 'rooms' | 'rooms_modals';
-type ExistsChoiceId = 'replace' | 'skip_existing' | ImproveFrom;
-
-const EXISTS_CHOICES: {
-  id: ExistsChoiceId;
-  rerun: 'improve' | 'replace' | 'skip';
-  from?: ImproveFrom;
-  label: string;
-  hint: string;
-}[] = [
-  {
-    id: 'skip_existing',
-    rerun: 'skip',
-    label: 'Chỉ cào các URL chưa cào / bị lỗi (Khuyên dùng)',
-    hint: 'Tự động bỏ qua các khách sạn đã hoàn tất, chỉ tập trung cào các URL còn thiếu hoặc bị lỗi.',
-  },
-  {
-    id: 'replace',
-    rerun: 'replace',
-    label: 'Cào lại từ đầu (thay thế toàn bộ)',
-    hint: 'Xóa HTML + ảnh cũ của các URL này rồi cào mới hoàn toàn.',
-  },
-  {
-    id: 'basic',
-    rerun: 'improve',
-    from: 'basic',
-    label: 'Cải thiện từ đầu (tải lại toàn bộ)',
-    hint: 'Tải lại trang Booking, bóc lại tiện ích + phòng, bổ sung ảnh còn thiếu.',
-  },
-  {
-    id: 'gallery',
-    rerun: 'improve',
-    from: 'gallery',
-    label: 'Chỉ cào lại Gallery',
-    hint: 'Bỏ qua bước tải trang chính; mở modal gallery tải thêm ảnh khách sạn.',
-  },
-  {
-    id: 'rooms',
-    rerun: 'improve',
-    from: 'rooms',
-    label: 'Chỉ cào lại bảng phòng',
-    hint: 'Bỏ qua trang chính + gallery; đọc lại danh sách phòng và tiện ích phòng.',
-  },
-];
-
-function existsChoiceLabel(id: ExistsChoiceId): string {
-  return EXISTS_CHOICES.find((c) => c.id === id)?.label || id;
-}
-
 export default function StayCrawlerPage() {
   const { can } = useAuth();
   const canCreate = can('services.create');
@@ -151,12 +105,12 @@ export default function StayCrawlerPage() {
   const [useProxy, setUseProxy] = useState(false);
   const [running, setRunning] = useState(false);
   const [showModal, setShowModal] = useState(false);
+  const [searchFilter, setSearchFilter] = useState('');
   const runningRef = useRef(false);
-  const pendingRerunRef = useRef<'improve' | 'replace' | 'skip' | null>(null);
-  const pendingFromRef = useRef<ImproveFrom>('basic');
-  const [existsChoice, setExistsChoice] = useState<ExistsChoiceId>('skip_existing');
   const [log, setLog] = useState<string[]>([]);
-  const [exists, setExists] = useState<ExistsDetails | null>(null);
+
+  // Local state lưu các itemId vừa bấm Thử lại để disable tức thì và đổi UI ngay lập tức
+  const [retryingIds, setRetryingIds] = useState<Record<number, boolean>>({});
 
   const statusQuery = useQuery({
     queryKey: ['stay-crawls-status'],
@@ -170,12 +124,12 @@ export default function StayCrawlerPage() {
 
   const jobsQuery = useQuery({
     queryKey: ['stay-crawls-jobs', categoryId],
-    queryFn: () => stayCrawlsApi.jobs({ service_category_id: categoryId ?? undefined, per_page: 20 }),
+    queryFn: () => stayCrawlsApi.jobs({ service_category_id: categoryId ?? undefined, per_page: 30 }),
     refetchInterval: running ? 4000 : 10000,
   });
 
-  // Chọn job đang xem: ưu tiên job người dùng bấm chọn, fallback job mới nhất
-  const activeJobId = selectedJobId ?? jobsQuery.data?.items?.[0]?.id ?? null;
+  const jobsList: StayCrawlJob[] = jobsQuery.data?.items ?? [];
+  const activeJobId = selectedJobId ?? jobsList[0]?.id ?? null;
 
   const jobQuery = useQuery({
     queryKey: ['stay-crawls-job', activeJobId, statusFilter],
@@ -185,18 +139,58 @@ export default function StayCrawlerPage() {
         limit: 500,
       }),
     enabled: !!activeJobId,
-    refetchInterval: running ? 3000 : 6000,
+    refetchInterval: running ? 2500 : 5000,
   });
 
+  const currentJob = jobQuery.data?.job;
+  const rawItems: StayCrawlItem[] = jobQuery.data?.items ?? [];
+  const stats = jobQuery.data?.stats;
+
+  // Filter items theo từ khóa tìm kiếm
+  const items = useMemo(() => {
+    if (!searchFilter.trim()) return rawItems;
+    const q = searchFilter.toLowerCase().trim();
+    return rawItems.filter(
+      (item) =>
+        item.source_url.toLowerCase().includes(q) ||
+        (item.slug_full && item.slug_full.toLowerCase().includes(q)) ||
+        hotelLabel(item.source_url).toLowerCase().includes(q),
+    );
+  }, [rawItems, searchFilter]);
+
+  // Mutation Thử lại 1 item
   const retryItemMutation = useMutation({
     mutationFn: (itemId: number) => stayCrawlsApi.retryItem(itemId),
+    onMutate: (itemId) => {
+      // Optimistic update: Đổi ngay trạng thái sang queued và khóa nút
+      setRetryingIds((prev) => ({ ...prev, [itemId]: true }));
+      qc.setQueryData(['stay-crawls-job', activeJobId, statusFilter], (old: any) => {
+        if (!old || !old.items) return old;
+        return {
+          ...old,
+          items: old.items.map((it: StayCrawlItem) =>
+            it.id === itemId
+              ? { ...it, status: 'queued', error: null, blocked_reason: null }
+              : it,
+          ),
+        };
+      });
+    },
     onSuccess: (data) => {
-      toast.success(data.message || 'Đã kích hoạt lại URL vào hàng đợi');
+      toast.success(data.message || 'Đã đưa khách sạn vào hàng đợi xử lý');
       void refresh();
     },
-    onError: (e) => toast.error((e as Error).message),
+    onError: (e, itemId) => {
+      setRetryingIds((prev) => {
+        const next = { ...prev };
+        delete next[itemId];
+        return next;
+      });
+      toast.error((e as Error).message);
+    },
   });
 
+  // Mutation Thử lại tất cả item lỗi
   const retryFailedMutation = useMutation({
     mutationFn: (jobId: number) => stayCrawlsApi.retryFailed(jobId),
     onSuccess: (data) => {
@@ -208,9 +202,9 @@ export default function StayCrawlerPage() {
 
   const isCurrentJobRunning =
     running ||
-    jobQuery.data?.job?.status === 'running' ||
-    jobQuery.data?.job?.status === 'processing' ||
-    Boolean(jobQuery.data?.job?.worker_alive);
+    currentJob?.status === 'running' ||
+    currentJob?.status === 'processing' ||
+    Boolean(currentJob?.worker_alive);
 
   useEffect(() => {
     if (statusQuery.data?.proxy_enabled_default && statusQuery.data.proxy_configured) {
@@ -227,25 +221,15 @@ export default function StayCrawlerPage() {
     await qc.invalidateQueries({ queryKey: ['stay-crawls-job'] });
   };
 
-  const runCrawl = async (rerun?: 'improve' | 'replace' | 'skip', from?: ImproveFrom) => {
-    const resolvedRerun = rerun ?? pendingRerunRef.current ?? undefined;
-    const resolvedFrom =
-      resolvedRerun === 'improve'
-        ? (from ?? pendingFromRef.current)
-        : undefined;
-    if (runningRef.current) {
-      return;
-    }
-    if (exists && !resolvedRerun) {
-      return;
-    }
+  const runCrawl = async () => {
+    if (runningRef.current) return;
     if (!categoryId) {
-      toast.error('Chọn danh mục lưu trú trước.');
+      toast.error('Vui lòng chọn danh mục lưu trú đích.');
       return;
     }
     const listUrl = url.trim();
     if (!listUrl) {
-      toast.error('Dán URL chỗ nghỉ hoặc danh mục Booking.com.');
+      toast.error('Vui lòng dán URL chỗ nghỉ hoặc danh mục Booking.com.');
       return;
     }
     const hotelUrl = isHotelUrl(listUrl);
@@ -254,37 +238,22 @@ export default function StayCrawlerPage() {
       return;
     }
 
-    pendingRerunRef.current = null;
-    pendingFromRef.current = 'basic';
     runningRef.current = true;
     setRunning(true);
     setShowModal(true);
-    setExists(null);
     setLog([]);
     const runList = mode === 'list' && !hotelUrl;
-    const rerunLabel =
-      resolvedRerun === 'improve'
-        ? existsChoiceLabel((resolvedFrom || 'basic') as ExistsChoiceId)
-        : resolvedRerun === 'replace'
-          ? existsChoiceLabel('replace')
-          : resolvedRerun === 'skip'
-            ? existsChoiceLabel('skip_existing')
-            : null;
-    appendLog(
-      (runList ? `Bắt đầu crawler danh mục: ${listUrl}` : `Bắt đầu crawler 1 chỗ nghỉ: ${listUrl}`) +
-        (rerunLabel ? ` — ${rerunLabel}` : ''),
-    );
+    appendLog(runList ? `Bắt đầu cào danh mục: ${listUrl}` : `Bắt đầu cào 1 chỗ nghỉ: ${listUrl}`);
 
     try {
-      appendLog(runList ? 'Đang quét danh sách chỗ nghỉ…' : 'Đã nhận URL — đẩy vào queue đa luồng…');
+      appendLog(runList ? 'Đang quét danh sách chỗ nghỉ trên Booking.com…' : 'Đã nhận URL — đưa vào queue…');
       const started = await stayCrawlsApi.fromCategory({
         service_category_id: categoryId,
         url: listUrl,
         html: html.trim() || undefined,
         use_proxy: useProxy || undefined,
-        ...(resolvedRerun && resolvedRerun !== 'skip' ? { rerun: resolvedRerun } : {}),
-        ...(resolvedRerun === 'improve' && resolvedFrom ? { from: resolvedFrom } : {}),
       });
+
       const jobId = started.job?.id;
       if (jobId) {
         setSelectedJobId(jobId);
@@ -293,45 +262,27 @@ export default function StayCrawlerPage() {
         (Array.isArray(started.urls) ? started.urls.length : 0) ||
         Number(started.job?.items_found || 0) ||
         (Array.isArray(started.items) ? started.items.length : 0);
+
       if (!jobId) {
         appendLog('⚠ Không tạo được job crawler.');
         await refresh();
         return;
       }
+
       if (started.is_listing_async) {
-        appendLog('🚀 Đang khởi động Chrome quét danh sách Booking.com ở background (hỗ trợ đa luồng)…');
+        appendLog('🚀 Đang khởi động Chrome quét danh sách ở background (hỗ trợ đa luồng Supervisor)…');
       } else if (total) {
-        appendLog(
-          runList
-            ? `✓ Đã lưu ${total} URL — đẩy từng URL vào queue (Supervisor tự động chia đa luồng)…`
-            : `✓ Đã lưu ${total} URL — đang xử lý bóc tách HTML + tạo draft…`,
-        );
-      } else {
-        appendLog('• Bắt đầu dò tìm URL chỗ nghỉ…');
-      }
-      if (started.worker_hint) {
-        appendLog(`• ${started.worker_hint}`);
-      }
-      if (started.queue_hint) {
-        appendLog(`• Worker: ${started.queue_hint}`);
-      }
-      if (started.job?.list?.urls_queued || started.job?.list?.pages_done) {
-        const q = started.job.list.urls_queued ?? total;
-        appendLog(
-          `• Listing: ${q} URL` +
-            (started.job.list.stopped_reason ? ` (dừng: ${started.job.list.stopped_reason})` : ''),
-        );
+        appendLog(`✓ Đã gom ${total} khách sạn — hệ thống tự động chạy các khách sạn mới/chưa cào.`);
       }
 
       let guard = 0;
       let networkFails = 0;
       let lastSeq = 0;
-      let loggedBusy = false;
-      let busySince = 0;
       const workerMode = Boolean(started.worker?.running || started.job?.worker_alive || runList);
       const maxCompletedSteps = workerMode ? 50_000 : runList ? 400 : 120;
       const maxWallMs = workerMode ? 7 * 24 * 60 * 60_000 : runList ? 90 * 60_000 : 45 * 60_000;
       const startedAt = Date.now();
+
       while (guard < maxCompletedSteps && Date.now() - startedAt < maxWallMs) {
         try {
           const step = await stayCrawlsApi.processNext(jobId, {
@@ -347,9 +298,7 @@ export default function StayCrawlerPage() {
 
           if (phase === 'listing') {
             const urlsCount = step.urls_found || step.total || 0;
-            const streamInfo = (step as any).stream;
-            const clickInfo = streamInfo?.load_more_clicks ? ` (click tải thêm: ${streamInfo.load_more_clicks})` : '';
-            appendLog(`🔍 [Listing] ${msg || 'Đang quét danh sách...'} — đã gom ${urlsCount} URL${clickInfo}`);
+            appendLog(`🔍 [Danh sách] ${msg || 'Đang quét URL...'} — đã gom ${urlsCount} khách sạn`);
             await refresh();
             await new Promise((r) => setTimeout(r, 2000));
             continue;
@@ -358,137 +307,73 @@ export default function StayCrawlerPage() {
           if (seq > lastSeq) {
             lastSeq = seq;
             guard++;
-            loggedBusy = false;
-            busySince = 0;
             const itemLabel = step.item
               ? hotelLabel(step.item.source_url)
               : hotelLabel(String(step.last_step?.source_url || listUrl));
             const status = step.item?.status || step.last_step?.item_status;
             if (status === 'blocked') {
-              appendLog(
-                `✗ ${itemLabel} — bị chặn (${step.item?.blocked_reason || step.last_step?.blocked_reason || 'unknown'})`,
-              );
+              appendLog(`✗ ${itemLabel} — bị chặn`);
             } else if (status === 'failed') {
-              appendLog(`✗ ${itemLabel} — lỗi: ${step.item?.error || step.last_step?.error || 'unknown'}`);
+              appendLog(`✗ ${itemLabel} — lỗi: ${step.item?.error || step.last_step?.error || ''}`);
             } else if (step.service?.slug_full && phase === 'basic') {
-              appendLog(`✓ ${itemLabel} → /${step.service.slug_full}`);
+              appendLog(`✓ ${itemLabel} → Tạo trang /${step.service.slug_full}`);
             } else if (msg) {
-              appendLog(`• ${itemLabel} — ${phase ? `[${phase}] ` : ''}${msg}`);
+              appendLog(`• ${itemLabel} — ${msg}`);
             }
           }
 
           if (step.done && !step.busy) {
-            if (!step.item && step.imported === 0 && step.blocked === 0 && step.failed === 0) {
-              appendLog('⚠ Không xử lý được chỗ nghỉ nào. Thử Cải thiện hoặc Xóa sạch rồi cào lại.');
-            } else {
-              appendLog(`\n═══ XONG: ${step.imported} trang tạo, ${step.blocked} bị chặn, ${step.failed} lỗi ═══`);
-              toast.success(`Đã xong: ${step.imported} trang tạo`);
-            }
+            appendLog(`\n═══ XONG: ${step.imported} trang hoàn tất, ${step.failed} lỗi, ${step.blocked} bị chặn ═══`);
+            toast.success(`Đã hoàn tất phiên cào: ${step.imported} trang tạo thành công`);
             break;
           }
 
           if (step.busy) {
-            if (!busySince) {
-              busySince = Date.now();
-            }
-            const waitedSec = Math.round((Date.now() - busySince) / 1000);
-            const msg = String(step.message || '');
-            const isWorker = /worker/i.test(msg) || Boolean(step.job?.worker_alive);
-            if (!loggedBusy) {
-              appendLog(
-                isWorker
-                  ? 'Worker nền đa luồng đang chạy — có thể đóng modal hoặc tab này bất cứ lúc nào; hệ thống vẫn tự động xử lý.'
-                  : 'Chrome đang chạy nền (gallery/phòng có thể 2–8 phút/bước)…',
-              );
-              loggedBusy = true;
-            } else if (waitedSec > 0 && waitedSec % 60 < 5) {
-              const rem = step.remaining ?? step.job?.worker?.remaining;
-              appendLog(
-                isWorker
-                  ? `… worker còn ~${rem ?? '?'} bước (${waitedSec}s) — log: storage/logs/stay-crawl-work-${jobId}.log`
-                  : `… vẫn chạy nền (${waitedSec}s) — đợi gallery/phòng`,
-              );
-            }
-            await new Promise((r) => setTimeout(r, isWorker ? 4000 : 2500));
+            await new Promise((r) => setTimeout(r, 3500));
             continue;
           }
 
-          busySince = 0;
-          await new Promise((r) => setTimeout(r, 400));
+          await new Promise((r) => setTimeout(r, 500));
         } catch (e) {
           const err = e as ApiClientError;
           networkFails++;
-          appendLog(`✗ Lỗi xử lý (${networkFails}): ${err.message}`);
-          if (networkFails >= 4) {
-            break;
-          }
-          appendLog('Đợi 4 giây rồi thử lại cùng job (không cần bấm lại)…');
+          appendLog(`✗ Lỗi kết nối (${networkFails}): ${err.message}`);
+          if (networkFails >= 4) break;
           await new Promise((r) => setTimeout(r, 4000));
         }
       }
       await refresh();
-    } catch (e) {
-      const err = e as any;
-      if (err?.data && typeof err.data === 'object' && 'exists' in err.data) {
-        const d = err.data as { exists: ExistsDetails };
-        setExists(d.exists);
-        setExistsChoice('skip_existing');
-      } else {
-        appendLog(`✗ Lỗi khởi động: ${err.message || 'Không xác định'}`);
-        toast.error(err.message || 'Lỗi khởi động crawler');
-      }
+    } catch (e: any) {
+      appendLog(`✗ Lỗi khởi động: ${e?.message || 'Không xác định'}`);
+      toast.error(e?.message || 'Lỗi khởi động crawler');
     } finally {
       runningRef.current = false;
       setRunning(false);
     }
   };
 
-  const currentJob = jobQuery.data?.job;
-  const items: StayCrawlItem[] = jobQuery.data?.items ?? [];
-  const stats = jobQuery.data?.stats;
-  const jobsList: StayCrawlJob[] = jobsQuery.data?.items ?? [];
   const categories = categoriesQuery.data?.items ?? [];
-  const browserReady = statusQuery.data?.browser_ready === true;
   const browserBlocked = statusQuery.data?.browser_ready === false;
-  const crawlDisabled =
-    !categoryId || !canCreate || !url.trim() || running || Boolean(exists) || browserBlocked;
-  const crawlBlockHints: string[] = [];
-  if (!canCreate) {
-    crawlBlockHints.push('Tài khoản thiếu quyền services.create — không thể chạy crawler.');
-  }
-  if (statusQuery.isError) {
-    crawlBlockHints.push(
-      `Không gọi được /stay-crawls/status: ${(statusQuery.error as Error)?.message || 'lỗi mạng/API'}. Kiểm tra đăng nhập admin + X-Project / CORS.`,
-    );
-  }
-  if (browserBlocked) {
-    crawlBlockHints.push(
-      `Crawler Chrome chưa sẵn sàng (${statusQuery.data?.ready_hint || 'thiếu node/chrome hoặc scripts'}). Kiểm tra cấu hình .env trên VPS (STAY_CRAWL_NODE, STAY_CRAWL_CHROME).`,
-    );
-  }
+  const crawlDisabled = !categoryId || !canCreate || !url.trim() || running || browserBlocked;
 
   return (
-    <div className="crawler-page-container">
+    <div className="crawler-page-container" style={{ display: 'grid', gap: '1.25rem' }}>
       <PageHeader
         eyebrow="Lưu trú"
         title="Crawler Booking.com"
-        description="Nhập link khách sạn hoặc danh mục Booking.com để cào tự động thông tin, hình ảnh độ nét cao và tiện ích phòng vào hệ thống."
+        description="Bóc tách tự động thông tin, hình ảnh HD và tiện ích phòng từ Booking.com vào hệ thống ViTravel."
         actions={
           <div className="flex items-center gap-2">
-            {jobsList.length > 0 && (
-              <Button
-                type="button"
-                variant={showModal ? 'primary' : 'secondary'}
-                size="sm"
-                onClick={() => {
-                  setShowModal(true);
-                }}
-              >
-                <Terminal size={14} />
-                <span>Xem Console / Live Log</span>
-                {isCurrentJobRunning && <span className="ui-crawler-modal__pulse-dot" style={{ marginLeft: 4 }} />}
-              </Button>
-            )}
+            <Button
+              type="button"
+              variant={showModal ? 'primary' : 'secondary'}
+              size="sm"
+              onClick={() => setShowModal(true)}
+            >
+              <Terminal size={14} />
+              <span>Xem Console / Live Log</span>
+              {isCurrentJobRunning && <span className="ui-crawler-modal__pulse-dot" style={{ marginLeft: 4 }} />}
+            </Button>
             <Button
               type="button"
               variant="ghost"
@@ -502,58 +387,48 @@ export default function StayCrawlerPage() {
         }
       />
 
-      {/* Bar thông báo nổi khi Modal bị đóng lúc tiến trình đang chạy */}
+      {/* Floating Status Bar khi có job đang chạy ngầm */}
       {isCurrentJobRunning && !showModal && (
         <div
           style={{
             position: 'sticky',
             top: '4.25rem',
             zIndex: 40,
-            marginBottom: '1rem',
-            padding: '0.75rem 1.2rem',
-            borderRadius: 'var(--admin-radius-lg, 0.75rem)',
-            background: 'linear-gradient(135deg, #132213 0%, #1e331b 100%)',
+            padding: '0.85rem 1.25rem',
+            borderRadius: '0.75rem',
+            background: 'linear-gradient(135deg, #132213 0%, #1c3519 100%)',
             border: '1px solid rgba(107, 143, 63, 0.45)',
-            boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.3)',
+            boxShadow: '0 12px 28px -6px rgba(0, 0, 0, 0.35)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
             gap: '1rem',
           }}
         >
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem' }}>
             <span className="ui-crawler-modal__pulse-dot" />
             <div>
-              <p style={{ margin: 0, fontWeight: 650, fontSize: '0.9rem', color: '#86efac' }}>
+              <p style={{ margin: 0, fontWeight: 700, fontSize: '0.92rem', color: '#86efac' }}>
                 Tiến trình Crawler (Job #{activeJobId || '...'}) đang chạy ngầm đa luồng
               </p>
-              <p style={{ margin: 0, fontSize: '0.78rem', color: '#cbd5e1' }}>
-                {log[log.length - 1] || 'Đang phân tích và xử lý các trang con...'}
+              <p style={{ margin: 0, fontSize: '0.8rem', color: '#cbd5e1' }}>
+                {log[log.length - 1] || 'Worker đang xử lý các khách sạn trong hàng đợi...'}
               </p>
             </div>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <Button
-              type="button"
-              size="sm"
-              variant="secondary"
-              onClick={() => {
-                setShowModal(true);
-              }}
-            >
-              <Maximize2 size={13} /> Mở Live Modal
-            </Button>
-          </div>
+          <Button type="button" size="sm" variant="secondary" onClick={() => setShowModal(true)}>
+            <Maximize2 size={13} /> Mở Live Modal
+          </Button>
         </div>
       )}
 
-      {/* Main Config Form */}
+      {/* Khối Khởi tạo Crawler */}
       <FormSection
         icon={ScanSearch}
         title="Khởi tạo Crawler"
-        description="Chọn danh mục đích và dán đường link Booking.com để bắt đầu."
+        description="Chọn danh mục đích và nhập URL Booking.com để bắt đầu."
       >
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1rem' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '1rem' }}>
           <Select
             label="Danh mục lưu trú đích"
             required
@@ -594,20 +469,29 @@ export default function StayCrawlerPage() {
         />
 
         <Textarea
-          label="Dán mã nguồn HTML (Tuỳ chọn - Dự phòng khi bị Captcha/Cloudflare chặn)"
-          hint="Mở link trên trình duyệt máy tính cá nhân -> Lưu trang / Save As HTML -> Dán nội dung vào đây."
-          rows={3}
+          label="Dán mã nguồn HTML (Tuỳ chọn - Dự phòng khi bị Captcha chặn)"
+          hint="Mở link trên trình duyệt cá nhân -> Lưu trang / Save As HTML -> Dán nội dung vào đây."
+          rows={2}
           value={html}
           onChange={(e) => setHtml(e.target.value)}
         />
 
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem', marginTop: '0.5rem' }}>
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            flexWrap: 'wrap',
+            gap: '1rem',
+            marginTop: '0.25rem',
+          }}
+        >
           <Switch
             label="Kích hoạt Proxy Residential"
             hint={
               statusQuery.data?.proxy_configured
                 ? 'Sử dụng cụm proxy cấu hình trong STAY_CRAWL_PROXY_*'
-                : 'Chưa thiết lập biến STAY_CRAWL_PROXY_* trong .env'
+                : 'Chưa cấu hình STAY_CRAWL_PROXY_* trong .env'
             }
             checked={useProxy}
             onChange={setUseProxy}
@@ -624,138 +508,88 @@ export default function StayCrawlerPage() {
             <Play size={16} /> Bắt đầu cào dữ liệu
           </Button>
         </div>
-
-        {crawlBlockHints.length > 0 && (
-          <div style={{ padding: '0.75rem 1rem', borderRadius: '0.5rem', background: '#fef2f2', border: '1px solid #fecaca', color: '#991b1b', fontSize: '0.84rem' }}>
-            {crawlBlockHints.map((h, idx) => (
-              <p key={idx} style={{ margin: '0.2rem 0' }}>⚠ {h}</p>
-            ))}
-          </div>
-        )}
       </FormSection>
 
-      {/* Jobs History Bar & Current Active Job Detail */}
-      {jobsList.length > 0 && (
-        <FormSection
-          icon={Layers}
-          title="Lịch sử các phiên Crawler (Jobs)"
-          description="Chọn một phiên để xem chi tiết tiến độ, danh sách khách sạn và mở lại console log thời gian thực."
-        >
-          <div style={{ display: 'flex', gap: '0.6rem', overflowX: 'auto', paddingBottom: '0.5rem' }} className="vt-scrollbar">
-            {jobsList.map((job) => {
-              const isSelected = job.id === activeJobId;
-              const isJobRunning = job.status === 'running' || job.status === 'processing' || Boolean(job.worker_alive);
-              return (
-                <button
-                  key={job.id}
-                  type="button"
-                  onClick={() => setSelectedJobId(job.id)}
-                  style={{
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'flex-start',
-                    gap: '0.25rem',
-                    padding: '0.65rem 0.9rem',
-                    borderRadius: '0.6rem',
-                    minWidth: '13.5rem',
-                    textAlign: 'left',
-                    cursor: 'pointer',
-                    transition: 'all 0.15s ease',
-                    border: isSelected
-                      ? '2px solid var(--admin-primary-500, #3b82f6)'
-                      : '1px solid var(--admin-line, #e2e8f0)',
-                    background: isSelected
-                      ? 'color-mix(in srgb, var(--admin-primary-500, #3b82f6) 8%, var(--admin-surface, #fff))'
-                      : 'var(--admin-surface, #fff)',
-                  }}
-                >
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', gap: '0.5rem' }}>
-                    <span style={{ fontWeight: 700, fontSize: '0.85rem' }}>Job #{job.id}</span>
-                    <Badge tone={statusTone(job.status)}>
-                      {isJobRunning ? 'Đang chạy' : statusLabel(job.status)}
-                    </Badge>
-                  </div>
-                  <span style={{ fontSize: '0.76rem', color: 'var(--admin-muted, #64748b)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '12rem' }}>
-                    {hotelLabel(job.list_url || '')}
-                  </span>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', fontSize: '0.72rem', color: 'var(--admin-muted, #64748b)', marginTop: '0.2rem' }}>
-                    <span>{job.items_found || job.items_count || 0} mục</span>
-                    <span>{job.created_at ? new Date(job.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}</span>
-                  </div>
-                </button>
-              );
-            })}
-          </div>
-
-          {/* Chi tiết Job đang chọn */}
-          {currentJob && (
-            <div
-              style={{
-                marginTop: '1rem',
-                padding: '1rem 1.25rem',
-                borderRadius: '0.65rem',
-                background: 'color-mix(in srgb, var(--admin-surface-tint, #f8fafc) 60%, var(--admin-surface, #fff))',
-                border: '1px solid var(--admin-line, #e2e8f0)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                flexWrap: 'wrap',
-                gap: '1rem',
-              }}
-            >
-              <div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-                  <h4 style={{ margin: 0, fontSize: '0.98rem', fontWeight: 700 }}>
-                    Chi tiết Phiên #{currentJob.id}
-                  </h4>
-                  <Badge tone={statusTone(currentJob.status)}>
-                    {statusLabel(currentJob.status)}
-                  </Badge>
-                  {isCurrentJobRunning && (
-                    <span className="ui-crawler-modal__badge" style={{ padding: '0.2rem 0.5rem', fontSize: '0.7rem' }}>
-                      <span className="ui-crawler-modal__pulse-dot" /> Live Worker
-                    </span>
-                  )}
-                </div>
-                <p style={{ margin: '0.25rem 0 0 0', fontSize: '0.8rem', color: 'var(--admin-muted, #64748b)' }}>
-                  URL nguồn: <a href={currentJob.list_url} target="_blank" rel="noreferrer" style={{ textDecoration: 'underline' }}>{currentJob.list_url}</a>
-                </p>
-              </div>
-
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-                <Button
-                  type="button"
-                  variant="secondary"
-                  size="sm"
-                  onClick={() => {
-                    setShowModal(true);
-                  }}
-                >
-                  <Terminal size={14} /> Mở Terminal Log
-                </Button>
-              </div>
-            </div>
-          )}
-        </FormSection>
-      )}
-
-      {/* Results List & Stats Bar */}
+      {/* Bảng Danh sách Khách sạn & Quản lý Job Hiện tại */}
       {activeJobId && (
         <FormSection
           icon={Building2}
-          title={`Danh sách khách sạn (${stats?.total ?? items.length})`}
-          description="Các khách sạn được bóc tách trong phiên crawl này. Trạng thái được cập nhật thời gian thực."
+          title={`Danh sách khách sạn (Job #${activeJobId})`}
+          description="Toàn bộ danh sách khách sạn được quét trong phiên. Trạng thái cập nhật tự động thời gian thực."
         >
-          {/* Stats Bar & Filter Tabs */}
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.75rem', marginBottom: '0.75rem' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap' }}>
+          {/* Header chọn Job & Thống kê tổng quan */}
+          <div
+            style={{
+              padding: '0.85rem 1.1rem',
+              borderRadius: '0.65rem',
+              background: 'color-mix(in srgb, var(--admin-surface-tint, #f8fafc) 70%, var(--admin-surface, #fff))',
+              border: '1px solid var(--admin-line, #e2e8f0)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              flexWrap: 'wrap',
+              gap: '1rem',
+              marginBottom: '1rem',
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
+              <span style={{ fontSize: '0.86rem', fontWeight: 650, color: 'var(--admin-muted, #64748b)' }}>
+                Phiên cào:
+              </span>
+              <select
+                className="ui-select"
+                style={{ minWidth: '16rem', padding: '0.35rem 0.65rem', fontSize: '0.86rem', borderRadius: '0.45rem' }}
+                value={activeJobId}
+                onChange={(e) => setSelectedJobId(Number(e.target.value))}
+              >
+                {jobsList.map((j) => (
+                  <option key={j.id} value={j.id}>
+                    Job #{j.id} — {hotelLabel(j.list_url || '')} ({j.items_found || j.items_count || 0} mục)
+                  </option>
+                ))}
+              </select>
+
+              {currentJob && (
+                <Badge tone={statusTone(currentJob.status)}>
+                  {isCurrentJobRunning ? 'Đang chạy' : statusLabel(currentJob.status)}
+                </Badge>
+              )}
+            </div>
+
+            {((stats?.failed ?? 0) > 0 || (stats?.blocked ?? 0) > 0) && (
+              <Button
+                type="button"
+                size="sm"
+                variant="danger"
+                loading={retryFailedMutation.isPending}
+                onClick={() => {
+                  if (activeJobId) retryFailedMutation.mutate(activeJobId);
+                }}
+              >
+                <RotateCcw size={13} /> Thử lại tất cả URL lỗi ({ (stats?.failed ?? 0) + (stats?.blocked ?? 0) })
+              </Button>
+            )}
+          </div>
+
+          {/* Bộ lọc Tab Trạng thái & Ô tìm kiếm */}
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              flexWrap: 'wrap',
+              gap: '0.75rem',
+              marginBottom: '1rem',
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', flexWrap: 'wrap' }}>
               <Button
                 type="button"
                 size="sm"
                 variant={statusFilter === 'all' ? 'primary' : 'ghost'}
                 onClick={() => setStatusFilter('all')}
               >
-                Tất cả ({stats?.total ?? items.length})
+                Tất cả ({stats?.total ?? rawItems.length})
               </Button>
               <Button
                 type="button"
@@ -763,7 +597,7 @@ export default function StayCrawlerPage() {
                 variant={statusFilter === 'done' ? 'primary' : 'ghost'}
                 onClick={() => setStatusFilter('done')}
               >
-                ✓ Đã hoàn tất ({stats?.done ?? 0})
+                ✓ Hoàn tất ({stats?.done ?? 0})
               </Button>
               <Button
                 type="button"
@@ -771,7 +605,7 @@ export default function StayCrawlerPage() {
                 variant={statusFilter === 'failed' ? 'primary' : 'ghost'}
                 onClick={() => setStatusFilter('failed')}
               >
-                ✗ Lỗi / Bị chặn ({ (stats?.failed ?? 0) + (stats?.blocked ?? 0) })
+                ✗ Lỗi / Chặn ({ (stats?.failed ?? 0) + (stats?.blocked ?? 0) })
               </Button>
               <Button
                 type="button"
@@ -783,89 +617,99 @@ export default function StayCrawlerPage() {
               </Button>
             </div>
 
-            {((stats?.failed ?? 0) > 0 || (stats?.blocked ?? 0) > 0) && (
-              <Button
-                type="button"
-                size="sm"
-                variant="danger"
-                loading={retryFailedMutation.isPending}
-                onClick={() => {
-                  if (activeJobId) {
-                    retryFailedMutation.mutate(activeJobId);
-                  }
-                }}
-              >
-                <RotateCcw size={14} /> Thử lại tất cả URL lỗi ({ (stats?.failed ?? 0) + (stats?.blocked ?? 0) })
-              </Button>
-            )}
+            <div style={{ minWidth: '15rem' }}>
+              <input
+                type="text"
+                className="ui-input"
+                style={{ padding: '0.35rem 0.75rem', fontSize: '0.84rem', width: '100%', borderRadius: '0.45rem' }}
+                placeholder="Tìm theo tên khách sạn / slug..."
+                value={searchFilter}
+                onChange={(e) => setSearchFilter(e.target.value)}
+              />
+            </div>
           </div>
 
+          {/* Render Danh sách Khách sạn */}
           {items.length === 0 ? (
-            <p className="body-text" style={{ padding: '1rem', textAlign: 'center', color: 'var(--admin-muted)' }}>
-              Không có khách sạn nào khớp với bộ lọc.
-            </p>
+            <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--admin-muted, #64748b)' }}>
+              <p style={{ margin: 0, fontSize: '0.92rem' }}>Không có khách sạn nào khớp với bộ lọc hiện tại.</p>
+            </div>
           ) : (
             <EntityList>
-              {items.map((item) => (
-                <EntityRow key={item.id}>
-                  <EntityMain
-                    title={hotelLabel(item.source_url)}
-                    slug={item.slug_full || item.canonical_url}
-                    badges={<Badge tone={statusTone(item.status)}>{statusLabel(item.status)}</Badge>}
-                    facts={
-                      item.error ? (
-                        <span style={{ color: '#ef4444' }}>{item.error}</span>
-                      ) : item.slug_full ? (
-                        <span>/{item.slug_full}</span>
-                      ) : undefined
-                    }
-                  />
-                  <EntityActions>
-                    {(item.status === 'failed' || item.status === 'blocked' || item.status === 'queued') && (
+              {items.map((item) => {
+                const isRetrying = retryingIds[item.id] || (retryItemMutation.isPending && retryItemMutation.variables === item.id);
+                const isQueued = item.status === 'queued' || item.status === 'crawling' || item.status === 'processing' || isRetrying;
+                const isFailedOrBlocked = item.status === 'failed' || item.status === 'blocked';
+                const isDone = item.status === 'imported' || item.status === 'ai_done' || item.status === 'done';
+
+                return (
+                  <EntityRow key={item.id}>
+                    <EntityMain
+                      title={hotelLabel(item.source_url)}
+                      slug={item.slug_full || item.canonical_url}
+                      badges={
+                        <Badge tone={isRetrying ? 'warning' : statusTone(item.status)}>
+                          {isRetrying ? 'Đang xếp hàng cào' : statusLabel(item.status)}
+                        </Badge>
+                      }
+                      facts={
+                        item.error ? (
+                          <span style={{ color: '#ef4444' }}>{item.error}</span>
+                        ) : item.slug_full ? (
+                          <span>/{item.slug_full}</span>
+                        ) : undefined
+                      }
+                    />
+                    <EntityActions>
+                      {/* Nút Thử lại: Disable ngay khi đang xếp hàng để tránh bấm trùng */}
                       <Button
                         type="button"
                         size="sm"
-                        variant="secondary"
-                        loading={retryItemMutation.isPending && retryItemMutation.variables === item.id}
+                        variant={isFailedOrBlocked ? 'danger' : 'secondary'}
+                        disabled={isQueued || isRetrying}
+                        loading={isRetrying}
                         onClick={() => retryItemMutation.mutate(item.id)}
                       >
-                        <RotateCcw size={13} /> Thử lại
+                        <RotateCcw size={13} />
+                        <span>{isQueued ? 'Đang trong Queue' : isDone ? 'Cào lại' : 'Thử lại'}</span>
                       </Button>
-                    )}
-                    {item.slug_full && (
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => {
-                          const href = previewUrl(item.slug_full, locale, DEFAULT_LOCALE);
-                          if (href) window.open(href, '_blank', 'noopener,noreferrer');
-                        }}
-                      >
-                        <ExternalLink size={14} /> Xem trang
-                      </Button>
-                    )}
-                    {item.has_extracted && !item.has_ai && item.status !== 'blocked' && item.status !== 'failed' && (
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="ghost"
-                        onClick={async () => {
-                          try {
-                            await stayCrawlsApi.map(item.id);
-                            toast.success('Đã map HTML: ' + hotelLabel(item.source_url));
-                            await refresh();
-                          } catch (e) {
-                            toast.error((e as Error).message);
-                          }
-                        }}
-                      >
-                        Map HTML
-                      </Button>
-                    )}
-                  </EntityActions>
-                </EntityRow>
-              ))}
+
+                      {item.slug_full && (
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => {
+                            const href = previewUrl(item.slug_full, locale, DEFAULT_LOCALE);
+                            if (href) window.open(href, '_blank', 'noopener,noreferrer');
+                          }}
+                        >
+                          <ExternalLink size={14} /> Xem trang
+                        </Button>
+                      )}
+
+                      {item.has_extracted && !item.has_ai && !isFailedOrBlocked && (
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="ghost"
+                          onClick={async () => {
+                            try {
+                              await stayCrawlsApi.map(item.id);
+                              toast.success('Đã map HTML: ' + hotelLabel(item.source_url));
+                              await refresh();
+                            } catch (e) {
+                              toast.error((e as Error).message);
+                            }
+                          }}
+                        >
+                          Map HTML
+                        </Button>
+                      )}
+                    </EntityActions>
+                  </EntityRow>
+                );
+              })}
             </EntityList>
           )}
         </FormSection>
@@ -874,12 +718,7 @@ export default function StayCrawlerPage() {
       {/* Modal Live Crawler & Terminal Log */}
       {showModal && (
         <div className="ui-modal ui-modal--open" role="dialog" aria-modal="true">
-          <div
-            className="ui-modal__veil"
-            onClick={() => {
-              setShowModal(false);
-            }}
-          />
+          <div className="ui-modal__veil" onClick={() => setShowModal(false)} />
           <div className="ui-crawler-modal" role="document">
             <header className="ui-crawler-modal__head">
               <div className="ui-crawler-modal__brand">
@@ -906,10 +745,8 @@ export default function StayCrawlerPage() {
                   type="button"
                   className="ui-btn ui-btn--ghost ui-btn--sm"
                   style={{ padding: '0.4rem', borderRadius: '0.4rem' }}
-                  title="Đóng cửa sổ theo dõi (Tiến trình nền vẫn tiếp tục chạy)"
-                  onClick={() => {
-                    setShowModal(false);
-                  }}
+                  title="Đóng cửa sổ theo dõi"
+                  onClick={() => setShowModal(false)}
                 >
                   <X size={18} />
                 </button>
@@ -917,7 +754,7 @@ export default function StayCrawlerPage() {
             </header>
             <div className="ui-crawler-modal__body">
               <p className="ui-crawler-modal__hint">
-                💡 Bạn có thể <strong>đóng cửa sổ này</strong> hoặc <strong>tải lại trang</strong> bất cứ lúc nào. Tiến trình cào và worker nền vẫn tự động hoàn tất. Nhấn vào nút <em>&quot;Xem Console / Live Log&quot;</em> trên đầu trang để mở lại.
+                💡 Bạn có thể <strong>đóng cửa sổ này</strong> hoặc <strong>tải lại trang</strong> bất cứ lúc nào. Tiến trình cào và worker nền Supervisor vẫn tự động xử lý. Nhấn vào nút <em>&quot;Xem Console / Live Log&quot;</em> trên đầu trang để mở lại.
               </p>
               <CrawlerTerminalLog logs={log} running={isCurrentJobRunning} maxHeight="min(52vh, 24rem)" />
             </div>
@@ -925,126 +762,13 @@ export default function StayCrawlerPage() {
               <span style={{ fontSize: '0.78rem', color: 'var(--admin-muted, #64748b)' }}>
                 {log.length > 0 ? `Đã ghi nhận ${log.length} dòng sự kiện` : 'Chờ sự kiện tiếp theo từ engine...'}
               </span>
-              <Button
-                type="button"
-                variant="secondary"
-                size="sm"
-                onClick={() => {
-                  setShowModal(false);
-                }}
-              >
+              <Button type="button" variant="secondary" size="sm" onClick={() => setShowModal(false)}>
                 Đóng cửa sổ theo dõi
               </Button>
             </footer>
           </div>
         </div>
       )}
-
-      {/* Rerun / Conflict Dialog */}
-      {exists && !running ? (
-        <div className="ui-modal ui-modal--open" role="dialog" aria-modal="true">
-          <button
-            type="button"
-            className="ui-modal__veil"
-            aria-label="Đóng"
-            onClick={() => {
-              pendingRerunRef.current = null;
-              setExistsChoice('skip_existing');
-              setExists(null);
-            }}
-          />
-          <div className="ui-modal__card ui-modal__card--form" style={{ width: 'min(30rem, 100%)' }}>
-            <header className="ui-modal__head">
-              <h2 className="ui-modal__title">URL đã cào trước đó</h2>
-              <p className="ui-modal__desc" style={{ marginBottom: 0 }}>
-                Phát hiện {exists.count} chỗ nghỉ trong danh sách đã có dữ liệu trong hệ thống.
-              </p>
-            </header>
-            <div className="ui-modal__body" style={{ paddingTop: '0.75rem' }}>
-              <fieldset style={{ border: 0, margin: 0, padding: 0 }}>
-                <legend className="ui-field__label" style={{ marginBottom: '0.5rem' }}>
-                  Chọn hướng xử lý thông minh
-                </legend>
-                <div style={{ display: 'grid', gap: '0.4rem' }}>
-                  {EXISTS_CHOICES.map((opt) => {
-                    const active = existsChoice === opt.id;
-                    return (
-                      <label
-                        key={opt.id}
-                        style={{
-                          display: 'flex',
-                          gap: '0.55rem',
-                          alignItems: 'flex-start',
-                          cursor: 'pointer',
-                          padding: '0.5rem 0.6rem',
-                          borderRadius: '0.45rem',
-                          border: active
-                            ? '1px solid var(--color-accent, #3b82f6)'
-                            : '1px solid var(--color-line, #e5e5e5)',
-                          background: active
-                            ? 'color-mix(in srgb, var(--color-accent, #3b82f6) 8%, transparent)'
-                            : undefined,
-                        }}
-                      >
-                        <input
-                          type="radio"
-                          name="exists-choice"
-                          value={opt.id}
-                          checked={active}
-                          onChange={() => setExistsChoice(opt.id)}
-                          style={{ marginTop: '0.15rem' }}
-                        />
-                        <span>
-                          <strong style={{ display: 'block', fontSize: '0.9rem' }}>{opt.label}</strong>
-                          <span className="ui-field__hint" style={{ display: 'block', marginTop: '0.1rem' }}>
-                            {opt.hint}
-                          </span>
-                        </span>
-                      </label>
-                    );
-                  })}
-                </div>
-              </fieldset>
-            </div>
-            <footer className="ui-modal__foot">
-              <Button
-                type="button"
-                variant="ghost"
-                disabled={running}
-                onClick={() => {
-                  pendingRerunRef.current = null;
-                  setExistsChoice('skip_existing');
-                  setExists(null);
-                }}
-              >
-                Hủy
-              </Button>
-              <Button
-                type="button"
-                variant={existsChoice === 'replace' ? 'danger' : 'primary'}
-                disabled={running}
-                loading={running}
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  const chosen = EXISTS_CHOICES.find((o) => o.id === existsChoice) || EXISTS_CHOICES[0];
-                  pendingRerunRef.current = chosen.rerun;
-                  if (chosen.rerun === 'improve' && chosen.from) {
-                    pendingFromRef.current = chosen.from;
-                    void runCrawl('improve', chosen.from);
-                  } else if (chosen.rerun === 'replace') {
-                    void runCrawl('replace');
-                  } else {
-                    void runCrawl('skip');
-                  }
-                }}
-              >
-                Xác nhận
-              </Button>
-            </footer>
-          </div>
-        </div>
-      ) : null}
     </div>
   );
 }
