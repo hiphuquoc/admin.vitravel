@@ -22,6 +22,7 @@ import {
   ScanSearch,
   SlidersHorizontal,
   Terminal,
+  Trash2,
   X,
   XCircle,
 } from 'lucide-react';
@@ -54,7 +55,7 @@ function statusTone(status: string): 'success' | 'warning' | 'danger' | 'neutral
 
 function statusLabel(status: string): string {
   const map: Record<string, string> = {
-    queued: 'Chờ cào',
+    queued: 'Đang trong Queue',
     extracted: 'Đã trích xuất HTML',
     ai_done: 'Đã map dữ liệu',
     imported: 'Đã tạo trang',
@@ -105,6 +106,45 @@ function previewUrl(slugFull: string | null | undefined, locale: string, default
   return publicPageUrl(slugFull, locale, defaultLocale, { preview: true });
 }
 
+type ImproveFrom = 'basic' | 'gallery' | 'rooms' | 'rooms_modals';
+type ItemRerunChoice = 'replace' | ImproveFrom;
+
+const ITEM_RERUN_OPTIONS: {
+  id: ItemRerunChoice;
+  rerun: 'improve' | 'replace';
+  from?: ImproveFrom;
+  label: string;
+  desc: string;
+}[] = [
+  {
+    id: 'replace',
+    rerun: 'replace',
+    label: 'Xóa sạch & Cào lại từ đầu (Khuyên dùng khi muốn làm mới)',
+    desc: 'Xóa toàn bộ HTML, media, tiện ích và các phòng cũ của khách sạn này để cào mới 100%.',
+  },
+  {
+    id: 'basic',
+    rerun: 'improve',
+    from: 'basic',
+    label: 'Cải thiện toàn bộ (Tải lại trang & bổ sung dữ liệu)',
+    desc: 'Tải lại trang Booking để bóc lại thông tin và bổ sung các ảnh còn thiếu.',
+  },
+  {
+    id: 'gallery',
+    rerun: 'improve',
+    from: 'gallery',
+    label: 'Chỉ cào lại Gallery ảnh',
+    desc: 'Giữ nguyên thông tin chung và phòng, mở modal gallery của Booking để cào thêm hình ảnh HD.',
+  },
+  {
+    id: 'rooms',
+    rerun: 'improve',
+    from: 'rooms',
+    label: 'Chỉ cào lại Danh sách phòng & Tiện ích',
+    desc: 'Bỏ qua gallery, quét lại bảng phòng, sức chứa, giá và tiện ích phòng.',
+  },
+];
+
 export default function StayCrawlerPage() {
   const { can } = useAuth();
   const canCreate = can('services.create');
@@ -124,16 +164,45 @@ export default function StayCrawlerPage() {
   const runningRef = useRef(false);
   const [log, setLog] = useState<string[]>([]);
 
-  // Mutation Thử lại 1 item
+  // State Modal tùy chọn Cào lại cho 1 khách sạn đã có trang
+  const [rerunModalItem, setRerunModalItem] = useState<StayCrawlItem | null>(null);
+  const [itemRerunChoice, setItemRerunChoice] = useState<ItemRerunChoice>('replace');
+
+  // Mutation Thử lại / Cào lại item
   const retryItemMutation = useMutation({
-    mutationFn: (itemId: number) => stayCrawlsApi.retryItem(itemId),
+    mutationFn: ({ itemId, rerun, from }: { itemId: number; rerun?: 'replace' | 'improve'; from?: ImproveFrom }) =>
+      stayCrawlsApi.retryItem(itemId, rerun ? { rerun, from } : undefined),
+    onMutate: ({ itemId }) => {
+      // Optimistic update: chuyển ngay sang queued
+      qc.setQueryData(['stay-crawls-job', activeJobId, statusFilter], (old: any) => {
+        if (!old || !old.items) return old;
+        return {
+          ...old,
+          items: old.items.map((it: StayCrawlItem) =>
+            it.id === itemId ? { ...it, status: 'queued', error: null, blocked_reason: null } : it,
+          ),
+        };
+      });
+    },
     onSuccess: (data) => {
       toast.success(data.message || 'Đã đưa khách sạn vào hàng đợi xử lý');
+      setRerunModalItem(null);
       void refresh();
     },
     onError: (e) => {
       toast.error((e as Error).message);
     },
+  });
+
+  // Mutation Hủy / Đặt lại trạng thái item (để reset queue chủ động)
+  const resetStatusMutation = useMutation({
+    mutationFn: ({ itemId, status }: { itemId: number; status: string }) =>
+      stayCrawlsApi.resetItemStatus(itemId, status),
+    onSuccess: (data) => {
+      toast.success(data.message || 'Đã cập nhật trạng thái khách sạn');
+      void refresh();
+    },
+    onError: (e) => toast.error((e as Error).message),
   });
 
   // Mutation Thử lại tất cả item lỗi
@@ -509,7 +578,7 @@ export default function StayCrawlerPage() {
           title={`Danh sách khách sạn (Job #${activeJobId})`}
           description="Toàn bộ danh sách khách sạn được quét trong phiên. Trạng thái cập nhật tự động thời gian thực."
         >
-          {/* Header chọn Job & Thống kê tổng quan - Tối ưu chống tràn tuyệt đối */}
+          {/* Header chọn Job & Thống kê tổng quan */}
           <div
             style={{
               padding: '0.85rem 1.1rem',
@@ -639,9 +708,11 @@ export default function StayCrawlerPage() {
           ) : (
             <EntityList>
               {items.map((item) => {
-                const isMutatingThis = retryItemMutation.isPending && retryItemMutation.variables === item.id;
+                const isMutatingThis = retryItemMutation.isPending && retryItemMutation.variables?.itemId === item.id;
+                const isResettingThis = resetStatusMutation.isPending && resetStatusMutation.variables?.itemId === item.id;
                 const isFailedOrBlocked = item.status === 'failed' || item.status === 'blocked';
                 const isDone = item.status === 'imported' || item.status === 'ai_done' || item.status === 'done';
+                const isQueued = item.status === 'queued';
 
                 return (
                   <EntityRow key={item.id}>
@@ -662,18 +733,50 @@ export default function StayCrawlerPage() {
                       }
                     />
                     <EntityActions>
-                      {/* Nút Thử lại / Cào lại: Cho phép bấm bất kỳ lúc nào (chỉ disable lúc request đang gửi) */}
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant={isFailedOrBlocked ? 'danger' : 'secondary'}
-                        disabled={isMutatingThis}
-                        loading={isMutatingThis}
-                        onClick={() => retryItemMutation.mutate(item.id)}
-                      >
-                        <RotateCcw size={13} />
-                        <span>{isDone ? 'Cào lại' : 'Thử lại'}</span>
-                      </Button>
+                      {/* 1. Nếu đã tạo trang: Bấm Cào lại -> Mở Modal lựa chọn hướng xử lý (Xóa sạch / Cải thiện) */}
+                      {isDone && (
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="secondary"
+                          onClick={() => {
+                            setRerunModalItem(item);
+                            setItemRerunChoice('replace');
+                          }}
+                        >
+                          <RotateCcw size={13} /> Cào lại
+                        </Button>
+                      )}
+
+                      {/* 2. Nếu lỗi / bị chặn / đang queued: Bấm Thử lại trực tiếp */}
+                      {!isDone && (
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant={isFailedOrBlocked ? 'danger' : 'secondary'}
+                          disabled={isMutatingThis || isResettingThis}
+                          loading={isMutatingThis}
+                          onClick={() => retryItemMutation.mutate({ itemId: item.id })}
+                        >
+                          <RotateCcw size={13} />
+                          <span>{isQueued ? 'Kích hoạt lại Queue' : 'Thử lại'}</span>
+                        </Button>
+                      )}
+
+                      {/* 3. Nút Hủy Queue / Đặt lại trạng thái nếu item bị kẹt */}
+                      {isQueued && (
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="ghost"
+                          title="Hủy khỏi hàng đợi chờ cào và đánh dấu thất bại/dừng"
+                          disabled={isResettingThis || isMutatingThis}
+                          loading={isResettingThis}
+                          onClick={() => resetStatusMutation.mutate({ itemId: item.id, status: 'failed' })}
+                        >
+                          <X size={13} /> Hủy Queue
+                        </Button>
+                      )}
 
                       {item.slug_full && (
                         <Button
@@ -714,6 +817,92 @@ export default function StayCrawlerPage() {
             </EntityList>
           )}
         </FormSection>
+      )}
+
+      {/* Modal Tùy chọn Cào lại cho Khách sạn đã có trang */}
+      {rerunModalItem && (
+        <div className="ui-modal ui-modal--open" role="dialog" aria-modal="true">
+          <button
+            type="button"
+            className="ui-modal__veil"
+            aria-label="Đóng"
+            onClick={() => setRerunModalItem(null)}
+          />
+          <div className="ui-modal__card ui-modal__card--form" style={{ width: 'min(32rem, 100%)' }}>
+            <header className="ui-modal__head">
+              <h2 className="ui-modal__title">Tùy chọn cào lại khách sạn</h2>
+              <p className="ui-modal__desc" style={{ marginBottom: 0 }}>
+                Khách sạn: <strong>{hotelLabel(rerunModalItem.source_url)}</strong>
+              </p>
+            </header>
+            <div className="ui-modal__body" style={{ paddingTop: '0.75rem' }}>
+              <fieldset style={{ border: 0, margin: 0, padding: 0 }}>
+                <legend className="ui-field__label" style={{ marginBottom: '0.6rem' }}>
+                  Chọn phương án cào lại
+                </legend>
+                <div style={{ display: 'grid', gap: '0.45rem' }}>
+                  {ITEM_RERUN_OPTIONS.map((opt) => {
+                    const active = itemRerunChoice === opt.id;
+                    return (
+                      <label
+                        key={opt.id}
+                        style={{
+                          display: 'flex',
+                          gap: '0.6rem',
+                          alignItems: 'flex-start',
+                          cursor: 'pointer',
+                          padding: '0.6rem 0.75rem',
+                          borderRadius: '0.5rem',
+                          border: active
+                            ? '1px solid var(--admin-primary-500, #3b82f6)'
+                            : '1px solid var(--admin-line, #e2e8f0)',
+                          background: active
+                            ? 'color-mix(in srgb, var(--admin-primary-500, #3b82f6) 8%, var(--admin-surface, #fff))'
+                            : 'var(--admin-surface, #fff)',
+                        }}
+                      >
+                        <input
+                          type="radio"
+                          name="item-rerun-choice"
+                          value={opt.id}
+                          checked={active}
+                          onChange={() => setItemRerunChoice(opt.id)}
+                          style={{ marginTop: '0.15rem' }}
+                        />
+                        <span>
+                          <strong style={{ display: 'block', fontSize: '0.88rem' }}>{opt.label}</strong>
+                          <span className="ui-field__hint" style={{ display: 'block', marginTop: '0.15rem' }}>
+                            {opt.desc}
+                          </span>
+                        </span>
+                      </label>
+                    );
+                  })}
+                </div>
+              </fieldset>
+            </div>
+            <footer className="ui-modal__foot">
+              <Button type="button" variant="ghost" onClick={() => setRerunModalItem(null)}>
+                Hủy
+              </Button>
+              <Button
+                type="button"
+                variant={itemRerunChoice === 'replace' ? 'danger' : 'primary'}
+                loading={retryItemMutation.isPending}
+                onClick={() => {
+                  const chosen = ITEM_RERUN_OPTIONS.find((o) => o.id === itemRerunChoice) || ITEM_RERUN_OPTIONS[0];
+                  retryItemMutation.mutate({
+                    itemId: rerunModalItem.id,
+                    rerun: chosen.rerun,
+                    from: chosen.from,
+                  });
+                }}
+              >
+                Xác nhận cào lại
+              </Button>
+            </footer>
+          </div>
+        </div>
       )}
 
       {/* Modal Live Crawler & Terminal Log */}

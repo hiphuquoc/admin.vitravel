@@ -324,8 +324,10 @@ export const stayCrawlsApi = {
     apiRequest<{ items: StayCrawlJob[] }>('/stay-crawls/jobs', { query }),
   job: (id: number, query?: Record<string, string | number | undefined>) =>
     apiRequest<{ job: StayCrawlJob; items: StayCrawlItem[]; stats?: { total: number; done: number; failed: number; blocked: number; queued: number } }>(`/stay-crawls/jobs/${id}`, { query }),
-  retryItem: (id: number) =>
-    apiRequest<{ item: StayCrawlItem; message: string }>(`/stay-crawls/items/${id}/retry`, { method: 'POST' }),
+  retryItem: (id: number, payload?: { rerun?: 'replace' | 'improve'; from?: 'basic' | 'gallery' | 'rooms' | 'rooms_modals' }) =>
+    apiRequest<{ item: StayCrawlItem; message: string }>(`/stay-crawls/items/${id}/retry`, { method: 'POST', body: payload }),
+  resetItemStatus: (id: number, status: string) =>
+    apiRequest<{ item: StayCrawlItem; message: string }>(`/stay-crawls/items/${id}/reset-status`, { method: 'POST', body: { status } }),
   retryFailed: (jobId: number) =>
     apiRequest<{ retried_count: number; message: string }>(`/stay-crawls/jobs/${jobId}/retry-failed`, { method: 'POST' }),
   _old_job: (id: number) =>
