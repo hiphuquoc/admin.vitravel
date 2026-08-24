@@ -303,18 +303,28 @@ function FormInner() {
           </FormSection>
 
           {form.cluster === 'stay' && !isNew && (
-            <div className="rounded-xl border border-blue-100 bg-blue-50/50 dark:border-blue-900 dark:bg-blue-950/30 p-4 flex items-center gap-3">
-              <ScanSearch className="h-5 w-5 text-blue-600 dark:text-blue-400 shrink-0" />
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-blue-900 dark:text-blue-100">Crawler Booking.com</p>
-                <p className="text-xs text-blue-700 dark:text-blue-300">Cào khách sạn và tạo trang con cho danh mục này.</p>
+            <div className="rounded-xl border border-blue-100 bg-blue-50/50 dark:border-blue-900 dark:bg-blue-950/30 p-4 flex items-center justify-between gap-3 flex-wrap">
+              <div className="flex items-center gap-3 min-w-0">
+                <ScanSearch className="h-5 w-5 text-blue-600 dark:text-blue-400 shrink-0" />
+                <div className="min-w-0">
+                  <p className="text-sm font-medium text-blue-900 dark:text-blue-100">Crawler Booking.com</p>
+                  <p className="text-xs text-blue-700 dark:text-blue-300">Cào khách sạn và tạo trang con cho danh mục này.</p>
+                </div>
               </div>
-              <Link
-                href="/services/stay-crawler/"
-                className="shrink-0 inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-sm font-medium text-blue-700 bg-blue-100 hover:bg-blue-200 dark:text-blue-200 dark:bg-blue-900 dark:hover:bg-blue-800 transition-colors"
-              >
-                Mở Crawler
-              </Link>
+              <div className="flex items-center gap-2 flex-wrap">
+                <Link
+                  href={`/services/stay-crawler/?category_id=${id}`}
+                  className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold text-blue-700 bg-blue-100 hover:bg-blue-200 dark:text-blue-200 dark:bg-blue-900 dark:hover:bg-blue-800 transition-colors"
+                >
+                  Xem các Job của danh mục
+                </Link>
+                <Link
+                  href={`/services/stay-crawler/create/?category_id=${id}`}
+                  className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 dark:bg-blue-600 dark:hover:bg-blue-500 transition-colors"
+                >
+                  + Khởi tạo Crawler
+                </Link>
+              </div>
             </div>
           )}
 

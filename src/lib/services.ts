@@ -281,7 +281,15 @@ export type StayCrawlJob = {
   } | null;
   worker_alive?: boolean;
   worker_paused?: boolean;
+  category?: { id: number; name: string } | null;
+  stats?: {
+    total: number;
+    done: number;
+    failed: number;
+    queued: number;
+  };
   created_at?: string | null;
+  updated_at?: string | null;
 };
 
 export type StayCrawlItem = {
@@ -320,8 +328,12 @@ export type StayCrawlServiceRef = {
 };
 
 export const stayCrawlsApi = {
-  jobs: (query?: Record<string, string | number | undefined>) =>
-    apiRequest<{ items: StayCrawlJob[] }>('/stay-crawls/jobs', { query }),
+  jobs: (query?: Record<string, string | number | boolean | undefined>) =>
+    apiRequest<{ items: StayCrawlJob[]; meta?: { current_page: number; last_page: number; per_page: number; total: number } }>('/stay-crawls/jobs', { query }),
+  deleteJob: (id: number) =>
+    apiRequest<{ message: string }>(`/stay-crawls/jobs/${id}`, { method: 'DELETE' }),
+  deleteItem: (id: number) =>
+    apiRequest<{ message: string }>(`/stay-crawls/items/${id}`, { method: 'DELETE' }),
   job: (id: number, query?: Record<string, string | number | undefined>) =>
     apiRequest<{ job: StayCrawlJob; items: StayCrawlItem[]; stats?: { total: number; done: number; failed: number; blocked: number; queued: number } }>(`/stay-crawls/jobs/${id}`, { query }),
   retryItem: (id: number, payload?: { rerun?: 'replace' | 'improve'; from?: 'basic' | 'gallery' | 'rooms' | 'rooms_modals' }) =>
