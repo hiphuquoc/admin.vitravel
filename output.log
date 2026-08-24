@@ -21,3 +21,4 @@ nohup: ignoring input
  ✓ Compiled /services/stay-crawler in 4.1s (966 modules)
  GET /services/stay-crawler/ 200 in 4326ms
  GET /services/stay-crawler/ 200 in 78ms
+ GET /services/stay-crawler/ 200 in 92ms
