@@ -334,6 +334,12 @@ export const stayCrawlsApi = {
     apiRequest<{ message: string }>(`/stay-crawls/jobs/${id}`, { method: 'DELETE' }),
   deleteItem: (id: number) =>
     apiRequest<{ message: string }>(`/stay-crawls/items/${id}`, { method: 'DELETE' }),
+  bulkDeleteItems: (itemIds: number[]) =>
+    apiRequest<{ deleted_count: number; message?: string }>('/stay-crawls/items/bulk-delete', { method: 'POST', body: { item_ids: itemIds } }),
+  bulkRetryItems: (itemIds: number[], payload?: { rerun?: 'replace' | 'improve'; from?: 'basic' | 'gallery' | 'rooms' | 'rooms_modals' }) =>
+    apiRequest<{ retried_count: number; message?: string }>('/stay-crawls/items/bulk-retry', { method: 'POST', body: { item_ids: itemIds, ...payload } }),
+  bulkResetStatus: (itemIds: number[], status: string) =>
+    apiRequest<{ updated_count: number; message?: string }>('/stay-crawls/items/bulk-reset-status', { method: 'POST', body: { item_ids: itemIds, status } }),
   job: (id: number, query?: Record<string, string | number | undefined>) =>
     apiRequest<{ job: StayCrawlJob; items: StayCrawlItem[]; stats?: { total: number; done: number; failed: number; blocked: number; queued: number } }>(`/stay-crawls/jobs/${id}`, { query }),
   retryItem: (id: number, payload?: { rerun?: 'replace' | 'improve'; from?: 'basic' | 'gallery' | 'rooms' | 'rooms_modals' }) =>

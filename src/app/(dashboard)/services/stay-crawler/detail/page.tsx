@@ -10,6 +10,7 @@ import {
   ArrowLeft,
   Building2,
   CheckCircle2,
+  CheckSquare,
   Clock,
   Copy,
   ExternalLink,
@@ -23,6 +24,7 @@ import {
   RotateCcw,
   Search,
   SlidersHorizontal,
+  Square,
   Terminal,
   Trash2,
   X,
@@ -31,9 +33,8 @@ import {
 import toast from '@/lib/toast';
 import { stayCrawlsApi, type StayCrawlItem, type StayCrawlJob } from '@/lib/services';
 import { Button } from '@/components/ui/Button';
-import { Input } from '@/components/ui/Field';
 import { Badge, PageHeader } from '@/components/ui/Page';
-import { FormSection } from '@/components/ui/FormSection';
+import { Input } from '@/components/ui/Field';
 import { useAuth } from '@/lib/auth-context';
 import { useAppRouter } from '@/hooks/useAppRouter';
 import { publicPageUrl } from '@/lib/publicUrl';
@@ -154,13 +155,14 @@ function JobDetailInner() {
   const [log, setLog] = useState<string[]>([]);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
 
-  // State Modal tùy chọn Cào lại cho 1 khách sạn đã có trang
+  // Bulk Selection State
+  const [selectedIds, setSelectedIds] = useState<number[]>([]);
+  const [showBulkDeleteModal, setShowBulkDeleteModal] = useState(false);
+  const [showBulkRerunModal, setShowBulkRerunModal] = useState(false);
+
+  // State Modal tùy chọn Cào lại cho 1 khách sạn
   const [rerunModalItem, setRerunModalItem] = useState<StayCrawlItem | null>(null);
   const [itemRerunChoice, setItemRerunChoice] = useState<ItemRerunChoice>('replace');
-
-  const appendLog = useCallback((msg: string) => {
-    setLog((prev) => [...prev.slice(-150), `[${new Date().toLocaleTimeString()}] ${msg}`]);
-  }, []);
 
   // Fetch job & items
   const jobQuery = useQuery({
@@ -230,32 +232,51 @@ function JobDetailInner() {
     await qc.invalidateQueries({ queryKey: ['stay-crawls-jobs'] });
   };
 
-  // Mutation Thử lại / Cào lại item
+  // Selection helpers
+  const isAllDisplayedSelected = items.length > 0 && items.every((it) => selectedIds.includes(it.id));
+  const isSomeDisplayedSelected = items.some((it) => selectedIds.includes(it.id));
+
+  const toggleSelectAllDisplayed = () => {
+    if (isAllDisplayedSelected) {
+      const itemIds = new Set(items.map((i) => i.id));
+      setSelectedIds((prev) => prev.filter((id) => !itemIds.has(id)));
+    } else {
+      const itemIds = items.map((i) => i.id);
+      setSelectedIds((prev) => Array.from(new Set([...prev, ...itemIds])));
+    }
+  };
+
+  const selectByStatus = (statusGroup: 'done' | 'failed' | 'queued') => {
+    let targetItems: StayCrawlItem[] = [];
+    if (statusGroup === 'done') {
+      targetItems = rawItems.filter((i) => i.status === 'imported' || i.status === 'ai_done' || i.status === 'done');
+    } else if (statusGroup === 'failed') {
+      targetItems = rawItems.filter((i) => i.status === 'failed' || i.status === 'blocked');
+    } else if (statusGroup === 'queued') {
+      targetItems = rawItems.filter((i) => i.status === 'queued' || i.status === 'fetched' || i.status === 'extracted');
+    }
+    const ids = targetItems.map((i) => i.id);
+    setSelectedIds(ids);
+    toast.success(`Đã chọn ${ids.length} khách sạn (${statusGroup === 'done' ? 'Đã hoàn tất' : statusGroup === 'failed' ? 'Lỗi/Bị chặn' : 'Trong Queue'})`);
+  };
+
+  const toggleSelectItem = (id: number) => {
+    setSelectedIds((prev) => (prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id]));
+  };
+
+  // Mutation Thử lại / Cào lại 1 item
   const retryItemMutation = useMutation({
     mutationFn: ({ itemId, rerun, from }: { itemId: number; rerun?: 'replace' | 'improve'; from?: ImproveFrom }) =>
       stayCrawlsApi.retryItem(itemId, rerun ? { rerun, from } : undefined),
-    onMutate: ({ itemId }) => {
-      qc.setQueryData(['stay-crawls-job', jobId, statusFilter], (old: any) => {
-        if (!old || !old.items) return old;
-        return {
-          ...old,
-          items: old.items.map((it: StayCrawlItem) =>
-            it.id === itemId ? { ...it, status: 'queued', error: null, blocked_reason: null } : it,
-          ),
-        };
-      });
-    },
     onSuccess: (data) => {
       toast.success(data.message || 'Đã đưa khách sạn vào hàng đợi xử lý');
       setRerunModalItem(null);
       void refresh();
     },
-    onError: (e) => {
-      toast.error((e as Error).message);
-    },
+    onError: (e) => toast.error((e as Error).message),
   });
 
-  // Mutation Hủy / Đặt lại trạng thái item
+  // Mutation Hủy / Đặt lại trạng thái 1 item
   const resetStatusMutation = useMutation({
     mutationFn: ({ itemId, status }: { itemId: number; status: string }) =>
       stayCrawlsApi.resetItemStatus(itemId, status),
@@ -266,7 +287,7 @@ function JobDetailInner() {
     onError: (e) => toast.error((e as Error).message),
   });
 
-  // Mutation Thử lại tất cả item lỗi
+  // Mutation Thử lại tất cả item lỗi của Job
   const retryFailedMutation = useMutation({
     mutationFn: (id: number) => stayCrawlsApi.retryFailed(id),
     onSuccess: (data) => {
@@ -296,6 +317,41 @@ function JobDetailInner() {
     onError: (e) => toast.error((e as Error).message),
   });
 
+  // Bulk Mutations
+  const bulkDeleteMutation = useMutation({
+    mutationFn: (ids: number[]) => stayCrawlsApi.bulkDeleteItems(ids),
+    onSuccess: (data) => {
+      toast.success(data.message || `Đã xóa thành công ${data.deleted_count} khách sạn đã chọn`);
+      setSelectedIds([]);
+      setShowBulkDeleteModal(false);
+      void refresh();
+    },
+    onError: (e) => toast.error((e as Error).message),
+  });
+
+  const bulkRetryMutation = useMutation({
+    mutationFn: ({ ids, rerun, from }: { ids: number[]; rerun?: 'replace' | 'improve'; from?: ImproveFrom }) =>
+      stayCrawlsApi.bulkRetryItems(ids, rerun ? { rerun, from } : undefined),
+    onSuccess: (data) => {
+      toast.success(data.message || `Đã đưa ${data.retried_count} khách sạn vào hàng đợi`);
+      setSelectedIds([]);
+      setShowBulkRerunModal(false);
+      void refresh();
+    },
+    onError: (e) => toast.error((e as Error).message),
+  });
+
+  const bulkResetStatusMutation = useMutation({
+    mutationFn: ({ ids, status }: { ids: number[]; status: string }) =>
+      stayCrawlsApi.bulkResetStatus(ids, status),
+    onSuccess: (data) => {
+      toast.success(data.message || `Đã chuyển trạng thái ${data.updated_count} khách sạn`);
+      setSelectedIds([]);
+      void refresh();
+    },
+    onError: (e) => toast.error((e as Error).message),
+  });
+
   if (!jobId) {
     return (
       <div style={{ padding: '3rem', textAlign: 'center' }}>
@@ -317,7 +373,7 @@ function JobDetailInner() {
   const categoryName = currentJob?.category?.name;
 
   return (
-    <div style={{ display: 'grid', gap: '1.25rem', maxWidth: '100%', overflowX: 'hidden', paddingBottom: '3rem' }}>
+    <div style={{ display: 'grid', gap: '1.25rem', maxWidth: '100%', overflowX: 'hidden', paddingBottom: '5rem' }}>
       <PageHeader
         eyebrow="Chi tiết Job Crawler"
         id={jobId}
@@ -437,7 +493,6 @@ function JobDetailInner() {
 
       {/* Hero Overview Panel of the Job */}
       <div className="ui-crawler-detail-hero">
-        {/* Left Column: Target & Source Info */}
         <div className="ui-crawler-detail-hero__left">
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
@@ -518,7 +573,6 @@ function JobDetailInner() {
           </div>
         </div>
 
-        {/* Right Column: Visual Progress & Metrics */}
         <div className="ui-crawler-detail-hero__right">
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <span style={{ fontSize: '0.8rem', fontWeight: 700, textTransform: 'uppercase', color: 'var(--admin-muted)' }}>
@@ -529,7 +583,6 @@ function JobDetailInner() {
             </span>
           </div>
 
-          {/* Large Segmented Progress Bar */}
           <div style={{ width: '100%', height: '0.65rem', borderRadius: '999px', background: 'var(--admin-line)', overflow: 'hidden', display: 'flex' }}>
             <div style={{ width: `${progressPercent}%`, background: 'var(--admin-success, #3d8b55)', transition: 'width 0.3s' }} />
             {failedCount > 0 && totalCount > 0 && (
@@ -540,7 +593,6 @@ function JobDetailInner() {
             )}
           </div>
 
-          {/* Metric Badges */}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem', marginTop: '0.25rem' }}>
             <div style={{ padding: '0.5rem 0.65rem', borderRadius: 'var(--admin-radius-sm)', background: 'var(--admin-surface)', border: '1px solid var(--admin-line)' }}>
               <span style={{ fontSize: '0.72rem', color: 'var(--admin-muted)', display: 'block' }}>Tổng khách sạn</span>
@@ -581,7 +633,7 @@ function JobDetailInner() {
               Danh sách khách sạn ({items.length} mục hiển thị)
             </h3>
             <p style={{ margin: '0.2rem 0 0', fontSize: '0.8rem', color: 'var(--admin-muted)' }}>
-              Toàn bộ danh sách khách sạn đã quét. Trạng thái cập nhật tự động thời gian thực.
+              Toàn bộ danh sách khách sạn đã quét. Bạn có thể chọn cùng loại hoặc chọn nhiều để thao tác hàng loạt.
             </p>
           </div>
 
@@ -626,14 +678,73 @@ function JobDetailInner() {
           </div>
         </div>
 
-        {/* Search Filter */}
-        <div style={{ width: '100%' }}>
+        {/* Search & Quick Selection Toolbar */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: '0.75rem', alignItems: 'center' }}>
           <Input
             label="Tìm kiếm khách sạn trong Job"
             placeholder="Nhập tên khách sạn, đường dẫn slug hoặc liên kết Booking.com..."
             value={searchFilter}
             onChange={(e) => setSearchFilter(e.target.value)}
           />
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', marginTop: '1.45rem', flexWrap: 'wrap' }}>
+            {/* Quick Type Selection Pills */}
+            <Button
+              type="button"
+              size="sm"
+              variant={isAllDisplayedSelected ? 'primary' : 'secondary'}
+              onClick={toggleSelectAllDisplayed}
+            >
+              {isAllDisplayedSelected ? <CheckSquare size={13} /> : <Square size={13} />}
+              <span>{isAllDisplayedSelected ? 'Bỏ chọn trang này' : 'Chọn tất cả trang này'}</span>
+            </Button>
+
+            {failedCount > 0 && (
+              <Button
+                type="button"
+                size="sm"
+                variant="ghost"
+                style={{ color: 'var(--admin-danger-500, #ef4444)' }}
+                onClick={() => selectByStatus('failed')}
+              >
+                Chọn tất cả {failedCount} lỗi
+              </Button>
+            )}
+
+            {queuedCount > 0 && (
+              <Button
+                type="button"
+                size="sm"
+                variant="ghost"
+                style={{ color: 'var(--admin-warning-500, #eab308)' }}
+                onClick={() => selectByStatus('queued')}
+              >
+                Chọn {queuedCount} đang chờ
+              </Button>
+            )}
+
+            {doneCount > 0 && (
+              <Button
+                type="button"
+                size="sm"
+                variant="ghost"
+                onClick={() => selectByStatus('done')}
+              >
+                Chọn {doneCount} đã xong
+              </Button>
+            )}
+
+            {selectedIds.length > 0 && (
+              <Button
+                type="button"
+                size="sm"
+                variant="ghost"
+                onClick={() => setSelectedIds([])}
+              >
+                <X size={13} /> Bỏ chọn ({selectedIds.length})
+              </Button>
+            )}
+          </div>
         </div>
 
         {/* Hotel Items Cards */}
@@ -644,6 +755,7 @@ function JobDetailInner() {
         ) : (
           <div style={{ display: 'grid', gap: '0.65rem' }}>
             {items.map((item) => {
+              const isSelected = selectedIds.includes(item.id);
               const isMutatingThis = retryItemMutation.isPending && retryItemMutation.variables?.itemId === item.id;
               const isResettingThis = resetStatusMutation.isPending && resetStatusMutation.variables?.itemId === item.id;
               const isDeletingThis = deleteItemMutation.isPending && deleteItemMutation.variables === item.id;
@@ -651,7 +763,6 @@ function JobDetailInner() {
               const isDone = item.status === 'imported' || item.status === 'ai_done' || item.status === 'done';
               const isQueued = item.status === 'queued';
 
-              // Item đang có worker chạy thực tế
               const isQueueRunning =
                 Boolean(activeWorkerItemsMap[String(item.id)]) ||
                 item.status === 'fetched' ||
@@ -661,7 +772,41 @@ function JobDetailInner() {
               const pubUrl = item.slug_full ? publicPageUrl(item.slug_full, locale, DEFAULT_LOCALE) : null;
 
               return (
-                <div key={item.id} className="ui-crawler-item-card">
+                <div
+                  key={item.id}
+                  className="ui-crawler-item-card"
+                  style={{
+                    border: isSelected
+                      ? '1px solid var(--admin-primary-500, #6b8f3f)'
+                      : undefined,
+                    background: isSelected
+                      ? 'color-mix(in srgb, var(--admin-primary-500) 4%, var(--admin-surface))'
+                      : undefined,
+                  }}
+                >
+                  {/* Selection Checkbox */}
+                  <div
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      paddingRight: '0.4rem',
+                      cursor: 'pointer',
+                    }}
+                    onClick={() => toggleSelectItem(item.id)}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={isSelected}
+                      onChange={() => toggleSelectItem(item.id)}
+                      style={{
+                        width: '1.1rem',
+                        height: '1.1rem',
+                        accentColor: 'var(--admin-primary-500, #6b8f3f)',
+                        cursor: 'pointer',
+                      }}
+                    />
+                  </div>
+
                   <div className="ui-crawler-item-card__main">
                     <div className="ui-crawler-item-card__title-row">
                       <span className="ui-crawler-item-card__name">
@@ -797,6 +942,219 @@ function JobDetailInner() {
         )}
       </div>
 
+      {/* Floating Sticky Bulk Actions Bar */}
+      {selectedIds.length > 0 && (
+        <div
+          style={{
+            position: 'fixed',
+            bottom: '1.5rem',
+            left: '50%',
+            transform: 'translateX(-50%)',
+            zIndex: 100,
+            maxWidth: 'min(52rem, calc(100vw - 2rem))',
+            width: '100%',
+            padding: '0.85rem 1.25rem',
+            borderRadius: 'var(--admin-radius-xl)',
+            background: 'var(--admin-surface, #ffffff)',
+            border: '1px solid var(--admin-primary-500, #6b8f3f)',
+            boxShadow: '0 16px 36px -4px rgba(0,0,0,0.22), 0 0 0 1px var(--admin-line)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: '1rem',
+            flexWrap: 'wrap',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
+            <span
+              style={{
+                background: 'var(--admin-primary-500, #6b8f3f)',
+                color: '#fff',
+                fontSize: '0.78rem',
+                fontWeight: 750,
+                padding: '0.2rem 0.55rem',
+                borderRadius: '999px',
+              }}
+            >
+              {selectedIds.length}
+            </span>
+            <span style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--admin-ink)' }}>
+              Đã chọn {selectedIds.length} khách sạn
+            </span>
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+            <Button
+              type="button"
+              size="sm"
+              variant="secondary"
+              loading={bulkRetryMutation.isPending}
+              onClick={() => bulkRetryMutation.mutate({ ids: selectedIds })}
+            >
+              <RotateCcw size={13} /> Thử lại ({selectedIds.length})
+            </Button>
+
+            <Button
+              type="button"
+              size="sm"
+              variant="secondary"
+              onClick={() => setShowBulkRerunModal(true)}
+            >
+              <RefreshCw size={13} /> Tùy chọn cào lại...
+            </Button>
+
+            <Button
+              type="button"
+              size="sm"
+              variant="ghost"
+              loading={bulkResetStatusMutation.isPending}
+              onClick={() => bulkResetStatusMutation.mutate({ ids: selectedIds, status: 'failed' })}
+            >
+              <X size={13} /> Hủy Queue ({selectedIds.length})
+            </Button>
+
+            {canDelete && (
+              <Button
+                type="button"
+                size="sm"
+                variant="danger"
+                onClick={() => setShowBulkDeleteModal(true)}
+              >
+                <Trash2 size={13} /> Xóa ({selectedIds.length})
+              </Button>
+            )}
+
+            <Button
+              type="button"
+              size="sm"
+              variant="ghost"
+              onClick={() => setSelectedIds([])}
+            >
+              Bỏ chọn
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Xác nhận Xóa hàng loạt */}
+      {showBulkDeleteModal && (
+        <div className="ui-modal ui-modal--open" role="dialog" aria-modal="true">
+          <div className="ui-modal__veil" onClick={() => setShowBulkDeleteModal(false)} />
+          <div className="ui-modal__card" style={{ maxWidth: '30rem' }}>
+            <header className="ui-modal__head">
+              <h2 className="ui-modal__title" style={{ color: 'var(--admin-danger-500, #ef4444)' }}>
+                Xác nhận xóa hàng loạt?
+              </h2>
+            </header>
+            <div className="ui-modal__body">
+              <p style={{ margin: 0, fontSize: '0.92rem', lineHeight: 1.55 }}>
+                Bạn có chắc chắn muốn <strong>xóa vĩnh viễn {selectedIds.length} khách sạn đã chọn</strong> khỏi phiên cào Job #{jobId}?
+              </p>
+            </div>
+            <footer className="ui-modal__foot">
+              <Button type="button" variant="ghost" onClick={() => setShowBulkDeleteModal(false)}>
+                Hủy
+              </Button>
+              <Button
+                type="button"
+                variant="danger"
+                loading={bulkDeleteMutation.isPending}
+                onClick={() => bulkDeleteMutation.mutate(selectedIds)}
+              >
+                Xác nhận xóa {selectedIds.length} mục
+              </Button>
+            </footer>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Tùy chọn Cào lại Hàng loạt */}
+      {showBulkRerunModal && (
+        <div className="ui-modal ui-modal--open" role="dialog" aria-modal="true">
+          <button
+            type="button"
+            className="ui-modal__veil"
+            aria-label="Đóng"
+            onClick={() => setShowBulkRerunModal(false)}
+          />
+          <div className="ui-modal__card ui-modal__card--form" style={{ width: 'min(32rem, 100%)' }}>
+            <header className="ui-modal__head">
+              <h2 className="ui-modal__title">Tùy chọn cào lại hàng loạt</h2>
+              <p className="ui-modal__desc" style={{ marginBottom: 0 }}>
+                Áp dụng cho <strong>{selectedIds.length} khách sạn đã chọn</strong>
+              </p>
+            </header>
+            <div className="ui-modal__body" style={{ paddingTop: '0.75rem' }}>
+              <fieldset style={{ border: 0, margin: 0, padding: 0 }}>
+                <legend className="ui-field__label" style={{ marginBottom: '0.6rem' }}>
+                  Chọn phương án cào lại
+                </legend>
+                <div style={{ display: 'grid', gap: '0.45rem' }}>
+                  {ITEM_RERUN_OPTIONS.map((opt) => {
+                    const active = itemRerunChoice === opt.id;
+                    return (
+                      <label
+                        key={opt.id}
+                        style={{
+                          display: 'flex',
+                          gap: '0.6rem',
+                          alignItems: 'flex-start',
+                          cursor: 'pointer',
+                          padding: '0.65rem 0.8rem',
+                          borderRadius: 'var(--admin-radius-md)',
+                          border: active
+                            ? '1px solid var(--admin-primary-500)'
+                            : '1px solid var(--admin-line)',
+                          background: active
+                            ? 'color-mix(in srgb, var(--admin-primary-500) 8%, var(--admin-surface))'
+                            : 'var(--admin-surface)',
+                          transition: 'all 0.15s ease',
+                        }}
+                      >
+                        <input
+                          type="radio"
+                          name="bulk-rerun-choice"
+                          value={opt.id}
+                          checked={active}
+                          onChange={() => setItemRerunChoice(opt.id)}
+                          style={{ marginTop: '0.15rem' }}
+                        />
+                        <span>
+                          <strong style={{ display: 'block', fontSize: '0.88rem', color: 'var(--admin-ink)' }}>{opt.label}</strong>
+                          <span className="ui-field__hint" style={{ display: 'block', marginTop: '0.15rem' }}>
+                            {opt.desc}
+                          </span>
+                        </span>
+                      </label>
+                    );
+                  })}
+                </div>
+              </fieldset>
+            </div>
+            <footer className="ui-modal__foot">
+              <Button type="button" variant="ghost" onClick={() => setShowBulkRerunModal(false)}>
+                Hủy
+              </Button>
+              <Button
+                type="button"
+                variant={itemRerunChoice === 'replace' ? 'danger' : 'primary'}
+                loading={bulkRetryMutation.isPending}
+                onClick={() => {
+                  const chosen = ITEM_RERUN_OPTIONS.find((o) => o.id === itemRerunChoice) || ITEM_RERUN_OPTIONS[0];
+                  bulkRetryMutation.mutate({
+                    ids: selectedIds,
+                    rerun: chosen.rerun,
+                    from: chosen.from,
+                  });
+                }}
+              >
+                Cào lại {selectedIds.length} khách sạn
+              </Button>
+            </footer>
+          </div>
+        </div>
+      )}
+
       {/* Modal Xóa Job */}
       {showDeleteModal && (
         <div className="ui-modal ui-modal--open" role="dialog" aria-modal="true">
@@ -829,7 +1187,7 @@ function JobDetailInner() {
         </div>
       )}
 
-      {/* Modal Tùy chọn Cào lại cho Khách sạn đã có trang */}
+      {/* Modal Tùy chọn Cào lại cho 1 Khách sạn đã có trang */}
       {rerunModalItem && (
         <div className="ui-modal ui-modal--open" role="dialog" aria-modal="true">
           <button
