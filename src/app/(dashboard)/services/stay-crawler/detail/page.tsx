@@ -218,6 +218,21 @@ function JobDetailInner() {
     Boolean(currentJob?.worker_alive) ||
     activeRunningCount > 0;
 
+  // Query live logs từ backend
+  const logsQuery = useQuery({
+    queryKey: ['stay-crawls-logs', jobId],
+    queryFn: () => stayCrawlsApi.logs(jobId!),
+    enabled: !!jobId && showModal,
+    refetchInterval: () => (showModal ? 2000 : false),
+  });
+
+  const displayLogs = useMemo(() => {
+    if (logsQuery.data?.logs && logsQuery.data.logs.length > 0) {
+      return logsQuery.data.logs;
+    }
+    return log;
+  }, [logsQuery.data?.logs, log]);
+
   // Filter items theo tab status và từ khóa tìm kiếm (0ms phản hồi, tức thì)
   const items = useMemo(() => {
     let list = rawItems;
@@ -1408,7 +1423,7 @@ function JobDetailInner() {
               <p className="ui-crawler-modal__hint">
                 💡 Bạn có thể <strong>đóng cửa sổ này</strong> hoặc <strong>tải lại trang</strong> bất cứ lúc nào. Tiến trình cào và worker nền Supervisor vẫn tự động xử lý.
               </p>
-              <CrawlerTerminalLog logs={log} running={isCurrentJobRunning} maxHeight="min(52vh, 24rem)" />
+              <CrawlerTerminalLog logs={displayLogs} running={isCurrentJobRunning} maxHeight="min(52vh, 24rem)" />
             </div>
             <footer className="ui-crawler-modal__foot">
               <span style={{ fontSize: '0.78rem', color: 'var(--admin-muted, #64748b)' }}>

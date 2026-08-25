@@ -328,6 +328,8 @@ export type StayCrawlServiceRef = {
 };
 
 export const stayCrawlsApi = {
+  logs: (id: number) =>
+    apiRequest<{ job_id: number; status: string; running: boolean; logs: string[] }>(`/stay-crawls/jobs/${id}/logs`),
   jobs: (query?: Record<string, string | number | boolean | undefined>) =>
     apiRequest<{ items: StayCrawlJob[]; meta?: { current_page: number; last_page: number; per_page: number; total: number } }>('/stay-crawls/jobs', { query }),
   deleteJob: (id: number) =>

@@ -13,6 +13,7 @@ import { PageHeader } from '@/components/ui/Page';
 import { FormSection } from '@/components/ui/FormSection';
 import { Button } from '@/components/ui/Button';
 import { Input, Select, Switch, Textarea } from '@/components/ui/Field';
+import { CrawlerTerminalLog } from '@/components/services/CrawlerTerminalLog';
 
 function isHotelUrl(url: string): boolean {
   try {
@@ -37,6 +38,8 @@ function CreateCrawlerInner() {
   const [html, setHtml] = useState('');
   const [useProxy, setUseProxy] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [showLiveModal, setShowLiveModal] = useState(false);
+  const [liveLogs, setLiveLogs] = useState<string[]>([]);
   const runningRef = useRef(false);
 
   const statusQuery = useQuery({
@@ -83,6 +86,32 @@ function CreateCrawlerInner() {
 
     runningRef.current = true;
     setLoading(true);
+    setShowLiveModal(true);
+
+    const nowStr = () => new Date().toLocaleTimeString('vi-VN');
+    const selectedCat = categories.find((c) => c.id === categoryId);
+    const catName = selectedCat?.name || `#${categoryId}`;
+
+    setLiveLogs([
+      `[${nowStr()}] • Bắt đầu khởi tạo phiên cào dữ liệu Booking.com...`,
+      `[${nowStr()}] • Danh mục đích: ${catName}`,
+      `[${nowStr()}] • URL nguồn: ${targetUrl}`,
+      `[${nowStr()}] • Chế độ: ${mode === 'hotel' ? '1 Khách sạn (Single Hotel)' : 'Quét danh mục (Listing Crawl)'}`,
+      useProxy ? `[${nowStr()}] • Đã bật Proxy Residential chống chặn IP` : `[${nowStr()}] • Sử dụng kết nối mạng trực tiếp`,
+      `[${nowStr()}] • Đang kết nối Chrome Crawler Engine & mở trang...`,
+    ]);
+
+    const progressTimer = setInterval(() => {
+      setLiveLogs((prev) => {
+        if (prev.length < 15) {
+          return [
+            ...prev,
+            `[${nowStr()}] • Đang tải dữ liệu và bóc tách các liên kết khách sạn...`,
+          ];
+        }
+        return prev;
+      });
+    }, 3500);
 
     try {
       const started = await stayCrawlsApi.fromCategory({
@@ -92,20 +121,42 @@ function CreateCrawlerInner() {
         use_proxy: useProxy || undefined,
       });
 
+      clearInterval(progressTimer);
+
       const jobId = started.job?.id;
       if (!jobId) {
+        setLiveLogs((prev) => [
+          ...prev,
+          `[${nowStr()}] ✗ Không nhận được ID Job hợp lệ từ server.`,
+        ]);
         toast.error('Không khởi tạo được job crawler từ server.');
         setLoading(false);
         runningRef.current = false;
         return;
       }
 
-      toast.success(`Đã khởi tạo Job #${jobId} thành công! Đang chuyển đến bảng theo dõi...`);
-      router.push(`/services/stay-crawler/detail/?id=${jobId}&live=true`);
+      const count = started.urls?.length || started.job?.items_found || 0;
+      setLiveLogs((prev) => [
+        ...prev,
+        `[${nowStr()}] ✓ Khởi tạo Job #${jobId} thành công!`,
+        `[${nowStr()}] ✓ Đã tìm thấy ${count} chỗ nghỉ từ Booking.com`,
+        `[${nowStr()}] • Đang tự động chuyển hướng đến bảng quản lý chi tiết...`,
+      ]);
+
+      toast.success(`Đã khởi tạo Job #${jobId} thành công!`);
+      setTimeout(() => {
+        router.push(`/services/stay-crawler/detail/?id=${jobId}&live=true`);
+      }, 1200);
     } catch (e: any) {
+      clearInterval(progressTimer);
       setLoading(false);
       runningRef.current = false;
-      toast.error(e?.message || 'Khởi chạy crawler thất bại.');
+      const errMsg = e?.message || 'Khởi chạy crawler thất bại.';
+      setLiveLogs((prev) => [
+        ...prev,
+        `[${nowStr()}] ✗ Lỗi: ${errMsg}`,
+      ]);
+      toast.error(errMsg);
     }
   };
 
@@ -231,6 +282,52 @@ function CreateCrawlerInner() {
           </p>
         </div>
       </div>
+      {/* Live Log Console Modal */}
+      {showLiveModal && (
+        <div className="ui-crawler-modal-overlay" onClick={() => !loading && setShowLiveModal(false)}>
+          <div
+            className="ui-crawler-modal"
+            style={{ maxWidth: '44rem' }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="ui-crawler-modal__header">
+              <div className="ui-crawler-modal__title-wrap">
+                <div className="ui-crawler-modal__icon">
+                  <ScanSearch size={18} />
+                </div>
+                <div>
+                  <h3 className="ui-crawler-modal__title">
+                    {loading ? 'Đang khởi chạy Crawler Booking.com…' : 'Tiến trình Crawler Booking.com'}
+                  </h3>
+                  <p className="ui-crawler-modal__desc">
+                    {loading
+                      ? 'Chrome Engine đang tải trang và bóc tách dữ liệu thời gian thực'
+                      : 'Hoàn tất khởi tạo phiên cào dữ liệu'}
+                  </p>
+                </div>
+              </div>
+              {!loading && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setShowLiveModal(false)}
+                >
+                  Đóng
+                </Button>
+              )}
+            </div>
+
+            <div className="ui-crawler-modal__body" style={{ padding: '1rem' }}>
+              <CrawlerTerminalLog
+                logs={liveLogs}
+                running={loading}
+                maxHeight="min(45vh, 22rem)"
+              />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
