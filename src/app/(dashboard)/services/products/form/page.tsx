@@ -149,7 +149,7 @@ function FormInner() {
     const next: FormState = {
       cluster: d.cluster || clusterFromUrl,
       service_category_id: d.service_category_id ? String(d.service_category_id) : '',
-      service_category_ids: Array.isArray(d.service_category_ids)
+      service_category_ids: Array.isArray(d.service_category_ids) && d.service_category_ids.length > 0
         ? d.service_category_ids.map(String)
         : (d.service_category_id ? [String(d.service_category_id)] : []),
       country_id: d.country_id ? String(d.country_id) : '',
@@ -196,7 +196,7 @@ function FormInner() {
     mutationFn: async () => {
       const payload = {
         ...form,
-        service_category_id: form.service_category_id ? Number(form.service_category_id) : (form.service_category_ids[0] ? Number(form.service_category_ids[0]) : null),
+        service_category_id: form.service_category_ids[0] ? Number(form.service_category_ids[0]) : (form.service_category_id ? Number(form.service_category_id) : null),
         service_category_ids: form.service_category_ids.map(Number).filter(Boolean),
         country_id: form.country_id ? Number(form.country_id) : null,
         price_from: form.price_from ? Number(form.price_from) : null,
