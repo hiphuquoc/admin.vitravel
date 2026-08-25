@@ -13,6 +13,7 @@ import {
 
 type StayAttrs = {
   property_type?: string;
+  property_types?: string[];
   check_in?: string;
   check_out?: string;
   highlight_badges?: string;
@@ -90,12 +91,140 @@ export function StayProductFields({
             ]}
             onChange={onChangeStarRating}
           />
-          <Select
-            label="Loại hình"
-            value={attrs.property_type || 'hotel'}
-            options={propertyTypes.length ? propertyTypes : [{ value: 'hotel', label: 'Khách sạn' }]}
-            onChange={(v) => setAttr('property_type', v)}
-          />
+          {/* Custom Multi-Select: Loại hình khách sạn / lưu trú */}
+          <div className="ui-field col-span-2">
+            <label className="ui-field__label">
+              <span>Loại hình khách sạn / Chỗ nghỉ (Chọn nhiều)</span>
+            </label>
+            <div className="flex flex-col gap-2 p-3 bg-white rounded-xl border border-slate-200 shadow-2xs">
+              {/* Selected Chips */}
+              <div className="flex flex-wrap items-center gap-1.5 min-h-[32px]">
+                {(attrs.property_types ?? [attrs.property_type || 'hotel']).length === 0 ? (
+                  <span className="text-xs text-slate-400 italic">Chưa chọn loại hình nào</span>
+                ) : (
+                  (attrs.property_types ?? [attrs.property_type || 'hotel']).map((ptKey) => {
+                    const opt = propertyTypes.find((p) => p.value === ptKey);
+                    const isPrimary = (attrs.property_type || 'hotel') === ptKey;
+                    return (
+                      <span
+                        key={ptKey}
+                        className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold border ${
+                          isPrimary
+                            ? 'bg-amber-50 border-amber-300 text-amber-900'
+                            : 'bg-slate-50 border-slate-200 text-slate-700'
+                        }`}
+                      >
+                        <span>{opt?.label || ptKey}</span>
+                        {isPrimary && (
+                          <span className="px-1.5 py-0.2 bg-amber-200 text-amber-900 rounded text-[10px] font-bold">
+                            ★ Chính
+                          </span>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const currentTypes = attrs.property_types ?? [attrs.property_type || 'hotel'];
+                            const nextTypes = currentTypes.filter((t) => t !== ptKey);
+                            let nextPrimary = attrs.property_type || 'hotel';
+                            if (nextPrimary === ptKey) {
+                              nextPrimary = nextTypes[0] || 'hotel';
+                            }
+                            onChangeAttrs({
+                              ...attrs,
+                              property_types: nextTypes,
+                              property_type: nextPrimary,
+                            });
+                          }}
+                          className="text-slate-400 hover:text-red-500 transition-colors ml-0.5"
+                        >
+                          ×
+                        </button>
+                      </span>
+                    );
+                  })
+                )}
+              </div>
+
+              {/* Checkboxes List Container */}
+              <div className="border border-slate-200 rounded-lg overflow-hidden bg-slate-50/50">
+                <div className="max-h-48 overflow-y-auto p-1.5 grid grid-cols-2 sm:grid-cols-3 gap-1">
+                  {(propertyTypes.length ? propertyTypes : [
+                    { value: 'hotel', label: 'Khách sạn' },
+                    { value: 'resort', label: 'Resort' },
+                    { value: 'villa', label: 'Villa / biệt thự' },
+                    { value: 'homestay', label: 'Homestay' },
+                    { value: 'boutique', label: 'Boutique hotel' },
+                    { value: 'apartment', label: 'Căn hộ / condotel' },
+                    { value: 'bungalow', label: 'Bungalow' },
+                    { value: 'cabin', label: 'Cabin / du thuyền' },
+                    { value: 'glamping', label: 'Glamping' },
+                    { value: 'camping', label: 'Cắm trại' },
+                  ]).map((pt) => {
+                    const currentTypes = attrs.property_types ?? [attrs.property_type || 'hotel'];
+                    const isChecked = currentTypes.includes(pt.value);
+                    const isPrimary = (attrs.property_type || 'hotel') === pt.value;
+
+                    return (
+                      <div
+                        key={pt.value}
+                        className={`flex items-center justify-between px-2.5 py-1.5 rounded-md text-xs transition-colors ${
+                          isChecked ? 'bg-blue-50 text-blue-900 font-medium' : 'hover:bg-slate-100 text-slate-700'
+                        }`}
+                      >
+                        <label className="flex items-center gap-2 flex-1 cursor-pointer select-none">
+                          <input
+                            type="checkbox"
+                            checked={isChecked}
+                            onChange={(e) => {
+                              let nextTypes = [...currentTypes];
+                              if (e.target.checked) {
+                                if (!nextTypes.includes(pt.value)) nextTypes.push(pt.value);
+                              } else {
+                                nextTypes = nextTypes.filter((t) => t !== pt.value);
+                              }
+                              let nextPrimary = attrs.property_type || 'hotel';
+                              if (e.target.checked && (!nextPrimary || !nextTypes.includes(nextPrimary))) {
+                                nextPrimary = pt.value;
+                              } else if (!e.target.checked && nextPrimary === pt.value) {
+                                nextPrimary = nextTypes[0] || 'hotel';
+                              }
+                              onChangeAttrs({
+                                ...attrs,
+                                property_types: nextTypes,
+                                property_type: nextPrimary,
+                              });
+                            }}
+                            className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                          />
+                          <span>{pt.label}</span>
+                        </label>
+
+                        {isChecked && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              onChangeAttrs({
+                                ...attrs,
+                                property_type: pt.value,
+                              });
+                            }}
+                            className={`px-1.5 py-0.5 rounded text-[10px] font-semibold border transition-all ${
+                              isPrimary
+                                ? 'bg-amber-100 border-amber-300 text-amber-900'
+                                : 'bg-white border-slate-200 text-slate-500 hover:border-amber-300 hover:text-amber-700'
+                            }`}
+                            title={isPrimary ? 'Loại hình đại diện chính' : 'Đặt làm loại hình chính'}
+                          >
+                            {isPrimary ? '★' : 'Đặt chính'}
+                          </button>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          </div>
           <Input
             label="Nhận phòng"
             hint="VD: 15:00"
@@ -273,9 +402,13 @@ function parseJsonValue(raw?: string): unknown {
 
 export function stayAttrsFromApi(raw: Record<string, unknown> | null | undefined): StayAttrs {
   const attrs = (raw && typeof raw === 'object' ? raw : {}) as Record<string, unknown>;
+  const rawPropTypes = Array.isArray(attrs.property_types)
+    ? attrs.property_types.map(String)
+    : (attrs.property_type ? [String(attrs.property_type)] : ['hotel']);
 
   return {
-    property_type: String(attrs.property_type || 'hotel'),
+    property_type: String(attrs.property_type || rawPropTypes[0] || 'hotel'),
+    property_types: rawPropTypes,
     check_in: String(attrs.check_in || '15:00'),
     check_out: String(attrs.check_out || '12:00'),
     highlight_badges: linesFrom(attrs.highlight_badges ?? attrs.most_popular),
@@ -296,8 +429,13 @@ export function stayAttrsFromApi(raw: Record<string, unknown> | null | undefined
 }
 
 export function stayAttrsToApi(attrs: StayAttrs): Record<string, unknown> {
+  const types = Array.isArray(attrs.property_types) && attrs.property_types.length > 0
+    ? attrs.property_types
+    : [attrs.property_type || 'hotel'];
+
   const payload: Record<string, unknown> = {
-    property_type: attrs.property_type || 'hotel',
+    property_type: attrs.property_type || types[0] || 'hotel',
+    property_types: types,
     check_in: attrs.check_in || '15:00',
     check_out: attrs.check_out || '12:00',
     highlight_badges: attrs.highlight_badges
