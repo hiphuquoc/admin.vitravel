@@ -12,7 +12,7 @@ import { useRegisterAiTranslate } from '@/hooks/useAiFormTranslate';
 import { pickTranslatableFields, mergeTranslatedFields } from '@/lib/aiTranslateFields';
 import { StructureNotice } from '@/components/ui/StructureNotice';
 import { DEFAULT_LOCALE, isDefaultLocale } from '@/lib/locale';
-import { Input, Select, Switch, Textarea } from '@/components/ui/Field';
+import { Input, MultiSelect, Select, Switch, Textarea } from '@/components/ui/Field';
 import { ArticleContentEditor } from '@/components/editor/ArticleContentEditor';
 import { PageHeader } from '@/components/ui/Page';
 import { FormSection } from '@/components/ui/FormSection';
@@ -347,141 +347,37 @@ function FormInner() {
                 label: c.label,
               }))}
             />
-            {/* Custom Multi-Select: Danh mục lưu trú / Dịch vụ (Số nhiều) */}
-            <div className="ui-field col-span-2">
-              <label className="ui-field__label">
-                <span>Danh mục / Khu vực lưu trú (Chọn nhiều)</span>
-              </label>
-              <div className="flex flex-col gap-2 p-3 bg-white rounded-xl border border-slate-200 shadow-2xs">
-                {/* Selected Chips */}
-                <div className="flex flex-wrap items-center gap-1.5 min-h-[32px]">
-                  {form.service_category_ids.length === 0 ? (
-                    <span className="text-xs text-slate-400 italic">Chưa chọn danh mục nào</span>
-                  ) : (
-                    form.service_category_ids.map((cid) => {
-                      const cat = (metaQuery.data?.categories ?? []).find((c) => String(c.id) === String(cid));
-                      const isPrimary = String(form.service_category_id) === String(cid);
-                      return (
-                        <span
-                          key={cid}
-                          className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold border ${
-                            isPrimary
-                              ? 'bg-amber-50 border-amber-300 text-amber-900'
-                              : 'bg-slate-50 border-slate-200 text-slate-700'
-                          }`}
-                        >
-                          <span>{cat?.name || `#${cid}`}</span>
-                          {isPrimary && (
-                            <span className="px-1.5 py-0.2 bg-amber-200 text-amber-900 rounded text-[10px] font-bold">
-                              ★ Chính
-                            </span>
-                          )}
-                          <button
-                            type="button"
-                            disabled={structureLocked}
-                            onClick={() => {
-                              const nextIds = form.service_category_ids.filter((id) => id !== cid);
-                              let nextPrimary = form.service_category_id;
-                              if (nextPrimary === cid) {
-                                nextPrimary = nextIds[0] || '';
-                              }
-                              setForm((prev) => ({
-                                ...prev,
-                                service_category_ids: nextIds,
-                                service_category_id: nextPrimary,
-                              }));
-                              const parent = (metaQuery.data?.seo_parents ?? []).find(
-                                (p) => String(p.reference_id ?? '') === String(nextPrimary),
-                              );
-                              if (parent) set('seo_parent_id', String(parent.id));
-                            }}
-                            className="text-slate-400 hover:text-red-500 transition-colors ml-0.5"
-                          >
-                            ×
-                          </button>
-                        </span>
-                      );
-                    })
-                  )}
-                </div>
-
-                {/* Categories Checkboxes List Container */}
-                <div className="border border-slate-200 rounded-lg overflow-hidden bg-slate-50/50">
-                  <div className="max-h-48 overflow-y-auto p-1.5 grid grid-cols-1 sm:grid-cols-2 gap-1">
-                    {(metaQuery.data?.categories ?? []).map((c) => {
-                      const cid = String(c.id);
-                      const isChecked = form.service_category_ids.includes(cid);
-                      const isPrimary = String(form.service_category_id) === cid;
-
-                      return (
-                        <div
-                          key={c.id}
-                          className={`flex items-center justify-between px-2.5 py-1.5 rounded-md text-xs transition-colors ${
-                            isChecked ? 'bg-blue-50 text-blue-900 font-medium' : 'hover:bg-slate-100 text-slate-700'
-                          }`}
-                        >
-                          <label className="flex items-center gap-2 flex-1 cursor-pointer select-none">
-                            <input
-                              type="checkbox"
-                              disabled={structureLocked}
-                              checked={isChecked}
-                              onChange={(e) => {
-                                let nextIds = [...form.service_category_ids];
-                                if (e.target.checked) {
-                                  if (!nextIds.includes(cid)) nextIds.push(cid);
-                                } else {
-                                  nextIds = nextIds.filter((id) => id !== cid);
-                                }
-                                let nextPrimary = form.service_category_id;
-                                if (e.target.checked && (!nextPrimary || !nextIds.includes(nextPrimary))) {
-                                  nextPrimary = cid;
-                                } else if (!e.target.checked && nextPrimary === cid) {
-                                  nextPrimary = nextIds[0] || '';
-                                }
-                                setForm((prev) => ({
-                                  ...prev,
-                                  service_category_ids: nextIds,
-                                  service_category_id: nextPrimary,
-                                }));
-                                const parent = (metaQuery.data?.seo_parents ?? []).find(
-                                  (p) => String(p.reference_id ?? '') === String(nextPrimary),
-                                );
-                                if (parent) set('seo_parent_id', String(parent.id));
-                              }}
-                              className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
-                            />
-                            <span>{c.name || `#${c.id}`}</span>
-                            
-                          </label>
-
-                          {isChecked && (
-                            <button
-                              type="button"
-                              disabled={structureLocked}
-                              onClick={() => {
-                                set('service_category_id', cid);
-                                const parent = (metaQuery.data?.seo_parents ?? []).find(
-                                  (p) => String(p.reference_id ?? '') === String(cid),
-                                );
-                                if (parent) set('seo_parent_id', String(parent.id));
-                              }}
-                              className={`px-2 py-0.5 rounded text-[11px] font-semibold border transition-all ${
-                                isPrimary
-                                  ? 'bg-amber-100 border-amber-300 text-amber-900'
-                                  : 'bg-white border-slate-200 text-slate-500 hover:border-amber-300 hover:text-amber-700'
-                              }`}
-                              title={isPrimary ? 'Danh mục chính đại diện SEO & URL' : 'Đặt làm danh mục chính'}
-                            >
-                              {isPrimary ? '★ Chính' : 'Đặt chính'}
-                            </button>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              </div>
-            </div>
+            <MultiSelect
+              label="Danh mục"
+              placeholder="Chọn một hoặc nhiều danh mục…"
+              searchable
+              disabled={structureLocked}
+              value={form.service_category_ids.map(Number).filter(Boolean)}
+              onChange={(ids) => {
+                const strIds = ids.map(String);
+                setForm((prev) => ({
+                  ...prev,
+                  service_category_ids: strIds,
+                  service_category_id: strIds[0] || '',
+                }));
+                const firstId = strIds[0];
+                if (firstId) {
+                  const parent = (metaQuery.data?.seo_parents ?? []).find(
+                    (p) => String(p.reference_id ?? '') === String(firstId),
+                  );
+                  if (parent) set('seo_parent_id', String(parent.id));
+                }
+              }}
+              options={(metaQuery.data?.categories ?? []).map((c) => ({
+                value: c.id,
+                label: c.name || `#${c.id}`,
+              }))}
+              hint={
+                form.service_category_ids.length
+                  ? `Đã chọn ${form.service_category_ids.length} danh mục`
+                  : 'Có thể chọn nhiều danh mục'
+              }
+            />
             <Select
               label="Quốc gia"
               value={form.country_id}

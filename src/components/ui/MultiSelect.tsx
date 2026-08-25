@@ -59,7 +59,7 @@ export function MultiSelect({
 
   useEffect(() => setMounted(true), []);
 
-  const selectedSet = useMemo(() => new Set(value.map(String)), [value]);
+  const selectedSet = useMemo(() => new Set((value || []).map(String)), [value]);
 
   const selectedOptions = useMemo(
     () => options.filter((o) => selectedSet.has(String(o.value))),
