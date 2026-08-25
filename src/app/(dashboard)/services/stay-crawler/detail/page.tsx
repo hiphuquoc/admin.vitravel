@@ -218,17 +218,36 @@ function JobDetailInner() {
     Boolean(currentJob?.worker_alive) ||
     activeRunningCount > 0;
 
-  // Filter items theo từ khóa tìm kiếm
+  // Filter items theo tab status và từ khóa tìm kiếm (0ms phản hồi, tức thì)
   const items = useMemo(() => {
-    if (!searchFilter.trim()) return rawItems;
-    const q = searchFilter.toLowerCase().trim();
-    return rawItems.filter(
-      (item) =>
-        item.source_url.toLowerCase().includes(q) ||
-        (item.slug_full && item.slug_full.toLowerCase().includes(q)) ||
-        hotelLabel(item.source_url).toLowerCase().includes(q),
-    );
-  }, [rawItems, searchFilter]);
+    let list = rawItems;
+    if (statusFilter === 'done') {
+      list = list.filter((i) => i.status === 'imported' || i.status === 'ai_done' || i.status === 'done');
+    } else if (statusFilter === 'failed') {
+      list = list.filter((i) => i.status === 'failed' || i.status === 'blocked');
+    } else if (statusFilter === 'queued') {
+      list = list.filter((i) => i.status === 'queued' || i.status === 'fetched' || i.status === 'extracted' || i.status === 'crawling');
+    }
+    if (searchFilter.trim()) {
+      const q = searchFilter.toLowerCase().trim();
+      list = list.filter(
+        (item) =>
+          item.source_url.toLowerCase().includes(q) ||
+          (item.slug_full && item.slug_full.toLowerCase().includes(q)) ||
+          hotelLabel(item.source_url).toLowerCase().includes(q),
+      );
+    }
+    return list;
+  }, [rawItems, statusFilter, searchFilter]);
+
+  // Tối ưu tải theo đợt (progressive rendering)
+  const [displayLimit, setDisplayLimit] = useState<number>(30);
+  useEffect(() => {
+    setDisplayLimit(30);
+  }, [statusFilter, searchFilter]);
+
+  const visibleItems = useMemo(() => items.slice(0, displayLimit), [items, displayLimit]);
+  const hasMoreItems = items.length > displayLimit;
 
   const refresh = async () => {
     await qc.invalidateQueries({ queryKey: ['stay-crawls-job', jobId] });
@@ -766,7 +785,7 @@ function JobDetailInner() {
           </div>
         ) : (
           <div style={{ display: 'grid', gap: '0.65rem' }}>
-            {items.map((item) => {
+            {visibleItems.map((item) => {
               const isSelected = selectedIds.includes(item.id);
               const isMutatingThis = retryItemMutation.isPending && retryItemMutation.variables?.itemId === item.id;
               const isResettingThis = resetStatusMutation.isPending && resetStatusMutation.variables?.itemId === item.id;
@@ -973,6 +992,45 @@ function JobDetailInner() {
                 </div>
               );
             })}
+          </div>
+        )}
+
+        {hasMoreItems && (
+          <div
+            style={{
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '0.6rem',
+              padding: '1.25rem 1rem',
+              borderRadius: 'var(--admin-radius-lg)',
+              background: 'var(--admin-surface-subtle, #f8fafc)',
+              border: '1px dashed var(--admin-line, #e2e8f0)',
+              marginTop: '0.5rem',
+            }}
+          >
+            <p style={{ margin: 0, fontSize: '0.84rem', color: 'var(--admin-muted, #64748b)' }}>
+              Đang hiển thị <strong>{visibleItems.length}</strong> / <strong>{items.length}</strong> khách sạn
+            </p>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap' }}>
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                onClick={() => setDisplayLimit((prev) => Math.min(items.length, prev + 30))}
+              >
+                + Tải thêm 30 khách sạn (còn {items.length - visibleItems.length})
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => setDisplayLimit(items.length)}
+              >
+                Hiển thị tất cả ({items.length})
+              </Button>
+            </div>
           </div>
         )}
       </div>
