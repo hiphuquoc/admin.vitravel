@@ -93,6 +93,8 @@ export function StayCategoryCrawler({
     queryKey: ['stay-crawls-jobs', categoryId],
     queryFn: () => stayCrawlsApi.jobs({ service_category_id: categoryId!, per_page: 8 }),
     enabled: !!categoryId && cluster === 'stay',
+    placeholderData: (previousData) => previousData,
+    staleTime: 10000,
   });
 
   const latestJobId = jobsQuery.data?.items?.[0]?.id ?? null;
@@ -100,6 +102,8 @@ export function StayCategoryCrawler({
     queryKey: ['stay-crawls-job', latestJobId],
     queryFn: () => stayCrawlsApi.job(latestJobId!),
     enabled: !!latestJobId,
+    placeholderData: (previousData) => previousData,
+    staleTime: 10000,
   });
 
   useEffect(() => {

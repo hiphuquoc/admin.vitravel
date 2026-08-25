@@ -19,6 +19,7 @@ import {
   Globe2,
   Layers,
   Maximize2,
+  Pencil,
   Play,
   RefreshCw,
   RotateCcw,
@@ -164,22 +165,24 @@ function JobDetailInner() {
   const [rerunModalItem, setRerunModalItem] = useState<StayCrawlItem | null>(null);
   const [itemRerunChoice, setItemRerunChoice] = useState<ItemRerunChoice>('replace');
 
-  // Fetch job & items
+  // Fetch job & items với cache thông minh, không reload khi chuyển tab
   const jobQuery = useQuery({
-    queryKey: ['stay-crawls-job', jobId, statusFilter],
+    queryKey: ['stay-crawls-job', jobId],
     queryFn: () =>
       stayCrawlsApi.job(jobId!, {
-        status: statusFilter === 'all' ? undefined : statusFilter,
         limit: 500,
       }),
     enabled: !!jobId,
+    placeholderData: (previousData) => previousData,
+    staleTime: 10000,
+    gcTime: 300000,
     refetchInterval: (query) => {
       const data = query.state.data;
       const isRunning =
         data?.job?.status === 'running' ||
         data?.job?.status === 'processing' ||
         Boolean(data?.job?.worker_alive);
-      return isRunning ? 2500 : 8000;
+      return isRunning ? 2500 : false;
     },
   });
 
@@ -365,10 +368,19 @@ function JobDetailInner() {
     );
   }
 
-  const totalCount = stats?.total ?? rawItems.length;
-  const doneCount = stats?.done ?? 0;
-  const failedCount = (stats?.failed ?? 0) + (stats?.blocked ?? 0);
-  const queuedCount = stats?.queued ?? 0;
+  const totalCount = rawItems.length || (stats?.total ?? 0);
+  const doneCount = useMemo(
+    () => rawItems.filter((i) => i.status === 'imported' || i.status === 'ai_done' || i.status === 'done').length,
+    [rawItems]
+  );
+  const failedCount = useMemo(
+    () => rawItems.filter((i) => i.status === 'failed' || i.status === 'blocked').length,
+    [rawItems]
+  );
+  const queuedCount = useMemo(
+    () => rawItems.filter((i) => i.status === 'queued' || i.status === 'extracted' || i.status === 'fetched' || i.status === 'crawling').length,
+    [rawItems]
+  );
   const progressPercent = totalCount > 0 ? Math.round((doneCount / totalCount) * 100) : 0;
   const categoryName = currentJob?.category?.name;
 
@@ -861,6 +873,29 @@ function JobDetailInner() {
                   </div>
 
                   <div className="ui-crawler-item-card__actions">
+                    {/* Nút Chỉnh sửa sản phẩm khách sạn đã tạo */}
+                    {item.service_id ? (
+                      <Link
+                        href={`/services/products/form/?id=${item.service_id}&cluster=stay`}
+                        target="_blank"
+                        className="inline-flex"
+                      >
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="secondary"
+                          title="Mở giao diện sửa khách sạn này trong tab mới"
+                          style={{
+                            borderColor: 'var(--admin-primary-500, #6b8f3f)',
+                            color: 'var(--admin-primary-700, #405825)',
+                            fontWeight: 600,
+                          }}
+                        >
+                          <Pencil size={13} /> Sửa
+                        </Button>
+                      </Link>
+                    ) : null}
+
                     {isQueueRunning ? (
                       <Button type="button" size="sm" variant="secondary" disabled style={{ opacity: 0.8 }}>
                         <Zap size={13} className="animate-spin" /> Đang cào...

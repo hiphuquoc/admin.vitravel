@@ -146,7 +146,15 @@ function StayCrawlerListPageInner() {
         page,
         per_page: perPage,
       }),
-    refetchInterval: 4500,
+    placeholderData: (previousData) => previousData,
+    staleTime: 5000,
+    refetchInterval: (query) => {
+      const items = query.state.data?.items ?? [];
+      const hasRunning = items.some(
+        (j) => j.status === 'crawling' || j.status === 'running' || j.status === 'processing' || Boolean(j.worker_alive)
+      );
+      return hasRunning ? 3000 : false;
+    },
   });
 
   const jobsList: StayCrawlJob[] = jobsQuery.data?.items ?? [];
