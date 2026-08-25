@@ -181,6 +181,7 @@ function JobDetailInner() {
       const isRunning =
         data?.job?.status === 'running' ||
         data?.job?.status === 'processing' ||
+        data?.job?.status === 'crawling' ||
         Boolean(data?.job?.worker_alive);
       return isRunning ? 2500 : false;
     },
@@ -1385,8 +1386,8 @@ function JobDetailInner() {
       {/* Modal Live Crawler & Terminal Log */}
       {showModal && (
         <div className="ui-modal ui-modal--open" role="dialog" aria-modal="true">
-          <div className="ui-modal__veil" onClick={() => setShowModal(false)} />
-          <div className="ui-crawler-modal" role="document">
+          <button type="button" className="ui-modal__veil" aria-label="Đóng" onClick={() => setShowModal(false)} />
+          <div className="ui-modal__card ui-crawler-modal" role="document">
             <header className="ui-crawler-modal__head">
               <div className="ui-crawler-modal__brand">
                 <div className="ui-crawler-modal__icon-box">

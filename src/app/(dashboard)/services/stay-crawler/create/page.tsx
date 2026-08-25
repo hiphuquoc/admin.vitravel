@@ -1,42 +1,48 @@
 'use client';
 
-import { Suspense, useEffect, useRef, useState } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useState, useMemo, useRef, useEffect, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, Play, ScanSearch, ShieldCheck, Sparkles } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
+import {
+  ScanSearch,
+  Sparkles,
+  Play,
+  ArrowLeft,
+  RefreshCw,
+  X,
+} from 'lucide-react';
 import toast from '@/lib/toast';
-import { serviceCategoriesApi, stayCrawlsApi } from '@/lib/services';
 import { useAuth } from '@/lib/auth-context';
-import { useAppRouter } from '@/hooks/useAppRouter';
+
 import { PageHeader } from '@/components/ui/Page';
 import { FormSection } from '@/components/ui/FormSection';
-import { Button } from '@/components/ui/Button';
 import { Input, Select, Switch, Textarea } from '@/components/ui/Field';
+import { Button } from '@/components/ui/Button';
 import { CrawlerTerminalLog } from '@/components/services/CrawlerTerminalLog';
+import { stayCrawlsApi, serviceCategoriesApi } from '@/lib/services';
 
-function isHotelUrl(url: string): boolean {
-  try {
-    return /\/hotel\/[a-z]{2}\/[^/]+\.html/i.test(new URL(url).pathname);
-  } catch {
-    return false;
-  }
+function isHotelUrl(targetUrl: string): boolean {
+  return /booking\.com\/hotel\/[a-z0-9_-]+\/[a-z0-9_-]+/i.test(targetUrl) ||
+    /booking\.com\/[a-z]{2}(?:-[a-z]{2})?\/hotel\/[a-z0-9_-]+\/[a-z0-9_-]+/i.test(targetUrl);
 }
 
 function CreateCrawlerInner() {
-  const router = useAppRouter();
+  const router = useRouter();
   const searchParams = useSearchParams();
+  const paramCategoryId = searchParams.get('category_id');
+
   const { can } = useAuth();
   const canCreate = can('services.create');
 
-  const paramCategoryId = searchParams.get('category_id');
   const [categoryId, setCategoryId] = useState<number | null>(
     paramCategoryId ? Number(paramCategoryId) : null,
   );
-  const [mode, setMode] = useState<'hotel' | 'list'>('list');
   const [url, setUrl] = useState('');
   const [html, setHtml] = useState('');
   const [useProxy, setUseProxy] = useState(false);
+  const [mode, setMode] = useState<'hotel' | 'list'>('list');
+
   const [loading, setLoading] = useState(false);
   const [showLiveModal, setShowLiveModal] = useState(false);
   const [liveLogs, setLiveLogs] = useState<string[]>([]);
@@ -139,8 +145,12 @@ function CreateCrawlerInner() {
       setLiveLogs((prev) => [
         ...prev,
         `[${nowStr()}] ✓ Khởi tạo Job #${jobId} thành công!`,
-        `[${nowStr()}] ✓ Đã tìm thấy ${count} chỗ nghỉ từ Booking.com`,
-        `[${nowStr()}] • Đang tự động chuyển hướng đến bảng quản lý chi tiết...`,
+        mode === 'hotel'
+          ? `[${nowStr()}] ✓ Đã khởi tạo chỗ nghỉ từ Booking.com`
+          : count > 0
+            ? `[${nowStr()}] ✓ Đã tìm thấy ${count} chỗ nghỉ từ Booking.com`
+            : `[${nowStr()}] ✓ Đã khởi chạy tiến trình quét danh mục ở background`,
+        `[${nowStr()}] ➜ Đang tự động chuyển hướng đến bảng quản lý chi tiết...`,
       ]);
 
       toast.success(`Đã khởi tạo Job #${jobId} thành công!`);
@@ -218,7 +228,7 @@ function CreateCrawlerInner() {
 
         <Textarea
           label="Dán mã nguồn HTML (Tuỳ chọn — Dự phòng khi bị Captcha chặn)"
-          hint="Mở link trên trình duyệt của bạn → Nhấn Ctrl+S / Lưu trang HTML → Dán toàn bộ mã nguồn vào đây để bypass."
+          hint="Mở link trên trình duyệt của bạn ➜ Nhấn Ctrl+S / Lưu trang HTML ➜ Dán toàn bộ mã nguồn vào đây để bypass."
           rows={3}
           value={html}
           onChange={(e) => setHtml(e.target.value)}
@@ -278,53 +288,81 @@ function CreateCrawlerInner() {
             Hệ thống Supervisor & Đa luồng tự động
           </strong>
           <p style={{ margin: 0, color: 'var(--admin-muted)' }}>
-            Khi bắt đầu, hệ thống sẽ gom toàn bộ danh sách khách sạn và phân phối vào hàng đợi ngầm. Bạn có thể theo dõi tiến độ thời gian thực hoặc đóng trình duyệt mà không làm gián đoạn quá trình cào.
+            Khi bắt đầu, hệ thống sẽ gom toàn bộ danh sách khách sạn và phân phối vào hàng đợi ngầm Laravel queue. Bạn có thể theo dõi tiến độ thời gian thực hoặc đóng trình duyệt mà không làm gián đoạn quá trình cào.
           </p>
         </div>
       </div>
+
       {/* Live Log Console Modal */}
       {showLiveModal && (
-        <div className="ui-crawler-modal-overlay" onClick={() => !loading && setShowLiveModal(false)}>
+        <div className="ui-modal ui-modal--open" role="dialog" aria-modal="true">
+          <button
+            type="button"
+            className="ui-modal__veil"
+            aria-label="Đóng"
+            onClick={() => !loading && setShowLiveModal(false)}
+          />
           <div
-            className="ui-crawler-modal"
+            className="ui-modal__card ui-crawler-modal"
+            role="document"
             style={{ maxWidth: '44rem' }}
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="ui-crawler-modal__header">
-              <div className="ui-crawler-modal__title-wrap">
-                <div className="ui-crawler-modal__icon">
-                  <ScanSearch size={18} />
+            <header className="ui-crawler-modal__head">
+              <div className="ui-crawler-modal__brand">
+                <div className="ui-crawler-modal__icon-box">
+                  {loading ? (
+                    <RefreshCw size={18} className="animate-spin" />
+                  ) : (
+                    <ScanSearch size={18} />
+                  )}
                 </div>
-                <div>
-                  <h3 className="ui-crawler-modal__title">
+                <div className="ui-crawler-modal__titles">
+                  <p className="ui-crawler-modal__eyebrow">Booking.com Crawler Engine</p>
+                  <h2 className="ui-crawler-modal__title">
                     {loading ? 'Đang khởi chạy Crawler Booking.com…' : 'Tiến trình Crawler Booking.com'}
-                  </h3>
-                  <p className="ui-crawler-modal__desc">
-                    {loading
-                      ? 'Chrome Engine đang tải trang và bóc tách dữ liệu thời gian thực'
-                      : 'Hoàn tất khởi tạo phiên cào dữ liệu'}
-                  </p>
+                  </h2>
                 </div>
               </div>
               {!loading && (
-                <Button
+                <button
                   type="button"
-                  variant="ghost"
-                  size="sm"
+                  className="ui-btn ui-btn--ghost ui-btn--sm"
+                  style={{ padding: '0.4rem', borderRadius: '0.4rem' }}
+                  title="Đóng cửa sổ theo dõi"
                   onClick={() => setShowLiveModal(false)}
                 >
-                  Đóng
-                </Button>
+                  <X size={18} />
+                </button>
               )}
-            </div>
+            </header>
 
-            <div className="ui-crawler-modal__body" style={{ padding: '1rem' }}>
+            <div className="ui-crawler-modal__body">
+              <p className="ui-crawler-modal__hint">
+                💡 Hệ thống tự động gom toàn bộ danh sách khách sạn và phân phối vào hàng đợi ngầm Laravel queue. Bạn có thể theo dõi tiến độ thời gian thực hoặc đóng trình duyệt mà không làm gián đoạn quá trình cào.
+              </p>
               <CrawlerTerminalLog
                 logs={liveLogs}
                 running={loading}
                 maxHeight="min(45vh, 22rem)"
               />
             </div>
+
+            <footer className="ui-crawler-modal__foot">
+              <span style={{ fontSize: '0.78rem', color: 'var(--admin-muted, #64748b)' }}>
+                {liveLogs.length > 0 ? `Đã ghi nhận ${liveLogs.length} dòng sự kiện` : 'Chờ sự kiện tiếp theo...'}
+              </span>
+              {!loading && (
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => setShowLiveModal(false)}
+                >
+                  Đóng
+                </Button>
+              )}
+            </footer>
           </div>
         </div>
       )}

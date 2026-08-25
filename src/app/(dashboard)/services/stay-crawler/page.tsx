@@ -639,8 +639,8 @@ function StayCrawlerListPageInner() {
       {/* Modal Xem Console Log của 1 Job bất kỳ */}
       {liveLogJob && (
         <div className="ui-modal ui-modal--open" role="dialog" aria-modal="true">
-          <div className="ui-modal__veil" onClick={() => setLiveLogJob(null)} />
-          <div className="ui-crawler-modal" role="document">
+          <button type="button" className="ui-modal__veil" aria-label="Đóng" onClick={() => setLiveLogJob(null)} />
+          <div className="ui-modal__card ui-crawler-modal" role="document">
             <header className="ui-crawler-modal__head">
               <div className="ui-crawler-modal__brand">
                 <div className="ui-crawler-modal__icon-box">

@@ -8235,6 +8235,8 @@ html.is-navigating {
 
 /* ── Crawler Terminal / Live Log Modal & Console ── */
 .ui-crawler-modal {
+  position: relative;
+  z-index: 10;
   width: min(48rem, calc(100vw - 2rem)) !important;
   max-height: calc(100vh - 2.5rem);
   display: flex !important;

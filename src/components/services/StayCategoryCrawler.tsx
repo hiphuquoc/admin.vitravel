@@ -150,11 +150,11 @@ export function StayCategoryCrawler({
         html: html.trim() || undefined,
         use_proxy: useProxy || undefined,
       });
-      const total = started.urls.length || started.job.items_found || 0;
-      if (!total) {
+      const total = started.urls?.length || started.job?.items_found || 0;
+      if (!total && !started.is_listing_async && started.job?.status !== 'crawling') {
         await progress.fail({
-          title: 'Không thấy chỗ nghỉ',
-          detail: started.job.error || 'Dán HTML đã lưu nếu Booking chặn fetch.',
+          title: 'Kh?ng th?y ch? ngh?',
+          detail: started.job?.error || 'D?n HTML ?? l?u n?u Booking ch?n fetch.',
           holdMs: 2200,
         });
         await refresh();
