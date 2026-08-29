@@ -318,6 +318,7 @@ export default function SiteSettingsPage() {
               value={form.schema_logo}
               onChange={(e) => set('schema_logo', e.target.value)}
               disabled={structureLocked}
+              hint="Dùng cho favicon, logo header/footer public, og:image mặc định và JSON-LD Organization."
             />
             <Input
               label="Schema contact type"
