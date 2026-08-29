@@ -7,6 +7,7 @@ import { ArrowLeft } from 'lucide-react';
 import toast from '@/lib/toast';
 import { articlesApi } from '@/lib/services';
 import { useEditLocale } from '@/hooks/useEditLocale';
+import { beginFormHydration, markFormHydrationStale } from '@/hooks/useFormHydration';
 import { StructureLockProvider } from '@/hooks/useStructureLock';
 import { useRegisterAiTranslate } from '@/hooks/useAiFormTranslate';
 import { pickTranslatableFields, mergeTranslatedFields } from '@/lib/aiTranslateFields';
@@ -66,6 +67,7 @@ function FormInner() {
   const { locale, setLocale } = useEditLocale();
   const [form, setForm] = useState<FormState>(empty);
   const snapshotRef = useRef(JSON.stringify(empty));
+  const hydrateKeyRef = useRef<string | null>(null);
   const isDirty = useMemo(() => JSON.stringify(form) !== snapshotRef.current, [form]);
 
   const metaQuery = useQuery({
@@ -76,10 +78,13 @@ function FormInner() {
     queryKey: ['article', id, locale],
     queryFn: () => articlesApi.get(id!, locale),
     enabled: !!id,
+    refetchOnWindowFocus: false,
+    refetchInterval: false,
   });
 
   useEffect(() => {
     if (!detailQuery.data) return;
+    if (!beginFormHydration(hydrateKeyRef, id, locale)) return;
     const d = detailQuery.data as Record<string, unknown>;
     const seo = d.seo as Record<string, string | null> | undefined;
     const next: FormState = {
@@ -115,6 +120,7 @@ function FormInner() {
     },
     onSuccess: async (data) => {
       toast.success(isNew ? 'Đã tạo' : 'Đã lưu');
+      markFormHydrationStale(hydrateKeyRef);
       await qc.invalidateQueries({ queryKey: ['articles'] });
       replaceFormUrl(
         router,

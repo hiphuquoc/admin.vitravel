@@ -7,6 +7,7 @@ import { ArrowLeft, Clapperboard, Film, Settings2, Youtube } from 'lucide-react'
 import toast from '@/lib/toast';
 import { videosApi } from '@/lib/services';
 import { useEditLocale } from '@/hooks/useEditLocale';
+import { beginFormHydration, markFormHydrationStale } from '@/hooks/useFormHydration';
 import { StructureLockProvider } from '@/hooks/useStructureLock';
 import { useRegisterAiTranslate } from '@/hooks/useAiFormTranslate';
 import { pickTranslatableFields, mergeTranslatedFields } from '@/lib/aiTranslateFields';
@@ -67,6 +68,7 @@ function FormInner() {
   const { locale, setLocale } = useEditLocale();
   const [form, setForm] = useState<FormState>(empty);
   const snapshotRef = useRef(JSON.stringify(empty));
+  const hydrateKeyRef = useRef<string | null>(null);
   const isDirty = JSON.stringify(form) !== snapshotRef.current;
 
   const metaQuery = useQuery({
@@ -78,10 +80,13 @@ function FormInner() {
     queryKey: ['videos', id, locale],
     queryFn: () => videosApi.get(id!, locale),
     enabled: !!id,
+    refetchOnWindowFocus: false,
+    refetchInterval: false,
   });
 
   useEffect(() => {
     if (!detailQuery.data) return;
+    if (!beginFormHydration(hydrateKeyRef, id, locale)) return;
     const d = detailQuery.data as Record<string, unknown>;
     const videoFile = (d.video_file as MediaImage | null | undefined) ?? null;
     const youtubeId = String(d.youtube_id || '');
@@ -149,6 +154,7 @@ function FormInner() {
     },
     onSuccess: async (data) => {
       toast.success('Đã lưu video');
+      markFormHydrationStale(hydrateKeyRef);
       await qc.invalidateQueries({ queryKey: ['videos'] });
       replaceFormUrl(router, `/brand/videos/form/?id=${(data as { id: number }).id}&locale=${locale}`);
       snapshotRef.current = JSON.stringify(form);

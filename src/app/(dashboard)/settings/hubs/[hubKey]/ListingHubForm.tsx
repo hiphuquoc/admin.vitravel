@@ -7,6 +7,7 @@ import { ArrowLeft, LayoutTemplate } from 'lucide-react';
 import toast from '@/lib/toast';
 import { listingHubsApi } from '@/lib/services';
 import { useEditLocale } from '@/hooks/useEditLocale';
+import { beginFormHydration, markFormHydrationStale } from '@/hooks/useFormHydration';
 import { StructureLockProvider } from '@/hooks/useStructureLock';
 import { useRegisterAiTranslate } from '@/hooks/useAiFormTranslate';
 import { pickTranslatableFields, mergeTranslatedFields } from '@/lib/aiTranslateFields';
@@ -65,16 +66,20 @@ export default function ListingHubForm() {
   const [form, setForm] = useState<FormState>(empty);
   const [listingEditorEpoch, setListingEditorEpoch] = useState(0);
   const snapshotRef = useRef(JSON.stringify(empty));
+  const hydrateKeyRef = useRef<string | null>(null);
   const isDirty = useMemo(() => JSON.stringify(form) !== snapshotRef.current, [form]);
 
   const query = useQuery({
     queryKey: ['listing-hub', hubKey, locale],
     queryFn: () => listingHubsApi.get(hubKey, locale),
     enabled: !!hubKey,
+    refetchOnWindowFocus: false,
+    refetchInterval: false,
   });
 
   useEffect(() => {
     if (!query.data) return;
+    if (!beginFormHydration(hydrateKeyRef, hubKey, locale)) return;
     const d = query.data as Record<string, unknown>;
     const next: FormState = {
       title: String(d.title || ''),
@@ -113,6 +118,7 @@ export default function ListingHubForm() {
       }),
     onSuccess: async () => {
       toast.success('Đã lưu hub');
+      markFormHydrationStale(hydrateKeyRef);
       await qc.invalidateQueries({ queryKey: ['listing-hub', hubKey] });
       snapshotRef.current = JSON.stringify(form);
     },

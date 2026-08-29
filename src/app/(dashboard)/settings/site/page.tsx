@@ -5,6 +5,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import toast from '@/lib/toast';
 import { companyProfileApi } from '@/lib/services';
 import { useEditLocale } from '@/hooks/useEditLocale';
+import { beginFormHydration, markFormHydrationStale } from '@/hooks/useFormHydration';
 import { StructureLockProvider } from '@/hooks/useStructureLock';
 import { StructureNotice } from '@/components/ui/StructureNotice';
 import { DEFAULT_LOCALE, isDefaultLocale, type LocaleOption } from '@/lib/locale';
@@ -85,15 +86,19 @@ export default function SiteSettingsPage() {
   const { locale, setLocale } = useEditLocale();
   const [form, setForm] = useState<FormState>(empty);
   const snapshotRef = useRef(JSON.stringify(empty));
+  const hydrateKeyRef = useRef<string | null>(null);
   const isDirty = useMemo(() => JSON.stringify(form) !== snapshotRef.current, [form]);
 
   const query = useQuery({
     queryKey: ['company-profile-site', locale],
     queryFn: () => companyProfileApi.get(locale),
+    refetchOnWindowFocus: false,
+    refetchInterval: false,
   });
 
   useEffect(() => {
     if (!query.data) return;
+    if (!beginFormHydration(hydrateKeyRef, 'site', locale)) return;
     const d = query.data as Record<string, unknown>;
     const next: FormState = { ...empty };
     for (const key of SITE_KEYS) {
@@ -113,6 +118,7 @@ export default function SiteSettingsPage() {
       }),
     onSuccess: async () => {
       toast.success('Đã lưu thông tin dự án');
+      markFormHydrationStale(hydrateKeyRef);
       await qc.invalidateQueries({ queryKey: ['company-profile'] });
       await qc.invalidateQueries({ queryKey: ['company-profile-site'] });
       snapshotRef.current = JSON.stringify(form);

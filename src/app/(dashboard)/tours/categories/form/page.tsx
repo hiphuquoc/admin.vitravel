@@ -7,6 +7,7 @@ import { ArrowLeft, FolderTree } from 'lucide-react';
 import toast from '@/lib/toast';
 import { categoriesApi } from '@/lib/services';
 import { useEditLocale } from '@/hooks/useEditLocale';
+import { beginFormHydration, markFormHydrationStale } from '@/hooks/useFormHydration';
 import { StructureLockProvider } from '@/hooks/useStructureLock';
 import { useRegisterAiTranslate } from '@/hooks/useAiFormTranslate';
 import { pickTranslatableFields, mergeTranslatedFields } from '@/lib/aiTranslateFields';
@@ -84,6 +85,7 @@ function CategoryFormInner() {
   const [slugTouched, setSlugTouched] = useState(false);
   const [listingEditorEpoch, setListingEditorEpoch] = useState(0);
   const snapshotRef = useRef(JSON.stringify(empty));
+  const hydrateKeyRef = useRef<string | null>(null);
   const isDirty = useMemo(() => JSON.stringify(form) !== snapshotRef.current, [form]);
 
   const metaQuery = useQuery({
@@ -95,10 +97,13 @@ function CategoryFormInner() {
     queryKey: ['tour-category', id, locale],
     queryFn: () => categoriesApi.get(id!, locale),
     enabled: !!id,
+    refetchOnWindowFocus: false,
+    refetchInterval: false,
   });
 
   useEffect(() => {
     if (!detailQuery.data) return;
+    if (!beginFormHydration(hydrateKeyRef, id, locale)) return;
     const d = detailQuery.data;
     const next: FormState = {
       name: d.name || '',
@@ -152,6 +157,7 @@ function CategoryFormInner() {
     },
     onSuccess: async (data) => {
       toast.success(isNew ? 'Đã tạo danh mục' : 'Đã lưu danh mục');
+      markFormHydrationStale(hydrateKeyRef);
       await qc.invalidateQueries({ queryKey: ['tour-categories'] });
       replaceFormUrl(router, `/tours/categories/form/?id=${data.id}&locale=${locale}`);
     },
@@ -260,7 +266,7 @@ function CategoryFormInner() {
             setForm((prev) => ({ ...prev, [key]: v }));
           }}
           parents={metaQuery.data?.seo_parents ?? []}
-          description="Chọn quốc gia (SEO) làm trang cha → URL = {parent}/{slug}."
+          description="Chọn hub Tour làm trang cha (không chọn điểm đến / chủ đề khác — cùng cấp). URL = {hub}/{slug}."
         />
 
         <FormSection
@@ -293,15 +299,9 @@ function CategoryFormInner() {
               }))}
             />
             <Select
-              label="Quốc gia"
+              label="Quốc gia (lọc taxonomy, không phải trang cha SEO)"
               value={form.country_id}
-              onChange={(v) => {
-                set('country_id', v);
-                const parent = (metaQuery.data?.seo_parents ?? []).find(
-                  (p) => String(p.reference_id ?? '') === String(v),
-                );
-                if (parent) set('seo_parent_id', String(parent.id));
-              }}
+              onChange={(v) => set('country_id', v)}
               placeholder="Không gắn quốc gia"
               searchable
               options={(metaQuery.data?.countries ?? []).map((c) => ({

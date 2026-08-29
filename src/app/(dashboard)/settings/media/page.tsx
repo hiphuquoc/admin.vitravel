@@ -699,7 +699,11 @@ export default function MediaLibraryPage() {
               setPage(1);
               setFolder(f.key);
             }}
-            title={f.path}
+            title={
+              f.hidden_from_all
+                ? `${f.path} — chỉ hiện khi chọn thư mục này`
+                : f.path
+            }
           >
             {mediaFolderLabel(f.key)}
           </button>

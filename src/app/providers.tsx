@@ -16,6 +16,8 @@ export function Providers({ children }: { children: ReactNode }) {
       new QueryClient({
         defaultOptions: {
           queries: {
+            // List / crawler / dashboard: live refetch bình thường.
+            // Form edit tự tắt qua EDIT_FORM_QUERY_OPTIONS (+ useFormHydration).
             staleTime: 15_000,
             refetchOnWindowFocus: true,
             refetchInterval: 60_000,

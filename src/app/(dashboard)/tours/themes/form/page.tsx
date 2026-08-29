@@ -7,6 +7,7 @@ import { ArrowLeft, Compass } from 'lucide-react';
 import toast from '@/lib/toast';
 import { metaApi, themesApi } from '@/lib/services';
 import { useEditLocale } from '@/hooks/useEditLocale';
+import { beginFormHydration, markFormHydrationStale } from '@/hooks/useFormHydration';
 import { StructureLockProvider } from '@/hooks/useStructureLock';
 import { useRegisterAiTranslate } from '@/hooks/useAiFormTranslate';
 import { pickTranslatableFields, mergeTranslatedFields } from '@/lib/aiTranslateFields';
@@ -60,6 +61,7 @@ function ThemeFormInner() {
   const [slugTouched, setSlugTouched] = useState(false);
   const [codeTouched, setCodeTouched] = useState(false);
   const snapshotRef = useRef(JSON.stringify(empty));
+  const hydrateKeyRef = useRef<string | null>(null);
   const isDirty = useMemo(() => JSON.stringify(form) !== snapshotRef.current, [form]);
 
   const languagesQuery = useQuery({
@@ -71,10 +73,13 @@ function ThemeFormInner() {
     queryKey: ['travel-style', id, locale],
     queryFn: () => themesApi.get(id!, locale),
     enabled: !!id,
+    refetchOnWindowFocus: false,
+    refetchInterval: false,
   });
 
   useEffect(() => {
     if (!detailQuery.data) return;
+    if (!beginFormHydration(hydrateKeyRef, id, locale)) return;
     const d = detailQuery.data;
     const next: FormState = {
       name: d.name || '',
@@ -105,6 +110,7 @@ function ThemeFormInner() {
     },
     onSuccess: async (data) => {
       toast.success(isNew ? 'Đã tạo chủ đề' : 'Đã lưu chủ đề');
+      markFormHydrationStale(hydrateKeyRef);
       await qc.invalidateQueries({ queryKey: ['travel-styles'] });
       replaceFormUrl(router, `/tours/themes/form/?id=${data.id}&locale=${locale}`);
     },

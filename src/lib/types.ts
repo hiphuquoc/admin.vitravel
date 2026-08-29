@@ -141,6 +141,9 @@ export type MediaFolder =
   | 'videos'
   | 'video_files'
   | 'company'
+  | 'stays_crawler_gallery'
+  | 'stays_crawler_room'
+  | 'stays_crawler_cover'
   | 'default';
 
 export type PackageListItem = {

@@ -7,6 +7,7 @@ import { ArrowLeft, Globe2 } from 'lucide-react';
 import toast from '@/lib/toast';
 import { countriesApi } from '@/lib/services';
 import { useEditLocale } from '@/hooks/useEditLocale';
+import { beginFormHydration, markFormHydrationStale } from '@/hooks/useFormHydration';
 import { StructureLockProvider } from '@/hooks/useStructureLock';
 import { useRegisterAiTranslate } from '@/hooks/useAiFormTranslate';
 import { pickTranslatableFields, mergeTranslatedFields } from '@/lib/aiTranslateFields';
@@ -92,6 +93,7 @@ function FormInner() {
   const [form, setForm] = useState<FormState>(empty);
   const [listingEditorEpoch, setListingEditorEpoch] = useState(0);
   const snapshotRef = useRef(JSON.stringify(empty));
+  const hydrateKeyRef = useRef<string | null>(null);
   const isDirty = useMemo(() => JSON.stringify(form) !== snapshotRef.current, [form]);
 
   const metaQuery = useQuery({
@@ -102,10 +104,13 @@ function FormInner() {
     queryKey: ['country', id, locale],
     queryFn: () => countriesApi.get(id!, locale),
     enabled: !!id,
+    refetchOnWindowFocus: false,
+    refetchInterval: false,
   });
 
   useEffect(() => {
     if (!detailQuery.data) return;
+    if (!beginFormHydration(hydrateKeyRef, id, locale)) return;
     const d = detailQuery.data;
     const next: FormState = {
       code: d.code || '',
@@ -179,6 +184,7 @@ function FormInner() {
     },
     onSuccess: async (data) => {
       toast.success(isNew ? 'Đã tạo' : 'Đã lưu');
+      markFormHydrationStale(hydrateKeyRef);
       await qc.invalidateQueries({ queryKey: ['countries'] });
       replaceFormUrl(router, `/tours/destinations/form/?id=${data.id}&locale=${locale}`);
     },

@@ -5,6 +5,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import toast from '@/lib/toast';
 import { homeSectionsApi } from '@/lib/services';
 import { useEditLocale } from '@/hooks/useEditLocale';
+import { beginFormHydration, markFormHydrationStale } from '@/hooks/useFormHydration';
 import { StructureLockProvider, useStructureLocked } from '@/hooks/useStructureLock';
 import { useRegisterAiTranslate } from '@/hooks/useAiFormTranslate';
 import { pickTranslatableFields, mergeTranslatedFields } from '@/lib/aiTranslateFields';
@@ -367,6 +368,7 @@ export default function HomeContentPage() {
   const [usps, setUsps] = useState<UspRow[]>([]);
   const [featured, setFeaturedState] = useState<FeaturedState>(EMPTY_FEATURED);
   const snapshotRef = useRef('');
+  const hydrateKeyRef = useRef<string | null>(null);
   const isDirty = useMemo(
     () => JSON.stringify({ sections, usps, featured }) !== snapshotRef.current,
     [sections, usps, featured],
@@ -375,10 +377,13 @@ export default function HomeContentPage() {
   const query = useQuery({
     queryKey: ['home-sections', locale],
     queryFn: () => homeSectionsApi.get(locale),
+    refetchOnWindowFocus: false,
+    refetchInterval: false,
   });
 
   useEffect(() => {
     if (!query.data) return;
+    if (!beginFormHydration(hydrateKeyRef, 'home', locale)) return;
     const d = query.data as Record<string, unknown>;
     const nextSections = ((d.sections as Record<string, unknown>[]) || []).map(mapSection);
     const nextUsps = (d.usps as UspRow[]) || [];
@@ -457,6 +462,7 @@ export default function HomeContentPage() {
       }),
     onSuccess: async () => {
       toast.success('Đã lưu nội dung trang chủ');
+      markFormHydrationStale(hydrateKeyRef);
       await qc.invalidateQueries({ queryKey: ['home-sections'] });
     },
     onError: (err: Error) => toast.error(err.message),

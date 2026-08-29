@@ -15,6 +15,9 @@ export const MEDIA_FOLDER_LABELS: Record<string, string> = {
   videos: 'Ảnh video',
   video_files: 'File video',
   company: 'Công ty',
+  stays_crawler_gallery: 'Crawler — Gallery KS',
+  stays_crawler_room: 'Crawler — Ảnh phòng',
+  stays_crawler_cover: 'Crawler — Cover KS',
   default: 'Chung',
 };
 

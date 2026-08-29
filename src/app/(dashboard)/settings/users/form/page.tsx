@@ -8,6 +8,7 @@ import clsx from 'clsx';
 import toast from '@/lib/toast';
 import { usersApi } from '@/lib/services';
 import { useAuth } from '@/lib/auth-context';
+import { beginFormHydration, markFormHydrationStale } from '@/hooks/useFormHydration';
 import { Input, MultiSelect, Select, Switch } from '@/components/ui/Field';
 import { EmptyState, PageHeader } from '@/components/ui/Page';
 import { FormCluster, FormSection } from '@/components/ui/FormSection';
@@ -67,6 +68,7 @@ function FormInner() {
   const { can } = useAuth();
   const [form, setForm] = useState<FormState>(empty);
   const snapshotRef = useRef(JSON.stringify(empty));
+  const hydrateKeyRef = useRef<string | null>(null);
   const canManage = can('users.manage');
 
   const metaQuery = useQuery({
@@ -79,10 +81,13 @@ function FormInner() {
     queryKey: ['users', id],
     queryFn: () => usersApi.get(id!),
     enabled: !!id && canManage,
+    refetchOnWindowFocus: false,
+    refetchInterval: false,
   });
 
   useEffect(() => {
     if (!detailQuery.data) return;
+    if (!beginFormHydration(hydrateKeyRef, id)) return;
     const d = detailQuery.data as UserDetail;
     const projects: ProjectRow[] = (d.projects ?? []).map((p, i) => ({
       key: `proj-${p.id}-${i}`,
@@ -129,6 +134,7 @@ function FormInner() {
     },
     onSuccess: async (data) => {
       toast.success(isNew ? 'Đã tạo người dùng' : 'Đã cập nhật người dùng');
+      markFormHydrationStale(hydrateKeyRef);
       await qc.invalidateQueries({ queryKey: ['users'] });
       if (isNew && data.id) {
         router.replace(`/settings/users/form/?id=${data.id}`);

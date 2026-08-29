@@ -6,6 +6,7 @@ import Link from 'next/link';
 import toast from '@/lib/toast';
 import { companyProfileApi } from '@/lib/services';
 import { useEditLocale } from '@/hooks/useEditLocale';
+import { beginFormHydration, markFormHydrationStale } from '@/hooks/useFormHydration';
 import { StructureLockProvider } from '@/hooks/useStructureLock';
 import { useRegisterAiTranslate } from '@/hooks/useAiFormTranslate';
 import { pickTranslatableFields, mergeTranslatedFields } from '@/lib/aiTranslateFields';
@@ -24,15 +25,19 @@ export default function CompanyPage() {
   const { locale, setLocale } = useEditLocale();
   const [form, setForm] = useState<Record<string, string>>({});
   const snapshotRef = useRef('');
+  const hydrateKeyRef = useRef<string | null>(null);
   const isDirty = useMemo(() => JSON.stringify(form) !== snapshotRef.current, [form]);
 
   const query = useQuery({
     queryKey: ['company-profile', locale],
     queryFn: () => companyProfileApi.get(locale),
+    refetchOnWindowFocus: false,
+    refetchInterval: false,
   });
 
   useEffect(() => {
     if (!query.data) return;
+    if (!beginFormHydration(hydrateKeyRef, 'company', locale)) return;
     const d = query.data as Record<string, unknown>;
     const next: Record<string, string> = {};
     for (const key of [
@@ -60,6 +65,7 @@ export default function CompanyPage() {
     mutationFn: () => companyProfileApi.update({ ...form, locale }),
     onSuccess: async () => {
       toast.success('Đã lưu trang công ty');
+      markFormHydrationStale(hydrateKeyRef);
       await qc.invalidateQueries({ queryKey: ['company-profile'] });
     },
     onError: (err: Error) => toast.error(err.message),

@@ -21,6 +21,8 @@ import { FormHeadActions } from '@/components/ui/FormHeadActions';
 import { publicPageUrl } from '@/lib/publicUrl';
 import { replaceFormUrl } from '@/lib/formNavigate';
 import { asLocaleOptions, DEFAULT_LOCALE, isDefaultLocale, type LocaleOption } from '@/lib/locale';
+import { beginFormHydration, markFormHydrationStale } from '@/hooks/useFormHydration';
+import { EDIT_FORM_QUERY_OPTIONS } from '@/lib/editFormQuery';
 
 type Field =
   | {
@@ -158,12 +160,14 @@ function Inner(props: Props) {
   const { locale, setLocale } = useEditLocale();
   const [form, setForm] = useState<Record<string, unknown>>(props.empty);
   const snapshotRef = useRef(JSON.stringify(props.empty));
+  const hydrateKeyRef = useRef<string | null>(null);
   const isDirty = useMemo(() => JSON.stringify(form) !== snapshotRef.current, [form]);
 
   const detailQuery = useQuery({
     queryKey: [props.queryKey, id, locale],
     queryFn: () => props.getFn(id!, locale),
     enabled: !!id,
+    ...EDIT_FORM_QUERY_OPTIONS,
   });
 
   const languagesQuery = useQuery({
@@ -182,12 +186,13 @@ function Inner(props: Props) {
   });
 
   useEffect(() => {
-    if (!detailQuery.data) return;
+    if (!detailQuery.data || !id) return;
+    if (!beginFormHydration(hydrateKeyRef, id, locale)) return;
     const mapped = props.mapDetail ? props.mapDetail(detailQuery.data) : detailQuery.data;
     const next = { ...props.empty, ...mapped };
     setForm(next);
     snapshotRef.current = JSON.stringify(next);
-  }, [detailQuery.data, locale]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [detailQuery.data, id, locale]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const languages =
     asLocaleOptions(props.languagesFrom?.(detailQuery.data)) ??
@@ -209,6 +214,8 @@ function Inner(props: Props) {
     },
     onSuccess: async (data) => {
       toast.success(isNew ? 'Đã tạo' : 'Đã lưu');
+      snapshotRef.current = JSON.stringify(form);
+      markFormHydrationStale(hydrateKeyRef);
       await qc.invalidateQueries({ queryKey: [props.queryKey] });
       replaceFormUrl(
         router,

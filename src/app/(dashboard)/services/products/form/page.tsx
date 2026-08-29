@@ -7,6 +7,7 @@ import { ArrowLeft, Wallet } from 'lucide-react';
 import toast from '@/lib/toast';
 import { servicesApi } from '@/lib/services';
 import { useEditLocale } from '@/hooks/useEditLocale';
+import { beginFormHydration, markFormHydrationStale } from '@/hooks/useFormHydration';
 import { StructureLockProvider } from '@/hooks/useStructureLock';
 import { useRegisterAiTranslate } from '@/hooks/useAiFormTranslate';
 import { pickTranslatableFields, mergeTranslatedFields } from '@/lib/aiTranslateFields';
@@ -127,6 +128,7 @@ function FormInner() {
   const { locale, setLocale } = useEditLocale();
   const [form, setForm] = useState<FormState>({ ...empty, cluster: clusterFromUrl });
   const snapshotRef = useRef(JSON.stringify({ ...empty, cluster: clusterFromUrl }));
+  const hydrateKeyRef = useRef<string | null>(null);
   /** Remount TipTap sau AI enrich — tránh giữ HTML cũ. */
   const [contentEditorEpoch, setContentEditorEpoch] = useState(0);
   const isDirty = useMemo(() => JSON.stringify(form) !== snapshotRef.current, [form]);
@@ -139,12 +141,15 @@ function FormInner() {
     queryKey: ['service', id, locale],
     queryFn: () => servicesApi.get(id!, locale),
     enabled: !!id,
+    refetchOnWindowFocus: false,
+    refetchInterval: false,
   });
 
   const isStay = form.cluster === 'stay';
 
   useEffect(() => {
     if (!detailQuery.data) return;
+    if (!beginFormHydration(hydrateKeyRef, id, locale)) return;
     const d = detailQuery.data as Record<string, any>;
     const next: FormState = {
       cluster: d.cluster || clusterFromUrl,
@@ -234,6 +239,7 @@ function FormInner() {
     },
     onSuccess: async (data) => {
       toast.success(isNew ? 'Đã tạo' : 'Đã lưu');
+      markFormHydrationStale(hydrateKeyRef);
       await qc.invalidateQueries({ queryKey: [`services-${form.cluster}`] });
       await qc.invalidateQueries({ queryKey: ['service', data.id] });
       replaceFormUrl(

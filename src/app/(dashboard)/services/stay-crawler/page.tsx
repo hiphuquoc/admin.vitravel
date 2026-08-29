@@ -119,12 +119,20 @@ function StayCrawlerListPageInner() {
   // Modal Xem Live Log của Job
   const [liveLogJob, setLiveLogJob] = useState<StayCrawlJob | null>(null);
 
-  const categoriesQuery = useQuery({
-    queryKey: ['stay-categories-list'],
+  const stayCatsQuery = useQuery({
+    queryKey: ['crawl-categories-stay'],
     queryFn: () => serviceCategoriesApi.list({ cluster: 'stay', per_page: 100 }),
   });
+  const experienceCatsQuery = useQuery({
+    queryKey: ['crawl-categories-experience'],
+    queryFn: () => serviceCategoriesApi.list({ cluster: 'experience', per_page: 100 }),
+  });
 
-  const categories = categoriesQuery.data?.items ?? [];
+  const categories = useMemo(() => {
+    const stay = (stayCatsQuery.data?.items ?? []).map((c) => ({ ...c, clusterLabel: 'Lưu trú' }));
+    const exp = (experienceCatsQuery.data?.items ?? []).map((c) => ({ ...c, clusterLabel: 'Trải nghiệm' }));
+    return [...stay, ...exp];
+  }, [stayCatsQuery.data?.items, experienceCatsQuery.data?.items]);
 
   // Query danh sách Job
   const jobsQuery = useQuery({
@@ -369,13 +377,15 @@ function StayCrawlerListPageInner() {
           {/* Category Selector */}
           <div style={{ minWidth: '16rem', maxWidth: '24rem', flex: '1 1 auto' }}>
             <Select
-              label="Lọc theo Danh mục lưu trú"
+              label="Lọc theo danh mục"
               placeholder="— Tất cả danh mục —"
               options={[
                 { value: '', label: 'Tất cả danh mục' },
                 ...categories.map((c) => ({
                   value: String(c.id),
-                  label: c.name ? `${c.name} (ID: ${c.id})` : `#${c.id}`,
+                  label: c.name
+                    ? `[${c.clusterLabel}] ${c.name} (ID: ${c.id})`
+                    : `[${c.clusterLabel}] #${c.id}`,
                 })),
               ]}
               value={selectedCategory}

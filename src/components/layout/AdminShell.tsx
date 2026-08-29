@@ -172,10 +172,13 @@ function ShellInner({ children }: { children: ReactNode }) {
                         busy && 'sidebar__link--busy',
                       )}
                       disabled={busy}
+                      title={item.label}
                       onClick={() => void runNavAction(item)}
                     >
                       <Icon />
-                      {busy ? 'Đang xóa cache…' : item.label}
+                      <span className="sidebar__link-label">
+                        {busy ? 'Đang xóa cache…' : item.label}
+                      </span>
                     </button>
                   );
                 }
@@ -186,9 +189,10 @@ function ShellInner({ children }: { children: ReactNode }) {
                     href={item.href}
                     className={clsx('sidebar__link', active && 'sidebar__link--active')}
                     onClick={() => setOpen(false)}
+                    title={item.label}
                   >
                     <Icon />
-                    {item.label}
+                    <span className="sidebar__link-label">{item.label}</span>
                   </Link>
                 );
               })}

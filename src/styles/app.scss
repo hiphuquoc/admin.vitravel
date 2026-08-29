@@ -146,6 +146,17 @@
       flex-shrink: 0;
     }
 
+    // Nhãn 1 dòng + … khi tên danh mục / cụm dài
+    min-width: 0;
+
+    .sidebar__link-label {
+      min-width: 0;
+      flex: 1;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
     &:hover {
       background: rgba(255, 255, 255, 0.06);
       color: #fff;

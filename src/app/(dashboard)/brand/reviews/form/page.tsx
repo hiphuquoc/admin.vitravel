@@ -16,6 +16,7 @@ import { HeadActions, HeadSecondary } from '@/components/ui/HeadActions';
 import { Repeater } from '@/components/ui/Repeater';
 import { Button } from '@/components/ui/Button';
 import { replaceFormUrl } from '@/lib/formNavigate';
+import { beginFormHydration, markFormHydrationStale } from '@/hooks/useFormHydration';
 
 type GalleryRow = { key: string; image: ImageFieldState };
 
@@ -72,6 +73,7 @@ function FormInner() {
   const qc = useQueryClient();
   const [form, setForm] = useState<FormState>(empty);
   const snapshotRef = useRef(JSON.stringify(empty));
+  const hydrateKeyRef = useRef<string | null>(null);
 
   const metaQuery = useQuery({
     queryKey: ['reviews-meta'],
@@ -82,10 +84,13 @@ function FormInner() {
     queryKey: ['reviews', id],
     queryFn: () => reviewsApi.get(id!),
     enabled: !!id,
+    refetchOnWindowFocus: false,
+    refetchInterval: false,
   });
 
   useEffect(() => {
     if (!detailQuery.data) return;
+    if (!beginFormHydration(hydrateKeyRef, id)) return;
     const d = detailQuery.data as Record<string, unknown>;
     const gallery = Array.isArray(d.gallery)
       ? (d.gallery as { id?: number; media?: never }[]).map((row, i) => ({
@@ -139,6 +144,7 @@ function FormInner() {
     },
     onSuccess: async (data) => {
       toast.success(isNew ? 'Đã tạo cảm nhận' : 'Đã lưu cảm nhận');
+      markFormHydrationStale(hydrateKeyRef);
       await qc.invalidateQueries({ queryKey: ['reviews'] });
       replaceFormUrl(router, `/brand/reviews/form/?id=${(data as { id: number }).id}`);
       snapshotRef.current = JSON.stringify(form);

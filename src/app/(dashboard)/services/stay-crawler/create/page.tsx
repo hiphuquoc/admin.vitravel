@@ -53,9 +53,13 @@ function CreateCrawlerInner() {
     queryFn: () => stayCrawlsApi.status(),
   });
 
-  const categoriesQuery = useQuery({
-    queryKey: ['stay-categories-list'],
+  const stayCatsQuery = useQuery({
+    queryKey: ['crawl-categories-stay'],
     queryFn: () => serviceCategoriesApi.list({ cluster: 'stay', per_page: 100 }),
+  });
+  const experienceCatsQuery = useQuery({
+    queryKey: ['crawl-categories-experience'],
+    queryFn: () => serviceCategoriesApi.list({ cluster: 'experience', per_page: 100 }),
   });
 
   useEffect(() => {
@@ -70,12 +74,16 @@ function CreateCrawlerInner() {
     }
   }, [paramCategoryId, categoryId]);
 
-  const categories = categoriesQuery.data?.items ?? [];
+  const categories = useMemo(() => {
+    const stay = (stayCatsQuery.data?.items ?? []).map((c) => ({ ...c, clusterLabel: 'Lưu trú' as const }));
+    const exp = (experienceCatsQuery.data?.items ?? []).map((c) => ({ ...c, clusterLabel: 'Trải nghiệm' as const }));
+    return [...stay, ...exp];
+  }, [stayCatsQuery.data?.items, experienceCatsQuery.data?.items]);
 
   const handleStartCrawl = async () => {
     if (runningRef.current) return;
     if (!categoryId) {
-      toast.error('Vui lòng chọn danh mục lưu trú đích.');
+      toast.error('Vui lòng chọn danh mục đích (lưu trú hoặc trải nghiệm/du thuyền).');
       return;
     }
     const targetUrl = url.trim();
@@ -192,12 +200,14 @@ function CreateCrawlerInner() {
       >
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1.25rem' }}>
           <Select
-            label="Danh mục lưu trú đích"
+            label="Danh mục đích (lưu trú / trải nghiệm)"
             required
             placeholder="— Chọn danh mục đích —"
             options={categories.map((c) => ({
               value: String(c.id),
-              label: c.name ? `${c.name} (ID: ${c.id})` : `#${c.id}`,
+              label: c.name
+                ? `[${c.clusterLabel}] ${c.name} (ID: ${c.id})`
+                : `[${c.clusterLabel}] #${c.id}`,
             }))}
             value={categoryId ? String(categoryId) : ''}
             onChange={(val) => setCategoryId(val ? Number(val) : null)}

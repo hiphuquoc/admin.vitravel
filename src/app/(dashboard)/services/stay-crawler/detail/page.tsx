@@ -864,6 +864,12 @@ function JobDetailInner() {
                         {statusLabel(item.status)}
                       </Badge>
 
+                      {item.linked_from_other_job ? (
+                        <Badge tone="neutral" title="URL đã được job khác cào trước — gắn thêm danh mục, không cào lại">
+                          Trùng job khác
+                        </Badge>
+                      ) : null}
+
                       {isQueueRunning && (
                         <Badge tone="primary">
                           <span className="ui-crawler-modal__pulse-dot" style={{ marginRight: 4 }} />
@@ -911,7 +917,7 @@ function JobDetailInner() {
                     {/* Nút Chỉnh sửa sản phẩm khách sạn đã tạo */}
                     {item.service_id ? (
                       <Link
-                        href={`/services/products/form/?id=${item.service_id}&cluster=stay`}
+                        href={`/services/products/form/?id=${item.service_id}&cluster=${item.service_cluster || 'stay'}`}
                         target="_blank"
                         className="inline-flex"
                       >

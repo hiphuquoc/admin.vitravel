@@ -23,6 +23,8 @@ import {
 } from '@/lib/services';
 import type { PackageFaq, PackageItineraryDay } from '@/lib/types';
 import { useEditLocale } from '@/hooks/useEditLocale';
+import { beginFormHydration, markFormHydrationStale } from '@/hooks/useFormHydration';
+import { EDIT_FORM_QUERY_OPTIONS } from '@/lib/editFormQuery';
 import { StructureLockProvider } from '@/hooks/useStructureLock';
 import { useRegisterAiTranslate } from '@/hooks/useAiFormTranslate';
 import { pickTranslatableFields, mergeTranslatedFields } from '@/lib/aiTranslateFields';
@@ -219,6 +221,7 @@ function PackageFormInner({ kind }: { kind: PackageType }) {
   const { locale, setLocale } = useEditLocale();
   const [form, setForm] = useState<FormState>(empty);
   const snapshotRef = useRef<string>(JSON.stringify(empty));
+  const hydrateKeyRef = useRef<string | null>(null);
   /** Tăng sau AI enrich để remount TipTap itinerary (tránh editor giữ HTML cũ). */
   const [itineraryEditorEpoch, setItineraryEditorEpoch] = useState(0);
 
@@ -248,12 +251,14 @@ function PackageFormInner({ kind }: { kind: PackageType }) {
     queryKey: [copy.queryKey.slice(0, -1), id, locale],
     queryFn: () => api.get(id!, locale),
     enabled: !!id,
+    ...EDIT_FORM_QUERY_OPTIONS,
   });
 
   const isDirty = useMemo(() => JSON.stringify(form) !== snapshotRef.current, [form]);
 
   useEffect(() => {
     if (!detailQuery.data) return;
+    if (!beginFormHydration(hydrateKeyRef, id, locale)) return;
     const d = detailQuery.data;
     const next: FormState = {
       title: d.title || '',
@@ -438,6 +443,7 @@ function PackageFormInner({ kind }: { kind: PackageType }) {
     },
     onSuccess: async (data) => {
       toast.success(isNew ? copy.createdMsg : copy.savedMsg);
+      markFormHydrationStale(hydrateKeyRef);
       await qc.invalidateQueries({ queryKey: [copy.queryKey] });
       await qc.invalidateQueries({ queryKey: [copy.queryKey.slice(0, -1), data.id] });
       replaceFormUrl(router, `${copy.listHref}form/?id=${data.id}&locale=${locale}`);
@@ -574,8 +580,8 @@ function PackageFormInner({ kind }: { kind: PackageType }) {
           defaultLocale={defaultLocale}
           description={
             isCruise
-              ? 'Chọn trang cha (loại cruise) → URL = {parent}/{slug}.'
-              : 'Chọn trang cha (quốc gia) → URL = {parent}/{slug}.'
+              ? 'Chọn hub Du thuyền hoặc loại du thuyền → URL = {parent}/{slug}.'
+              : 'Chọn hub Tour, điểm đến hoặc chủ đề tour → URL = {parent}/{slug}.'
           }
         />
 

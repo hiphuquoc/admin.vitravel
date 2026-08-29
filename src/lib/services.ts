@@ -308,6 +308,8 @@ export type StayCrawlItem = {
   has_extracted?: boolean;
   has_ai?: boolean;
   slug_full?: string | null;
+  service_cluster?: string | null;
+  linked_from_other_job?: boolean;
   enrich?: {
     gallery?: string;
     rooms?: string;
@@ -489,7 +491,7 @@ export const mediaApi = {
   library: (query?: Record<string, string | number | boolean | undefined>) =>
     apiRequest<
       Paginated<MediaImage> & {
-        folders?: { key: string; path: string }[];
+        folders?: { key: string; path: string; hidden_from_all?: boolean }[];
       }
     >('/media/library', { query }),
   getLibrary: (id: number) => apiRequest<MediaImage>(`/media/library/${id}`),

@@ -16,6 +16,10 @@ import { useAuth } from '@/lib/auth-context';
 import { useAppRouter } from '@/hooks/useAppRouter';
 import { publicPageUrl } from '@/lib/publicUrl';
 
+function isCrawlableCluster(cluster: string): boolean {
+  return cluster === 'stay' || cluster === 'experience';
+}
+
 function statusTone(status: string): 'success' | 'warning' | 'danger' | 'neutral' | 'primary' {
   if (status === 'imported' || status === 'ai_done' || status === 'done' || status === 'ready') {
     return 'success';
@@ -86,13 +90,13 @@ export function StayCategoryCrawler({
   const statusQuery = useQuery({
     queryKey: ['stay-crawls-status'],
     queryFn: () => stayCrawlsApi.status(),
-    enabled: cluster === 'stay',
+    enabled: isCrawlableCluster(cluster),
   });
 
   const jobsQuery = useQuery({
     queryKey: ['stay-crawls-jobs', categoryId],
     queryFn: () => stayCrawlsApi.jobs({ service_category_id: categoryId!, per_page: 8 }),
-    enabled: !!categoryId && cluster === 'stay',
+    enabled: !!categoryId && isCrawlableCluster(cluster),
     placeholderData: (previousData) => previousData,
     staleTime: 10000,
   });
@@ -112,7 +116,7 @@ export function StayCategoryCrawler({
     }
   }, [statusQuery.data]);
 
-  if (cluster !== 'stay') return null;
+  if (!isCrawlableCluster(cluster)) return null;
 
   const items = jobQuery.data?.items ?? [];
   const parentPath = categorySlugFull?.replace(/\/$/, '') || '';
@@ -360,7 +364,7 @@ export function StayCategoryCrawler({
                     size="sm"
                     variant="ghost"
                     onClick={() =>
-                      router.push(`/services/products/form/?id=${item.service_id}&cluster=stay`)
+                      router.push(`/services/products/form/?id=${item.service_id}&cluster=${item.service_cluster || cluster || 'stay'}`)
                     }
                   >
                     Mở draft

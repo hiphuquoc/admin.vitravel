@@ -7,6 +7,7 @@ import { ArrowLeft } from 'lucide-react';
 import toast from '@/lib/toast';
 import { serviceCategoriesApi } from '@/lib/services';
 import { useEditLocale } from '@/hooks/useEditLocale';
+import { beginFormHydration, markFormHydrationStale } from '@/hooks/useFormHydration';
 import { StructureLockProvider } from '@/hooks/useStructureLock';
 import { useRegisterAiTranslate } from '@/hooks/useAiFormTranslate';
 import { pickTranslatableFields, mergeTranslatedFields } from '@/lib/aiTranslateFields';
@@ -85,6 +86,7 @@ function FormInner() {
   const [form, setForm] = useState<FormState>({ ...empty, cluster: clusterFromUrl });
   const [listingEditorEpoch, setListingEditorEpoch] = useState(0);
   const snapshotRef = useRef(JSON.stringify({ ...empty, cluster: clusterFromUrl }));
+  const hydrateKeyRef = useRef<string | null>(null);
   const isDirty = useMemo(() => JSON.stringify(form) !== snapshotRef.current, [form]);
 
   const metaQuery = useQuery({
@@ -95,10 +97,13 @@ function FormInner() {
     queryKey: ['service-category', id, locale],
     queryFn: () => serviceCategoriesApi.get(id!, locale),
     enabled: !!id,
+    refetchOnWindowFocus: false,
+    refetchInterval: false,
   });
 
   useEffect(() => {
     if (!detailQuery.data) return;
+    if (!beginFormHydration(hydrateKeyRef, id, locale)) return;
     const d = detailQuery.data;
     const next: FormState = {
       cluster: d.cluster || clusterFromUrl,
@@ -155,6 +160,7 @@ function FormInner() {
     },
     onSuccess: async (data) => {
       toast.success(isNew ? 'Đã tạo' : 'Đã lưu');
+      markFormHydrationStale(hydrateKeyRef);
       await qc.invalidateQueries({ queryKey: [`service-categories-${form.cluster}`] });
       await qc.invalidateQueries({ queryKey: ['service-category', data.id] });
       replaceFormUrl(
@@ -302,13 +308,17 @@ function FormInner() {
             />
           </FormSection>
 
-          {form.cluster === 'stay' && !isNew && (
+          {(form.cluster === 'stay' || form.cluster === 'experience') && !isNew && (
             <div className="rounded-xl border border-blue-100 bg-blue-50/50 dark:border-blue-900 dark:bg-blue-950/30 p-4 flex items-center justify-between gap-3 flex-wrap">
               <div className="flex items-center gap-3 min-w-0">
                 <ScanSearch className="h-5 w-5 text-blue-600 dark:text-blue-400 shrink-0" />
                 <div className="min-w-0">
                   <p className="text-sm font-medium text-blue-900 dark:text-blue-100">Crawler Booking.com</p>
-                  <p className="text-xs text-blue-700 dark:text-blue-300">Cào khách sạn và tạo trang con cho danh mục này.</p>
+                  <p className="text-xs text-blue-700 dark:text-blue-300">
+                    {form.cluster === 'experience'
+                      ? 'Cào du thuyền/trải nghiệm trên Booking và tạo trang con cho danh mục này.'
+                      : 'Cào khách sạn và tạo trang con cho danh mục này.'}
+                  </p>
                 </div>
               </div>
               <div className="flex items-center gap-2 flex-wrap">

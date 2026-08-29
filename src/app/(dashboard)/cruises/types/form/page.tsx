@@ -7,6 +7,7 @@ import { Anchor, ArrowLeft } from 'lucide-react';
 import toast from '@/lib/toast';
 import { cruiseTypesApi } from '@/lib/services';
 import { useEditLocale } from '@/hooks/useEditLocale';
+import { beginFormHydration, markFormHydrationStale } from '@/hooks/useFormHydration';
 import { StructureLockProvider } from '@/hooks/useStructureLock';
 import { useRegisterAiTranslate } from '@/hooks/useAiFormTranslate';
 import { pickTranslatableFields, mergeTranslatedFields } from '@/lib/aiTranslateFields';
@@ -82,6 +83,7 @@ function CruiseTypeFormInner() {
   const [slugTouched, setSlugTouched] = useState(false);
   const [listingEditorEpoch, setListingEditorEpoch] = useState(0);
   const snapshotRef = useRef(JSON.stringify(empty));
+  const hydrateKeyRef = useRef<string | null>(null);
   const isDirty = useMemo(() => JSON.stringify(form) !== snapshotRef.current, [form]);
 
   const metaQuery = useQuery({
@@ -93,10 +95,13 @@ function CruiseTypeFormInner() {
     queryKey: ['cruise-type', id, locale],
     queryFn: () => cruiseTypesApi.get(id!, locale),
     enabled: !!id,
+    refetchOnWindowFocus: false,
+    refetchInterval: false,
   });
 
   useEffect(() => {
     if (!detailQuery.data) return;
+    if (!beginFormHydration(hydrateKeyRef, id, locale)) return;
     const d = detailQuery.data;
     const next: FormState = {
       name: d.name || '',
@@ -159,6 +164,7 @@ function CruiseTypeFormInner() {
     },
     onSuccess: async (data) => {
       toast.success(isNew ? 'Đã tạo loại du thuyền' : 'Đã lưu loại du thuyền');
+      markFormHydrationStale(hydrateKeyRef);
       await qc.invalidateQueries({ queryKey: ['cruise-types'] });
       await qc.invalidateQueries({ queryKey: ['packages-meta'] });
       replaceFormUrl(router, `/cruises/types/form/?id=${data.id}&locale=${locale}`);
