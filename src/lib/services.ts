@@ -69,6 +69,13 @@ export const usersApi = {
 export const projectsApi = {
   list: () => apiRequest<{ projects: AdminProject[] }>('/projects'),
   get: (id: number) => apiRequest<AdminProject>(`/projects/${id}`),
+  settings: () =>
+    apiRequest<{ id: number; code: string; name: string; ai_brief: string }>('/project-settings'),
+  updateSettings: (body: { ai_brief?: string }) =>
+    apiRequest<{ id: number; code: string; name: string; ai_brief: string }>('/project-settings', {
+      method: 'PUT',
+      body,
+    }),
 };
 
 export const metaApi = {

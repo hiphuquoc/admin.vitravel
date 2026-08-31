@@ -57,10 +57,6 @@ function CreateCrawlerInner() {
     queryKey: ['crawl-categories-stay'],
     queryFn: () => serviceCategoriesApi.list({ cluster: 'stay', per_page: 100 }),
   });
-  const experienceCatsQuery = useQuery({
-    queryKey: ['crawl-categories-experience'],
-    queryFn: () => serviceCategoriesApi.list({ cluster: 'experience', per_page: 100 }),
-  });
 
   useEffect(() => {
     if (statusQuery.data?.proxy_enabled_default && statusQuery.data.proxy_configured) {
@@ -75,15 +71,13 @@ function CreateCrawlerInner() {
   }, [paramCategoryId, categoryId]);
 
   const categories = useMemo(() => {
-    const stay = (stayCatsQuery.data?.items ?? []).map((c) => ({ ...c, clusterLabel: 'Lưu trú' as const }));
-    const exp = (experienceCatsQuery.data?.items ?? []).map((c) => ({ ...c, clusterLabel: 'Trải nghiệm' as const }));
-    return [...stay, ...exp];
-  }, [stayCatsQuery.data?.items, experienceCatsQuery.data?.items]);
+    return (stayCatsQuery.data?.items ?? []).map((c) => ({ ...c, clusterLabel: 'Lưu trú' as const }));
+  }, [stayCatsQuery.data?.items]);
 
   const handleStartCrawl = async () => {
     if (runningRef.current) return;
     if (!categoryId) {
-      toast.error('Vui lòng chọn danh mục đích (lưu trú hoặc trải nghiệm/du thuyền).');
+      toast.error('Vui lòng chọn danh mục lưu trú đích (khách sạn / du thuyền).');
       return;
     }
     const targetUrl = url.trim();
@@ -200,7 +194,7 @@ function CreateCrawlerInner() {
       >
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1.25rem' }}>
           <Select
-            label="Danh mục đích (lưu trú / trải nghiệm)"
+            label="Danh mục lưu trú đích (khách sạn / du thuyền)"
             required
             placeholder="— Chọn danh mục đích —"
             options={categories.map((c) => ({
@@ -217,7 +211,7 @@ function CreateCrawlerInner() {
             label="Chế độ cào dữ liệu"
             options={[
               { value: 'list', label: 'Cào theo Danh mục / Tìm kiếm (Search Listing)' },
-              { value: 'hotel', label: '1 Khách sạn cụ thể (Single Hotel)' },
+              { value: 'hotel', label: '1 chỗ nghỉ cụ thể (khách sạn / du thuyền)' },
             ]}
             value={mode}
             onChange={(val) => setMode(val as 'hotel' | 'list')}

@@ -45,6 +45,7 @@ export type AdminProject = {
   seed_profile?: string | null;
   is_active?: boolean;
   media_prefix?: string | null;
+  ai_brief?: string | null;
   domains?: { domain: string; is_primary: boolean }[];
   role?: string;
   permissions?: string[];

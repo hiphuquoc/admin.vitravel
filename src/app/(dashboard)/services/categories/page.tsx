@@ -31,10 +31,8 @@ function Inner() {
       title={`Danh mục ${kind}`}
       description={
         cluster === 'stay'
-          ? 'Sửa một danh mục để dán URL Booking.com và cào chỗ nghỉ con (URL/cấp trang kế thừa danh mục).'
-          : cluster === 'experience'
-            ? 'Danh mục trải nghiệm/du thuyền — có thể cào từ Booking.com (card & hạng phòng giống lưu trú).'
-            : 'Nhóm danh mục theo cụm dịch vụ.'
+          ? 'Sửa một danh mục để dán URL Booking.com và cào chỗ nghỉ con (khách sạn, du thuyền — URL/cấp trang kế thừa danh mục).'
+          : 'Nhóm danh mục theo cụm dịch vụ.'
       }
       queryKey={`service-categories-${cluster || 'all'}`}
       createHref={

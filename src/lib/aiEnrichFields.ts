@@ -111,6 +111,14 @@ export function mergeEnrichFields<T extends Record<string, unknown>>(
       continue;
     }
 
+    if (key === 'rating_aggregate_star' || key === 'rating_aggregate_count') {
+      if (value === null || value === '') continue;
+      const n = Number(value);
+      if (!Number.isFinite(n)) continue;
+      out[key] = key === 'rating_aggregate_count' ? String(Math.round(n)) : String(n);
+      continue;
+    }
+
     if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean' || value === null) {
       if (typeof prev[key] === 'boolean') {
         out[key] = Boolean(value);
@@ -122,7 +130,7 @@ export function mergeEnrichFields<T extends Record<string, unknown>>(
         if (key === 'featured_quote_text' || key === 'featured_quote_author' || key === 'seo_title' || key === 'title') {
           next = next.slice(0, 255);
         } else if (key === 'seo_description') {
-          next = next.slice(0, 320);
+          next = next.slice(0, 350);
         }
         out[key] = next;
       }
@@ -370,6 +378,14 @@ export function mergeListingEnrichFields<T extends Record<string, unknown>>(
     }
   }
 
+  for (const key of ['rating_aggregate_star', 'rating_aggregate_count'] as const) {
+    const val = fields[key];
+    if (val === null || val === undefined || val === '') continue;
+    const n = Number(val);
+    if (!Number.isFinite(n)) continue;
+    out[key] = key === 'rating_aggregate_count' ? String(Math.round(n)) : String(n);
+  }
+
   if (Array.isArray(fields.faqs) && fields.faqs.length > 0) {
     const prevList = Array.isArray(prev.faqs) ? (prev.faqs as Record<string, unknown>[]) : [];
     out.faqs = fields.faqs.map((row, i) => {
@@ -410,6 +426,11 @@ export function listingEnrichAppliedKeys(
   }
   for (const key of ['seo_slug', 'seo_title', 'seo_description']) {
     if (typeof fields[key] === 'string' && String(fields[key]).trim()) {
+      keys.push(key);
+    }
+  }
+  for (const key of ['rating_aggregate_star', 'rating_aggregate_count']) {
+    if (fields[key] !== null && fields[key] !== undefined && fields[key] !== '') {
       keys.push(key);
     }
   }

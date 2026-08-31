@@ -123,16 +123,10 @@ function StayCrawlerListPageInner() {
     queryKey: ['crawl-categories-stay'],
     queryFn: () => serviceCategoriesApi.list({ cluster: 'stay', per_page: 100 }),
   });
-  const experienceCatsQuery = useQuery({
-    queryKey: ['crawl-categories-experience'],
-    queryFn: () => serviceCategoriesApi.list({ cluster: 'experience', per_page: 100 }),
-  });
 
   const categories = useMemo(() => {
-    const stay = (stayCatsQuery.data?.items ?? []).map((c) => ({ ...c, clusterLabel: 'Lưu trú' }));
-    const exp = (experienceCatsQuery.data?.items ?? []).map((c) => ({ ...c, clusterLabel: 'Trải nghiệm' }));
-    return [...stay, ...exp];
-  }, [stayCatsQuery.data?.items, experienceCatsQuery.data?.items]);
+    return (stayCatsQuery.data?.items ?? []).map((c) => ({ ...c, clusterLabel: 'Lưu trú' }));
+  }, [stayCatsQuery.data?.items]);
 
   // Query danh sách Job
   const jobsQuery = useQuery({
@@ -227,7 +221,7 @@ function StayCrawlerListPageInner() {
       <PageHeader
         eyebrow="Lưu trú (Stay)"
         title="Quản lý Job Crawler Booking.com"
-        description="Theo dõi tiến trình cào dữ liệu, xem danh sách khách sạn và quản lý các phiên cào tự động."
+        description="Theo dõi tiến trình cào dữ liệu khách sạn / du thuyền từ Booking.com và quản lý các phiên cào tự động."
         actions={
           <div className="flex items-center gap-2 flex-wrap">
             {canCreate && (

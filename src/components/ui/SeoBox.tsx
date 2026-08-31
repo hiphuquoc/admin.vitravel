@@ -141,7 +141,7 @@ export function SeoBox({
           name="seo_title"
           value={value.seo_title}
           onChange={(e) => onChange('seo_title', e.target.value)}
-          hint="Tiêu đề hiển thị trên Google. Nên 55–60 ký tự."
+          hint="Định dạng: {nội dung 65–85 ký tự} | tên thương hiệu. Tối ưu CTR, không cắt cứng 60 ký tự."
         />
 
         {showParent ? (
@@ -176,7 +176,7 @@ export function SeoBox({
           required={slugRequired}
           hint={
             slugHint ||
-            'Segment cuối của URL. Viết liền không dấu, ngăn cách bằng gạch ngang.'
+            'Bám tiêu đề SEO — 35–90 ký tự, từ khóa chính, không dấu, ngăn cách `-`.'
           }
           placeholder="vd: thai-lan-10-ngay"
           leading={
@@ -195,7 +195,7 @@ export function SeoBox({
           name="seo_description"
           value={value.seo_description}
           onChange={(e) => onChange('seo_description', e.target.value)}
-          hint="Mô tả hiển thị trên Google. Nên 140–160 ký tự."
+          hint="Mô tả chi tiết trên Google. Thường 200–350 ký tự, đủ ý và hấp dẫn (CTR)."
         />
       </FormCluster>
 
@@ -211,7 +211,7 @@ export function SeoBox({
             value={value.rating_aggregate_star || ''}
             onChange={(e) => onChange('rating_aggregate_star', e.target.value)}
             disabled={structureLocked}
-            hint={structureLocked ? 'Khóa ở bản dịch' : 'AggregateRating — vd: 4.8'}
+            hint={structureLocked ? 'Khóa ở bản dịch' : 'Schema AggregateRating — AI gợi ý 4.7–4.9'}
           />
           <Input
             label="Lượt đánh giá"
@@ -224,7 +224,7 @@ export function SeoBox({
             hint={
               structureLocked
                 ? 'Khóa ở bản dịch'
-                : 'Số lượng review hiển thị public / schema'
+                : 'Số review schema — AI gợi ý 200–3000 tùy độ hot trang'
             }
           />
         </FormCluster>

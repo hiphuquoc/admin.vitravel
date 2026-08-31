@@ -308,16 +308,14 @@ function FormInner() {
             />
           </FormSection>
 
-          {(form.cluster === 'stay' || form.cluster === 'experience') && !isNew && (
+          {form.cluster === 'stay' && !isNew && (
             <div className="rounded-xl border border-blue-100 bg-blue-50/50 dark:border-blue-900 dark:bg-blue-950/30 p-4 flex items-center justify-between gap-3 flex-wrap">
               <div className="flex items-center gap-3 min-w-0">
                 <ScanSearch className="h-5 w-5 text-blue-600 dark:text-blue-400 shrink-0" />
                 <div className="min-w-0">
                   <p className="text-sm font-medium text-blue-900 dark:text-blue-100">Crawler Booking.com</p>
                   <p className="text-xs text-blue-700 dark:text-blue-300">
-                    {form.cluster === 'experience'
-                      ? 'Cào du thuyền/trải nghiệm trên Booking và tạo trang con cho danh mục này.'
-                      : 'Cào khách sạn và tạo trang con cho danh mục này.'}
+                    Cào khách sạn / du thuyền trên Booking và tạo trang con cho danh mục này.
                   </p>
                 </div>
               </div>

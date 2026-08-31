@@ -17,7 +17,7 @@ import { useAppRouter } from '@/hooks/useAppRouter';
 import { publicPageUrl } from '@/lib/publicUrl';
 
 function isCrawlableCluster(cluster: string): boolean {
-  return cluster === 'stay' || cluster === 'experience';
+  return cluster === 'stay';
 }
 
 function statusTone(status: string): 'success' | 'warning' | 'danger' | 'neutral' | 'primary' {

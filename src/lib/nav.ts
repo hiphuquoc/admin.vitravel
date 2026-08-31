@@ -283,7 +283,7 @@ export const NAV_GROUPS: NavGroup[] = [
         match: '/services/categories',
         matchQuery: { cluster: cluster.key },
       },
-      ...(cluster.key === 'stay' || cluster.key === 'experience'
+      ...(cluster.key === 'stay'
         ? [
             {
               label: 'Crawler Booking',
@@ -378,6 +378,12 @@ export const NAV_GROUPS: NavGroup[] = [
         href: '/settings/site/',
         icon: Building2,
         match: '/settings/site',
+      },
+      {
+        label: 'Bối cảnh AI',
+        href: '/settings/project/',
+        icon: Sparkles,
+        match: '/settings/project',
       },
       {
         label: 'Người dùng',
