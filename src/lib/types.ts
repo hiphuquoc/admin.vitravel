@@ -160,6 +160,7 @@ export type PackageListItem = {
   is_featured: boolean;
   is_hot_deal: boolean;
   cruise_type?: string | null;
+  cruise_type_invalid?: string | null;
   cruise_type_name?: string | null;
   country: { id: number; name: string | null } | null;
   travel_styles: { id: number; name: string | null }[];

@@ -351,14 +351,38 @@ function PackageFormInner({ kind }: { kind: PackageType }) {
   }, [metaQuery.data?.currencies, form.currency]);
 
   const cruiseTypeOptions = useMemo(() => {
-    const base = (metaQuery.data?.cruise_types ?? [])
-      .filter((t) => t.is_active !== false || t.slug === form.cruise_type)
+    return (metaQuery.data?.cruise_types ?? [])
+      .filter((t) => t.is_active !== false)
       .map((t) => ({ value: t.slug, label: t.name || t.slug }));
-    if (form.cruise_type && !base.some((o) => o.value === form.cruise_type)) {
-      return [...base, { value: form.cruise_type, label: form.cruise_type }];
-    }
-    return base;
-  }, [metaQuery.data?.cruise_types, form.cruise_type]);
+  }, [metaQuery.data?.cruise_types]);
+
+  const resolveCruiseTypeForSave = (): string | null => {
+    const raw = String(form.cruise_type || '').trim();
+    if (!raw) return null;
+    const types = metaQuery.data?.cruise_types ?? [];
+    const bySlug = types.find((t) => t.slug === raw);
+    if (bySlug) return bySlug.slug;
+    const lower = raw.toLowerCase();
+    const byName = types.find((t) => String(t.name || '').trim().toLowerCase() === lower);
+    return byName?.slug ?? null;
+  };
+
+  const cruiseTypeInvalid = isCruise && !!form.cruise_type && !resolveCruiseTypeForSave();
+  const cruiseTypeOrphanWarned = useRef(false);
+
+  useEffect(() => {
+    if (!isCruise || !metaQuery.data?.cruise_types?.length) return;
+    if (!form.cruise_type || resolveCruiseTypeForSave()) return;
+    if (cruiseTypeOrphanWarned.current) return;
+    cruiseTypeOrphanWarned.current = true;
+    const orphan = detailQuery.data?.cruise_type_invalid || form.cruise_type;
+    setForm((prev) => ({ ...prev, cruise_type: '' }));
+    toast.error(
+      orphan
+        ? `Loại du thuyền «${orphan}» không còn trong hệ thống — vui lòng chọn lại.`
+        : 'Loại du thuyền không hợp lệ — vui lòng chọn lại.',
+    );
+  }, [isCruise, metaQuery.data?.cruise_types, form.cruise_type, detailQuery.data?.cruise_type_invalid]);
 
   const save = useMutation({
     mutationFn: async () => {
@@ -374,17 +398,7 @@ function PackageFormInner({ kind }: { kind: PackageType }) {
         status: form.status,
         sort: Number(form.sort) || 0,
         discount_badge: form.discount_badge || null,
-        cruise_type: isCruise
-          ? (() => {
-              const raw = String(form.cruise_type || '').trim();
-              const types = metaQuery.data?.cruise_types ?? [];
-              const bySlug = types.find((t) => t.slug === raw);
-              if (bySlug) return bySlug.slug;
-              const lower = raw.toLowerCase();
-              const byName = types.find((t) => String(t.name || '').trim().toLowerCase() === lower);
-              return byName?.slug || raw || null;
-            })()
-          : null,
+        cruise_type: isCruise ? resolveCruiseTypeForSave() : null,
         departure_port: isCruise ? form.departure_port || null : null,
         boat_class: isCruise ? form.boat_class || null : null,
         nights_on_board:
@@ -463,7 +477,13 @@ function PackageFormInner({ kind }: { kind: PackageType }) {
       return;
     }
     if (isCruise && !form.cruise_type) {
-      toast.error('Vui lòng chọn loại cruise');
+      toast.error('Vui lòng chọn loại du thuyền.');
+      return;
+    }
+    if (isCruise && form.cruise_type && !resolveCruiseTypeForSave()) {
+      toast.error(
+        'Loại du thuyền không hợp lệ. Chọn lại từ danh sách «Loại du thuyền» trong admin.',
+      );
       return;
     }
     save.mutate();
@@ -663,7 +683,11 @@ function PackageFormInner({ kind }: { kind: PackageType }) {
                 required
                 disabled={structureLocked}
                 options={cruiseTypeOptions}
-                hint="Quản lý loại tại mục Loại du thuyền"
+                hint={
+                  cruiseTypeInvalid
+                    ? 'Giá trị hiện tại không khớp danh mục «Loại du thuyền» — chọn lại trước khi lưu.'
+                    : 'Quản lý loại tại mục Loại du thuyền'
+                }
               />
               <Input
                 label="Cảng khởi hành"
