@@ -13,6 +13,7 @@ import { Input, Switch, Textarea } from '@/components/ui/Field';
 import { Button } from '@/components/ui/Button';
 import { Repeater } from '@/components/ui/Repeater';
 import { StructureLockProvider } from '@/hooks/useStructureLock';
+import { asLocaleOptions, type LocaleOption } from '@/lib/locale';
 
 type NavItem = {
   id?: number | null;
@@ -48,7 +49,7 @@ export default function NavigationMenuPage() {
     queryFn: () => navigationMenuApi.get(locale),
   });
 
-  const languages = (data?.languages as { code: string; name: string }[]) || [];
+  const languages = asLocaleOptions(data?.languages) ?? ([] as LocaleOption[]);
 
   useEffect(() => {
     if (!data) return;
