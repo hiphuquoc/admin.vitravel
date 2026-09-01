@@ -17,6 +17,7 @@ export const NAV_PERMISSIONS: Record<string, string | null> = {
   '/settings/hubs': 'settings.view',
   '/content/slides': 'content.view',
   '/content/home': 'content.view',
+  '/content/navigation': 'content.view',
   '/content/articles': 'content.view',
   '/content/blog-categories': 'content.view',
   '/brand': 'brand.view',

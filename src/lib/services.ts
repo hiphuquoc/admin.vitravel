@@ -677,6 +677,13 @@ export const homeSectionsApi = {
     apiRequest<Record<string, unknown>>('/home-sections', { method: 'PUT', body }),
 };
 
+export const navigationMenuApi = {
+  get: (locale = 'vi') => apiRequest<Record<string, unknown>>('/navigation-menu', { query: { locale } }),
+  update: (body: Record<string, unknown>) =>
+    apiRequest<Record<string, unknown>>('/navigation-menu', { method: 'PUT', body }),
+  reset: () => apiRequest<Record<string, unknown>>('/navigation-menu/reset', { method: 'POST' }),
+};
+
 export const blogCategoriesApi = {
   ...crudApi<CrudRecord>('/blog-categories'),
   meta: (locale = 'vi') =>

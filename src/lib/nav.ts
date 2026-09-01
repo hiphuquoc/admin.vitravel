@@ -11,6 +11,7 @@ import {
   LayoutDashboard,
   Mail,
   Map,
+  Menu,
   MessageSquare,
   Newspaper,
   Plane,
@@ -316,6 +317,12 @@ export const NAV_GROUPS: NavGroup[] = [
         href: '/content/home/',
         icon: LayoutDashboard,
         match: '/content/home',
+      },
+      {
+        label: 'Menu chính (public)',
+        href: '/content/navigation/',
+        icon: Menu,
+        match: '/content/navigation',
       },
       {
         label: 'Chi tiết Blog',
