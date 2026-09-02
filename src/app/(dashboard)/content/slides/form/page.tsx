@@ -1,12 +1,13 @@
 'use client';
 
-import { FormEvent, Suspense, useEffect, useMemo, useRef, useState } from 'react';
+import { FormEvent, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import toast from '@/lib/toast';
 import { homeSlidesApi } from '@/lib/services';
 import { useEditLocale } from '@/hooks/useEditLocale';
-import { beginFormHydration, markFormHydrationStale } from '@/hooks/useFormHydration';
+import { beginFormHydration, markFormHydrationStale, useResetFormOnProjectChange } from '@/hooks/useFormHydration';
+import { useScopedQueryKey } from '@/hooks/useScopedQueryKey';
 import { StructureLockProvider } from '@/hooks/useStructureLock';
 import { useRegisterAiTranslate } from '@/hooks/useAiFormTranslate';
 import { pickTranslatableFields, mergeTranslatedFields } from '@/lib/aiTranslateFields';
@@ -68,13 +69,21 @@ function FormInner() {
     queryKey: ['home-slides-meta'],
     queryFn: () => homeSlidesApi.meta(),
   });
+  const detailQueryKey = useScopedQueryKey('home-slide', id, locale);
+
   const detailQuery = useQuery({
-    queryKey: ['home-slide', id, locale],
+    queryKey: detailQueryKey,
     queryFn: () => homeSlidesApi.get(id!, locale),
     enabled: !!id,
     refetchOnWindowFocus: false,
     refetchInterval: false,
   });
+
+  const resetForm = useCallback(() => {
+    setForm(empty);
+    snapshotRef.current = JSON.stringify(empty);
+  }, []);
+  useResetFormOnProjectChange(hydrateKeyRef, resetForm);
 
   useEffect(() => {
     if (!detailQuery.data) return;

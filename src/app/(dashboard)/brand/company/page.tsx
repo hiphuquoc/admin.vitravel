@@ -1,12 +1,13 @@
 'use client';
 
-import { FormEvent, useEffect, useMemo, useRef, useState } from 'react';
+import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import Link from 'next/link';
 import toast from '@/lib/toast';
 import { companyProfileApi } from '@/lib/services';
 import { useEditLocale } from '@/hooks/useEditLocale';
-import { beginFormHydration, markFormHydrationStale } from '@/hooks/useFormHydration';
+import { beginFormHydration, markFormHydrationStale, useResetFormOnProjectChange } from '@/hooks/useFormHydration';
+import { useScopedQueryKey } from '@/hooks/useScopedQueryKey';
 import { StructureLockProvider } from '@/hooks/useStructureLock';
 import { useRegisterAiTranslate } from '@/hooks/useAiFormTranslate';
 import { pickTranslatableFields, mergeTranslatedFields } from '@/lib/aiTranslateFields';
@@ -28,12 +29,20 @@ export default function CompanyPage() {
   const hydrateKeyRef = useRef<string | null>(null);
   const isDirty = useMemo(() => JSON.stringify(form) !== snapshotRef.current, [form]);
 
+  const companyQueryKey = useScopedQueryKey('company-profile', locale);
+
   const query = useQuery({
-    queryKey: ['company-profile', locale],
+    queryKey: companyQueryKey,
     queryFn: () => companyProfileApi.get(locale),
     refetchOnWindowFocus: false,
     refetchInterval: false,
   });
+
+  const resetForm = useCallback(() => {
+    setForm({});
+    snapshotRef.current = '';
+  }, []);
+  useResetFormOnProjectChange(hydrateKeyRef, resetForm);
 
   useEffect(() => {
     if (!query.data) return;

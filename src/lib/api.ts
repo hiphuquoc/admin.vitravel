@@ -1,4 +1,5 @@
 import type { ApiErrorBody, ApiSuccessBody } from './types';
+import { setFormHydrationProjectScope } from './formHydrationScope';
 
 const TOKEN_KEY = 'vt_admin_token';
 const USER_KEY = 'vt_admin_user';
@@ -41,9 +42,11 @@ export function setProjectCode(code: string | null): void {
   if (typeof window === 'undefined') return;
   if (!code) {
     localStorage.removeItem(PROJECT_KEY);
+    setFormHydrationProjectScope(null);
     return;
   }
   localStorage.setItem(PROJECT_KEY, code);
+  setFormHydrationProjectScope(code);
 }
 
 export function setSession(token: string, user: unknown): void {
@@ -55,6 +58,7 @@ export function clearSession(): void {
   localStorage.removeItem(TOKEN_KEY);
   localStorage.removeItem(USER_KEY);
   localStorage.removeItem(PROJECT_KEY);
+  setFormHydrationProjectScope(null);
 }
 
 export function getStoredUser<T = unknown>(): T | null {

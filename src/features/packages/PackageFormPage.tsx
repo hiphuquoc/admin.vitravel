@@ -1,6 +1,6 @@
 'use client';
 
-import { FormEvent, Suspense, useEffect, useMemo, useRef, useState } from 'react';
+import { FormEvent, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
@@ -23,7 +23,8 @@ import {
 } from '@/lib/services';
 import type { PackageFaq, PackageItineraryDay } from '@/lib/types';
 import { useEditLocale } from '@/hooks/useEditLocale';
-import { beginFormHydration, markFormHydrationStale } from '@/hooks/useFormHydration';
+import { beginFormHydration, markFormHydrationStale, useResetFormOnProjectChange } from '@/hooks/useFormHydration';
+import { useScopedQueryKey } from '@/hooks/useScopedQueryKey';
 import { EDIT_FORM_QUERY_OPTIONS } from '@/lib/editFormQuery';
 import { StructureLockProvider } from '@/hooks/useStructureLock';
 import { useRegisterAiTranslate } from '@/hooks/useAiFormTranslate';
@@ -247,14 +248,23 @@ function PackageFormInner({ kind }: { kind: PackageType }) {
     enabled: !isCruise,
   });
 
+  const detailQueryKey = useScopedQueryKey(copy.queryKey.slice(0, -1), id, locale);
+
   const detailQuery = useQuery({
-    queryKey: [copy.queryKey.slice(0, -1), id, locale],
+    queryKey: detailQueryKey,
     queryFn: () => api.get(id!, locale),
     enabled: !!id,
     ...EDIT_FORM_QUERY_OPTIONS,
   });
 
   const isDirty = useMemo(() => JSON.stringify(form) !== snapshotRef.current, [form]);
+
+  const resetForm = useCallback(() => {
+    setForm(empty);
+    snapshotRef.current = JSON.stringify(empty);
+    setItineraryEditorEpoch((n) => n + 1);
+  }, []);
+  useResetFormOnProjectChange(hydrateKeyRef, resetForm);
 
   useEffect(() => {
     if (!detailQuery.data) return;

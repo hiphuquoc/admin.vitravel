@@ -1,13 +1,14 @@
 'use client';
 
-import { FormEvent, Suspense, useEffect, useMemo, useRef, useState } from 'react';
+import { FormEvent, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Anchor, ArrowLeft } from 'lucide-react';
 import toast from '@/lib/toast';
 import { cruiseTypesApi } from '@/lib/services';
 import { useEditLocale } from '@/hooks/useEditLocale';
-import { beginFormHydration, markFormHydrationStale } from '@/hooks/useFormHydration';
+import { beginFormHydration, markFormHydrationStale, useResetFormOnProjectChange } from '@/hooks/useFormHydration';
+import { useScopedQueryKey } from '@/hooks/useScopedQueryKey';
 import { StructureLockProvider } from '@/hooks/useStructureLock';
 import { useRegisterAiTranslate } from '@/hooks/useAiFormTranslate';
 import { pickTranslatableFields, mergeTranslatedFields } from '@/lib/aiTranslateFields';
@@ -91,13 +92,21 @@ function CruiseTypeFormInner() {
     queryFn: () => cruiseTypesApi.meta(locale),
   });
 
+  const detailQueryKey = useScopedQueryKey('cruise-type', id, locale);
+
   const detailQuery = useQuery({
-    queryKey: ['cruise-type', id, locale],
+    queryKey: detailQueryKey,
     queryFn: () => cruiseTypesApi.get(id!, locale),
     enabled: !!id,
     refetchOnWindowFocus: false,
     refetchInterval: false,
   });
+
+  const resetForm = useCallback(() => {
+    setForm(empty);
+    snapshotRef.current = JSON.stringify(empty);
+  }, []);
+  useResetFormOnProjectChange(hydrateKeyRef, resetForm);
 
   useEffect(() => {
     if (!detailQuery.data) return;

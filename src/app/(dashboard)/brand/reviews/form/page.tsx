@@ -1,6 +1,6 @@
 'use client';
 
-import { FormEvent, Suspense, useEffect, useRef, useState } from 'react';
+import { FormEvent, Suspense, useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ArrowLeft, Images, MessageSquareQuote, Plus } from 'lucide-react';
@@ -16,7 +16,8 @@ import { HeadActions, HeadSecondary } from '@/components/ui/HeadActions';
 import { Repeater } from '@/components/ui/Repeater';
 import { Button } from '@/components/ui/Button';
 import { replaceFormUrl } from '@/lib/formNavigate';
-import { beginFormHydration, markFormHydrationStale } from '@/hooks/useFormHydration';
+import { beginFormHydration, markFormHydrationStale, useResetFormOnProjectChange } from '@/hooks/useFormHydration';
+import { useScopedQueryKey } from '@/hooks/useScopedQueryKey';
 
 type GalleryRow = { key: string; image: ImageFieldState };
 
@@ -80,13 +81,21 @@ function FormInner() {
     queryFn: () => reviewsApi.meta(),
     staleTime: 60_000,
   });
+  const detailQueryKey = useScopedQueryKey('reviews', id);
+
   const detailQuery = useQuery({
-    queryKey: ['reviews', id],
+    queryKey: detailQueryKey,
     queryFn: () => reviewsApi.get(id!),
     enabled: !!id,
     refetchOnWindowFocus: false,
     refetchInterval: false,
   });
+
+  const resetForm = useCallback(() => {
+    setForm(empty);
+    snapshotRef.current = JSON.stringify(empty);
+  }, []);
+  useResetFormOnProjectChange(hydrateKeyRef, resetForm);
 
   useEffect(() => {
     if (!detailQuery.data) return;

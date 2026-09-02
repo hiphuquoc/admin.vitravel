@@ -1,11 +1,12 @@
 'use client';
 
-import { FormEvent, useEffect, useMemo, useRef, useState } from 'react';
+import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import toast from '@/lib/toast';
 import { homeSectionsApi } from '@/lib/services';
 import { useEditLocale } from '@/hooks/useEditLocale';
-import { beginFormHydration, markFormHydrationStale } from '@/hooks/useFormHydration';
+import { beginFormHydration, markFormHydrationStale, useResetFormOnProjectChange } from '@/hooks/useFormHydration';
+import { useScopedQueryKey } from '@/hooks/useScopedQueryKey';
 import { StructureLockProvider, useStructureLocked } from '@/hooks/useStructureLock';
 import { useRegisterAiTranslate } from '@/hooks/useAiFormTranslate';
 import { pickTranslatableFields, mergeTranslatedFields } from '@/lib/aiTranslateFields';
@@ -374,12 +375,22 @@ export default function HomeContentPage() {
     [sections, usps, featured],
   );
 
+  const homeQueryKey = useScopedQueryKey('home-sections', locale);
+
   const query = useQuery({
-    queryKey: ['home-sections', locale],
+    queryKey: homeQueryKey,
     queryFn: () => homeSectionsApi.get(locale),
     refetchOnWindowFocus: false,
     refetchInterval: false,
   });
+
+  const resetForm = useCallback(() => {
+    setSections([]);
+    setUsps([]);
+    setFeaturedState(EMPTY_FEATURED);
+    snapshotRef.current = '';
+  }, []);
+  useResetFormOnProjectChange(hydrateKeyRef, resetForm);
 
   useEffect(() => {
     if (!query.data) return;

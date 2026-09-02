@@ -1,6 +1,6 @@
 'use client';
 
-import { FormEvent, useEffect, useState } from 'react';
+import { FormEvent, useEffect, useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Sparkles } from 'lucide-react';
 import toast from '@/lib/toast';
@@ -20,6 +20,14 @@ export default function ProjectAiSettingsPage() {
   const currentProject = projects.find((p) => p.code === projectCode) ?? null;
   const [aiBrief, setAiBrief] = useState('');
   const [dirty, setDirty] = useState(false);
+  const prevProjectRef = useRef(projectCode);
+
+  useEffect(() => {
+    if (prevProjectRef.current === projectCode) return;
+    prevProjectRef.current = projectCode;
+    setDirty(false);
+    setAiBrief('');
+  }, [projectCode]);
 
   const query = useQuery({
     queryKey: ['project-settings', currentProject?.code],

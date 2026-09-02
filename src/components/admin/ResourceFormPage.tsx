@@ -1,7 +1,7 @@
 'use client';
 
 import type { Dispatch, ReactNode, SetStateAction } from 'react';
-import { FormEvent, Suspense, useEffect, useMemo, useRef, useState } from 'react';
+import { FormEvent, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import toast from '@/lib/toast';
@@ -21,7 +21,8 @@ import { FormHeadActions } from '@/components/ui/FormHeadActions';
 import { publicPageUrl } from '@/lib/publicUrl';
 import { replaceFormUrl } from '@/lib/formNavigate';
 import { asLocaleOptions, DEFAULT_LOCALE, isDefaultLocale, type LocaleOption } from '@/lib/locale';
-import { beginFormHydration, markFormHydrationStale } from '@/hooks/useFormHydration';
+import { beginFormHydration, markFormHydrationStale, useResetFormOnProjectChange } from '@/hooks/useFormHydration';
+import { useScopedQueryKey } from '@/hooks/useScopedQueryKey';
 import { EDIT_FORM_QUERY_OPTIONS } from '@/lib/editFormQuery';
 
 type Field =
@@ -163,8 +164,10 @@ function Inner(props: Props) {
   const hydrateKeyRef = useRef<string | null>(null);
   const isDirty = useMemo(() => JSON.stringify(form) !== snapshotRef.current, [form]);
 
+  const detailQueryKey = useScopedQueryKey(props.queryKey, id, locale);
+
   const detailQuery = useQuery({
-    queryKey: [props.queryKey, id, locale],
+    queryKey: detailQueryKey,
     queryFn: () => props.getFn(id!, locale),
     enabled: !!id,
     ...EDIT_FORM_QUERY_OPTIONS,
@@ -184,6 +187,12 @@ function Inner(props: Props) {
     enabled: props.withLocale !== false,
     staleTime: 60_000,
   });
+
+  const resetForm = useCallback(() => {
+    setForm(props.empty);
+    snapshotRef.current = JSON.stringify(props.empty);
+  }, [props.empty]);
+  useResetFormOnProjectChange(hydrateKeyRef, resetForm);
 
   useEffect(() => {
     if (!detailQuery.data || !id) return;

@@ -1,13 +1,14 @@
 'use client';
 
-import { FormEvent, useEffect, useMemo, useRef, useState } from 'react';
+import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useParams } from 'next/navigation';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ArrowLeft, LayoutTemplate } from 'lucide-react';
 import toast from '@/lib/toast';
 import { listingHubsApi } from '@/lib/services';
 import { useEditLocale } from '@/hooks/useEditLocale';
-import { beginFormHydration, markFormHydrationStale } from '@/hooks/useFormHydration';
+import { beginFormHydration, markFormHydrationStale, useResetFormOnProjectChange } from '@/hooks/useFormHydration';
+import { useScopedQueryKey } from '@/hooks/useScopedQueryKey';
 import { StructureLockProvider } from '@/hooks/useStructureLock';
 import { useRegisterAiTranslate } from '@/hooks/useAiFormTranslate';
 import { pickTranslatableFields, mergeTranslatedFields } from '@/lib/aiTranslateFields';
@@ -69,13 +70,22 @@ export default function ListingHubForm() {
   const hydrateKeyRef = useRef<string | null>(null);
   const isDirty = useMemo(() => JSON.stringify(form) !== snapshotRef.current, [form]);
 
+  const hubQueryKey = useScopedQueryKey('listing-hub', hubKey, locale);
+
   const query = useQuery({
-    queryKey: ['listing-hub', hubKey, locale],
+    queryKey: hubQueryKey,
     queryFn: () => listingHubsApi.get(hubKey, locale),
     enabled: !!hubKey,
     refetchOnWindowFocus: false,
     refetchInterval: false,
   });
+
+  const resetForm = useCallback(() => {
+    setForm(empty);
+    snapshotRef.current = JSON.stringify(empty);
+    setListingEditorEpoch((n) => n + 1);
+  }, []);
+  useResetFormOnProjectChange(hydrateKeyRef, resetForm);
 
   useEffect(() => {
     if (!query.data) return;

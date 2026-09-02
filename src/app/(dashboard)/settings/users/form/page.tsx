@@ -1,6 +1,6 @@
 'use client';
 
-import { FormEvent, Suspense, useEffect, useMemo, useRef, useState } from 'react';
+import { FormEvent, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ChevronDown, Shield, UserRound } from 'lucide-react';
@@ -8,7 +8,8 @@ import clsx from 'clsx';
 import toast from '@/lib/toast';
 import { usersApi } from '@/lib/services';
 import { useAuth } from '@/lib/auth-context';
-import { beginFormHydration, markFormHydrationStale } from '@/hooks/useFormHydration';
+import { beginFormHydration, markFormHydrationStale, useResetFormOnProjectChange } from '@/hooks/useFormHydration';
+import { useScopedQueryKey } from '@/hooks/useScopedQueryKey';
 import { Input, MultiSelect, Select, Switch } from '@/components/ui/Field';
 import { EmptyState, PageHeader } from '@/components/ui/Page';
 import { FormCluster, FormSection } from '@/components/ui/FormSection';
@@ -77,13 +78,21 @@ function FormInner() {
     enabled: canManage,
   });
 
+  const detailQueryKey = useScopedQueryKey('users', id);
+
   const detailQuery = useQuery({
-    queryKey: ['users', id],
+    queryKey: detailQueryKey,
     queryFn: () => usersApi.get(id!),
     enabled: !!id && canManage,
     refetchOnWindowFocus: false,
     refetchInterval: false,
   });
+
+  const resetForm = useCallback(() => {
+    setForm(empty);
+    snapshotRef.current = JSON.stringify(empty);
+  }, []);
+  useResetFormOnProjectChange(hydrateKeyRef, resetForm);
 
   useEffect(() => {
     if (!detailQuery.data) return;

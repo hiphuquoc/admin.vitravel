@@ -2958,7 +2958,7 @@ button.ui-head-btn {
     background: color-mix(in srgb, var(--admin-primary-50) 45%, var(--admin-surface));
     color: var(--admin-primary-800);
     font-size: 0.875rem;
-    font-weight: 650;
+    font-weight: 600;
     cursor: pointer;
     transition:
       border-color var(--admin-dur-fast) var(--admin-ease),
@@ -4611,7 +4611,7 @@ button.ui-head-btn {
   }
 
   strong {
-    font-weight: 650;
+    font-weight: 600;
   }
 
   &--muted {
@@ -4636,8 +4636,97 @@ button.ui-head-btn {
   margin: 0 0 1rem;
 
   .ui-structure-notice,
-  .ui-parent-locale-notice {
+  .ui-parent-locale-notice,
+  .ui-info-notice {
     margin: 0;
+  }
+}
+
+.ui-info-notice {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.75rem 0.9rem;
+  align-items: start;
+  padding: 0.95rem 1.05rem;
+  border-radius: 0.85rem;
+  border: 1px solid color-mix(in srgb, #d97706 38%, var(--admin-line));
+  background: color-mix(in srgb, #fffbeb 88%, var(--admin-surface));
+  color: var(--admin-ink);
+  box-shadow: 0 1px 0 color-mix(in srgb, #ffffff 60%, transparent) inset;
+
+  svg {
+    margin-top: 0.1rem;
+    color: #d97706;
+  }
+
+  &__title {
+    margin: 0 0 0.25rem;
+    font-size: 0.875rem;
+    font-weight: 600;
+    line-height: 1.35;
+  }
+
+  &__text {
+    margin: 0;
+    font-size: 0.8125rem;
+    line-height: 1.5;
+    color: color-mix(in srgb, var(--admin-ink) 82%, #78716c);
+  }
+}
+
+.ui-readonly-panel {
+  padding: 0.95rem 1.05rem;
+  border-radius: 0.75rem;
+  border: 1px dashed color-mix(in srgb, var(--admin-line) 85%, transparent);
+  background: color-mix(in srgb, var(--admin-surface-soft, #f8f7f4) 90%, var(--admin-surface));
+  font-size: 0.8125rem;
+  line-height: 1.55;
+  color: color-mix(in srgb, var(--admin-ink) 78%, #78716c);
+
+  p {
+    margin: 0;
+  }
+}
+
+.nav-menu-category-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
+.nav-menu-category-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.35rem 0.55rem;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--admin-line) 80%, transparent);
+  background: var(--admin-surface);
+  font-size: 0.78rem;
+  line-height: 1.2;
+  cursor: pointer;
+  user-select: none;
+  transition: border-color 0.15s ease, background-color 0.15s ease;
+
+  &:has(.nav-menu-category-chip__input:checked) {
+    border-color: color-mix(in srgb, var(--admin-accent, #567834) 55%, var(--admin-line));
+    background: color-mix(in srgb, var(--admin-accent, #567834) 10%, var(--admin-surface));
+  }
+
+  &__input {
+    margin: 0;
+    accent-color: var(--admin-accent, #567834);
+  }
+
+  &__label {
+    font-weight: 550;
+  }
+
+  &__count {
+    font-variant-numeric: tabular-nums;
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: color-mix(in srgb, var(--admin-ink) 55%, #78716c);
   }
 }
 
@@ -5991,7 +6080,7 @@ html.is-navigating {
       color: var(--admin-muted);
       font: inherit;
       font-size: 0.8rem;
-      font-weight: 650;
+      font-weight: 600;
       padding: 0.4rem 0.85rem;
       border-radius: 999px;
       cursor: pointer;
@@ -6016,7 +6105,7 @@ html.is-navigating {
     color: var(--admin-ink-soft);
     font: inherit;
     font-size: 0.78rem;
-    font-weight: 650;
+    font-weight: 600;
     padding: 0.38rem 0.75rem;
     border-radius: 999px;
     cursor: pointer;
@@ -6532,7 +6621,7 @@ html.is-navigating {
 
       strong {
         font-size: 0.84rem;
-        font-weight: 650;
+        font-weight: 600;
         color: var(--admin-ink);
         overflow: hidden;
         text-overflow: ellipsis;
@@ -6835,7 +6924,7 @@ html.is-navigating {
   &__pct-line {
     margin: 0;
     font-size: 0.78rem;
-    font-weight: 650;
+    font-weight: 600;
     color: var(--admin-ink-soft);
     font-variant-numeric: tabular-nums;
   }
@@ -7050,7 +7139,7 @@ html.is-navigating {
 
   &__count {
     font-size: 0.75rem;
-    font-weight: 650;
+    font-weight: 600;
     color: var(--admin-muted);
   }
 
@@ -7590,7 +7679,7 @@ html.is-navigating {
 
   &__code {
     font-size: 0.68rem;
-    font-weight: 650;
+    font-weight: 600;
     color: var(--admin-muted);
     background: color-mix(in srgb, var(--admin-surface-tint) 70%, transparent);
     padding: 0.08rem 0.35rem;
@@ -7626,7 +7715,7 @@ html.is-navigating {
 
     span {
       font-size: 0.68rem;
-      font-weight: 650;
+      font-weight: 600;
       padding: 0.12rem 0.4rem;
       border-radius: 999px;
       color: var(--admin-primary-800);
@@ -7762,7 +7851,7 @@ html.is-navigating {
     padding: 0.18rem 0.42rem;
     border-radius: 0.4rem;
     font-size: 0.7rem;
-    font-weight: 650;
+    font-weight: 600;
     line-height: 1.25;
     color: var(--admin-ink-soft);
     background: color-mix(in srgb, var(--admin-surface) 88%, white);
@@ -8306,7 +8395,7 @@ html.is-navigating {
     padding: 0.35rem 0.75rem;
     border-radius: 999px;
     font-size: 0.76rem;
-    font-weight: 650;
+    font-weight: 600;
     letter-spacing: 0.02em;
     background: color-mix(in srgb, var(--admin-primary-500) 12%, transparent);
     color: var(--admin-primary-600);
@@ -8699,7 +8788,7 @@ html.is-navigating {
 
   &__category-chip {
     font-size: 0.76rem;
-    font-weight: 650;
+    font-weight: 600;
     padding: 0.15rem 0.55rem;
     border-radius: 999px;
     background: color-mix(in srgb, var(--admin-primary-500) 10%, transparent);

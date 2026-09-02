@@ -1,13 +1,14 @@
 'use client';
 
-import { FormEvent, Suspense, useEffect, useMemo, useRef, useState } from 'react';
+import { FormEvent, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ArrowLeft, Wallet } from 'lucide-react';
 import toast from '@/lib/toast';
 import { servicesApi } from '@/lib/services';
 import { useEditLocale } from '@/hooks/useEditLocale';
-import { beginFormHydration, markFormHydrationStale } from '@/hooks/useFormHydration';
+import { beginFormHydration, markFormHydrationStale, useResetFormOnProjectChange } from '@/hooks/useFormHydration';
+import { useScopedQueryKey } from '@/hooks/useScopedQueryKey';
 import { StructureLockProvider } from '@/hooks/useStructureLock';
 import { useRegisterAiTranslate } from '@/hooks/useAiFormTranslate';
 import { pickTranslatableFields, mergeTranslatedFields } from '@/lib/aiTranslateFields';
@@ -137,8 +138,10 @@ function FormInner() {
     queryKey: ['services-meta', locale, form.cluster],
     queryFn: () => servicesApi.meta(locale, form.cluster),
   });
+  const detailQueryKey = useScopedQueryKey('service', id, locale);
+
   const detailQuery = useQuery({
-    queryKey: ['service', id, locale],
+    queryKey: detailQueryKey,
     queryFn: () => servicesApi.get(id!, locale),
     enabled: !!id,
     refetchOnWindowFocus: false,
@@ -146,6 +149,14 @@ function FormInner() {
   });
 
   const isStay = form.cluster === 'stay';
+
+  const resetForm = useCallback(() => {
+    const baseline = { ...empty, cluster: clusterFromUrl };
+    setForm(baseline);
+    snapshotRef.current = JSON.stringify(baseline);
+    setContentEditorEpoch((n) => n + 1);
+  }, [clusterFromUrl]);
+  useResetFormOnProjectChange(hydrateKeyRef, resetForm);
 
   useEffect(() => {
     if (!detailQuery.data) return;
