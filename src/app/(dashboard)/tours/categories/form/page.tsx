@@ -8,7 +8,7 @@ import toast from '@/lib/toast';
 import { useAuth } from '@/lib/auth-context';
 import { categoriesApi } from '@/lib/services';
 import { useEditLocale } from '@/hooks/useEditLocale';
-import { beginFormHydration, markFormHydrationStale, shouldHydrateScopedQuery, useResetFormOnProjectChange } from '@/hooks/useFormHydration';
+import { beginFormHydration, lockFormHydration, shouldHydrateScopedQuery, useResetFormOnProjectChange } from '@/hooks/useFormHydration';
 import { createScopedQueryFn, useScopedQueryKey } from '@/hooks/useScopedQueryKey';
 import { StructureLockProvider } from '@/hooks/useStructureLock';
 import { useRegisterAiTranslate } from '@/hooks/useAiFormTranslate';
@@ -138,7 +138,7 @@ function CategoryFormInner() {
     setForm(next);
     snapshotRef.current = JSON.stringify(next);
     setSlugTouched(true);
-  }, [detailQuery.data, detailQueryKey, projectCode, locale]);
+  }, [detailQuery.data, projectCode, locale]);
 
   const save = useMutation({
     mutationFn: async () => {
@@ -169,8 +169,10 @@ function CategoryFormInner() {
     },
     onSuccess: async (data) => {
       toast.success(isNew ? 'Đã tạo danh mục' : 'Đã lưu danh mục');
-      markFormHydrationStale(hydrateKeyRef);
-      await qc.invalidateQueries({ queryKey: ['tour-categories'] });
+      snapshotRef.current = JSON.stringify(form);
+      lockFormHydration(hydrateKeyRef, id ?? data.id, locale);
+      await qc.invalidateQueries({ queryKey: detailQueryKey });
+      await qc.invalidateQueries({ queryKey: [projectCode, 'tour-categories'] });
       replaceFormUrl(router, `/tours/categories/form/?id=${data.id}&locale=${locale}`);
     },
     onError: (err: Error) => toast.error(err.message),

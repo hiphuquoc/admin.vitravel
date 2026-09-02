@@ -7,7 +7,7 @@ import toast from '@/lib/toast';
 import { companyProfileApi } from '@/lib/services';
 import { useAuth } from '@/lib/auth-context';
 import { useEditLocale } from '@/hooks/useEditLocale';
-import { beginFormHydration, markFormHydrationStale, shouldHydrateScopedQuery, useResetFormOnProjectChange } from '@/hooks/useFormHydration';
+import { beginFormHydration, lockFormHydration, shouldHydrateScopedQuery, useResetFormOnProjectChange } from '@/hooks/useFormHydration';
 import { createScopedQueryFn, useScopedQueryKey } from '@/hooks/useScopedQueryKey';
 import { StructureLockProvider } from '@/hooks/useStructureLock';
 import { useRegisterAiTranslate } from '@/hooks/useAiFormTranslate';
@@ -71,14 +71,15 @@ export default function CompanyPage() {
     }
     setForm(next);
     snapshotRef.current = JSON.stringify(next);
-  }, [query.data, companyQueryKey, projectCode, locale]);
+  }, [query.data, projectCode, locale]);
 
   const save = useMutation({
     mutationFn: () => companyProfileApi.update({ ...form, locale }),
     onSuccess: async () => {
       toast.success('Đã lưu trang công ty');
-      markFormHydrationStale(hydrateKeyRef);
-      await qc.invalidateQueries({ queryKey: ['company-profile'] });
+      snapshotRef.current = JSON.stringify(form);
+      lockFormHydration(hydrateKeyRef, 'company', locale);
+      await qc.invalidateQueries({ queryKey: companyQueryKey });
     },
     onError: (err: Error) => toast.error(err.message),
   });

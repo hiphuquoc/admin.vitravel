@@ -8,7 +8,7 @@ import toast from '@/lib/toast';
 import { useAuth } from '@/lib/auth-context';
 import { articlesApi } from '@/lib/services';
 import { useEditLocale } from '@/hooks/useEditLocale';
-import { beginFormHydration, markFormHydrationStale, shouldHydrateScopedQuery, useResetFormOnProjectChange } from '@/hooks/useFormHydration';
+import { beginFormHydration, lockFormHydration, shouldHydrateScopedQuery, useResetFormOnProjectChange } from '@/hooks/useFormHydration';
 import { createScopedQueryFn, useScopedQueryKey } from '@/hooks/useScopedQueryKey';
 import { StructureLockProvider } from '@/hooks/useStructureLock';
 import { useRegisterAiTranslate } from '@/hooks/useAiFormTranslate';
@@ -115,7 +115,7 @@ function FormInner() {
     };
     setForm(next);
     snapshotRef.current = JSON.stringify(next);
-  }, [detailQuery.data, detailQueryKey, projectCode, locale]);
+  }, [detailQuery.data, projectCode, locale]);
 
   const save = useMutation({
     mutationFn: async () => {
@@ -132,8 +132,10 @@ function FormInner() {
     },
     onSuccess: async (data) => {
       toast.success(isNew ? 'Đã tạo' : 'Đã lưu');
-      markFormHydrationStale(hydrateKeyRef);
-      await qc.invalidateQueries({ queryKey: ['articles'] });
+      snapshotRef.current = JSON.stringify(form);
+      lockFormHydration(hydrateKeyRef, id ?? (data as { id: number }).id, locale);
+      await qc.invalidateQueries({ queryKey: detailQueryKey });
+      await qc.invalidateQueries({ queryKey: [projectCode, 'articles'] });
       replaceFormUrl(
         router,
         `/content/articles/form/?id=${(data as { id: number }).id}&locale=${locale}`,

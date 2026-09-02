@@ -122,9 +122,21 @@ useEffect(() => {
 
 Trả `true` chỉ lần đầu mỗi key `(project, entity, locale)`.
 
+### `lockFormHydration(ref, entityKey, locale?)`
+
+Gọi **sau save thành công** (cùng cập nhật `snapshotRef`) — giữ form đã lưu, chặn hydrate lại từ cache/refetch:
+
+```ts
+onSuccess: async () => {
+  snapshotRef.current = JSON.stringify(form);
+  lockFormHydration(hydrateKeyRef, id, locale);
+  await qc.invalidateQueries({ queryKey: detailQueryKey });
+},
+```
+
 ### `markFormHydrationStale(ref)`
 
-Gọi **sau save thành công** để lần fetch tiếp theo được hydrate lại (ví dụ sau khi server cập nhật field khác).
+Chỉ dùng khi **chủ đích** reload form từ server (hiếm). Không dùng trong `onSuccess` save thông thường — sẽ ghi đè form bằng cache cũ.
 
 ### `useResetFormOnProjectChange(ref, onReset)`
 
@@ -154,7 +166,7 @@ Helper effect (ít dùng). Đã có `projectCode` trong dependency array.
 - [ ] `const hydrateKeyRef = useRef<string | null>(null)`.
 - [ ] `useEffect` hydrate: `beginFormHydration(hydrateKeyRef, id hoặc 'site', locale)` trước `setForm`.
 - [ ] `useResetFormOnProjectChange` + `resetForm` về `empty` (và `snapshotRef`, remount editor nếu có TipTap/epoch).
-- [ ] `onSuccess` save: `markFormHydrationStale(hydrateKeyRef)`.
+- [ ] `onSuccess` save: `snapshotRef` + `lockFormHydration(hydrateKeyRef, …)` + `invalidateQueries` scoped key.
 - [ ] Form dùng pattern `dirty` thủ công (không qua `beginFormHydration`): **phải** reset state khi `projectCode` đổi (xem `settings/project/page.tsx`).
 
 ### Trang dùng `ResourceFormPage`
@@ -213,7 +225,8 @@ Query key đã có `currentProject?.code`. **Không** chỉ dựa vào `dirty` m
 | Có `beginFormHydration` nhưng thiếu `useResetFormOnProjectChange` | Form giữ data cũ trong lúc loading → lưu nhầm |
 | Bỏ `projectCode` khỏi `formHydrationKey` | Đổi dự án không hydrate lại |
 | Bật `refetchOnWindowFocus` trên form edit | Dễ ghi đè nếu hydration key sai hoặc thiếu reset |
-| `invalidateQueries()` sau save nhưng quên `markFormHydrationStale` | Sau save, data server mới không vào form (đến khi đổi entity/locale/project) |
+| Gọi `markFormHydrationStale` trong `onSuccess` save | Form bị hydrate lại từ cache cũ ngay sau lưu |
+| `useScopedQueryKey` không memo | `useEffect` hydrate chạy mỗi render → ghi đè form |
 
 ---
 

@@ -8,7 +8,7 @@ import toast from '@/lib/toast';
 import { useAuth } from '@/lib/auth-context';
 import { listingHubsApi } from '@/lib/services';
 import { useEditLocale } from '@/hooks/useEditLocale';
-import { beginFormHydration, markFormHydrationStale, shouldHydrateScopedQuery, useResetFormOnProjectChange } from '@/hooks/useFormHydration';
+import { beginFormHydration, lockFormHydration, shouldHydrateScopedQuery, useResetFormOnProjectChange } from '@/hooks/useFormHydration';
 import { createScopedQueryFn, useScopedQueryKey } from '@/hooks/useScopedQueryKey';
 import { StructureLockProvider } from '@/hooks/useStructureLock';
 import { useRegisterAiTranslate } from '@/hooks/useAiFormTranslate';
@@ -111,7 +111,7 @@ export default function ListingHubForm() {
     };
     setForm(next);
     snapshotRef.current = JSON.stringify(next);
-  }, [query.data, hubQueryKey, projectCode, locale]);
+  }, [query.data, projectCode, locale]);
 
   const save = useMutation({
     mutationFn: () =>
@@ -131,9 +131,9 @@ export default function ListingHubForm() {
       }),
     onSuccess: async () => {
       toast.success('Đã lưu hub');
-      markFormHydrationStale(hydrateKeyRef);
-      await qc.invalidateQueries({ queryKey: ['listing-hub', hubKey] });
       snapshotRef.current = JSON.stringify(form);
+      lockFormHydration(hydrateKeyRef, hubKey, locale);
+      await qc.invalidateQueries({ queryKey: hubQueryKey });
     },
     onError: (err: Error) => toast.error(err.message),
   });

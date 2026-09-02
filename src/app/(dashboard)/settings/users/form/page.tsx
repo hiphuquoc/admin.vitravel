@@ -8,7 +8,7 @@ import clsx from 'clsx';
 import toast from '@/lib/toast';
 import { usersApi } from '@/lib/services';
 import { useAuth } from '@/lib/auth-context';
-import { beginFormHydration, markFormHydrationStale, shouldHydrateScopedQuery, useResetFormOnProjectChange } from '@/hooks/useFormHydration';
+import { beginFormHydration, lockFormHydration, shouldHydrateScopedQuery, useResetFormOnProjectChange } from '@/hooks/useFormHydration';
 import { createScopedQueryFn, useScopedQueryKey } from '@/hooks/useScopedQueryKey';
 import { Input, MultiSelect, Select, Switch } from '@/components/ui/Field';
 import { EmptyState, PageHeader } from '@/components/ui/Page';
@@ -118,7 +118,7 @@ function FormInner() {
     };
     setForm(next);
     snapshotRef.current = JSON.stringify(next);
-  }, [detailQuery.data, detailQueryKey, projectCode, id]);
+  }, [detailQuery.data, projectCode, id]);
 
   const save = useMutation({
     mutationFn: async () => {
@@ -144,12 +144,12 @@ function FormInner() {
     },
     onSuccess: async (data) => {
       toast.success(isNew ? 'Đã tạo người dùng' : 'Đã cập nhật người dùng');
-      markFormHydrationStale(hydrateKeyRef);
-      await qc.invalidateQueries({ queryKey: ['users'] });
+      snapshotRef.current = JSON.stringify(form);
+      lockFormHydration(hydrateKeyRef, id ?? data.id);
+      await qc.invalidateQueries({ queryKey: detailQueryKey });
+      await qc.invalidateQueries({ queryKey: [projectCode, 'users'] });
       if (isNew && data.id) {
         router.replace(`/settings/users/form/?id=${data.id}`);
-      } else {
-        snapshotRef.current = JSON.stringify(form);
       }
     },
     onError: (err: Error) => toast.error(err.message),

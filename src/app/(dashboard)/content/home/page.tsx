@@ -6,7 +6,7 @@ import toast from '@/lib/toast';
 import { homeSectionsApi } from '@/lib/services';
 import { useAuth } from '@/lib/auth-context';
 import { useEditLocale } from '@/hooks/useEditLocale';
-import { beginFormHydration, markFormHydrationStale, shouldHydrateScopedQuery, useResetFormOnProjectChange } from '@/hooks/useFormHydration';
+import { beginFormHydration, lockFormHydration, shouldHydrateScopedQuery, useResetFormOnProjectChange } from '@/hooks/useFormHydration';
 import { createScopedQueryFn, useScopedQueryKey } from '@/hooks/useScopedQueryKey';
 import { StructureLockProvider, useStructureLocked } from '@/hooks/useStructureLock';
 import { useRegisterAiTranslate } from '@/hooks/useAiFormTranslate';
@@ -426,7 +426,7 @@ export default function HomeContentPage() {
       usps: nextUsps,
       featured: nextFeatured,
     });
-  }, [query.data, homeQueryKey, projectCode, locale]);
+  }, [query.data, projectCode, locale]);
 
   const options = useMemo(
     (): FeaturedOptions => ({
@@ -476,8 +476,9 @@ export default function HomeContentPage() {
       }),
     onSuccess: async () => {
       toast.success('Đã lưu nội dung trang chủ');
-      markFormHydrationStale(hydrateKeyRef);
-      await qc.invalidateQueries({ queryKey: ['home-sections'] });
+      snapshotRef.current = JSON.stringify({ sections, usps, featured });
+      lockFormHydration(hydrateKeyRef, 'home', locale);
+      await qc.invalidateQueries({ queryKey: homeQueryKey });
     },
     onError: (err: Error) => toast.error(err.message),
   });

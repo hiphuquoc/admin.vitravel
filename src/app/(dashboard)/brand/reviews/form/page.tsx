@@ -17,7 +17,7 @@ import { HeadActions, HeadSecondary } from '@/components/ui/HeadActions';
 import { Repeater } from '@/components/ui/Repeater';
 import { Button } from '@/components/ui/Button';
 import { replaceFormUrl } from '@/lib/formNavigate';
-import { beginFormHydration, markFormHydrationStale, shouldHydrateScopedQuery, useResetFormOnProjectChange } from '@/hooks/useFormHydration';
+import { beginFormHydration, lockFormHydration, shouldHydrateScopedQuery, useResetFormOnProjectChange } from '@/hooks/useFormHydration';
 import { createScopedQueryFn, useScopedQueryKey } from '@/hooks/useScopedQueryKey';
 
 type GalleryRow = { key: string; image: ImageFieldState };
@@ -129,7 +129,7 @@ function FormInner() {
     };
     setForm(next);
     snapshotRef.current = JSON.stringify(next);
-  }, [detailQuery.data, detailQueryKey, projectCode, id]);
+  }, [detailQuery.data, projectCode, id]);
 
   const save = useMutation({
     mutationFn: async () => {
@@ -156,10 +156,11 @@ function FormInner() {
     },
     onSuccess: async (data) => {
       toast.success(isNew ? 'Đã tạo cảm nhận' : 'Đã lưu cảm nhận');
-      markFormHydrationStale(hydrateKeyRef);
-      await qc.invalidateQueries({ queryKey: ['reviews'] });
-      replaceFormUrl(router, `/brand/reviews/form/?id=${(data as { id: number }).id}`);
       snapshotRef.current = JSON.stringify(form);
+      lockFormHydration(hydrateKeyRef, id ?? (data as { id: number }).id);
+      await qc.invalidateQueries({ queryKey: detailQueryKey });
+      await qc.invalidateQueries({ queryKey: [projectCode, 'reviews'] });
+      replaceFormUrl(router, `/brand/reviews/form/?id=${(data as { id: number }).id}`);
     },
     onError: (err: Error) => toast.error(err.message),
   });

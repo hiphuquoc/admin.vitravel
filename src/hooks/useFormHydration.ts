@@ -9,7 +9,8 @@ import { isScopedQueryForProject } from '@/lib/apiScope';
  * Chỉ hydrate form khi đổi entity (id), locale hoặc dự án — bỏ qua refetch nền trên list.
  * Form edit còn tắt live refetch qua EDIT_FORM_QUERY_OPTIONS.
  *
- * Sau khi save thành công: gọi `markFormHydrationStale(ref)` để lần data mới được nạp lại.
+ * Sau khi save thành công: gọi `lockFormHydration(ref, entity, locale)` để giữ form đã lưu,
+ * không hydrate lại từ cache cũ. Chỉ dùng `markFormHydrationStale` khi chủ đích reload từ server.
  */
 export function useFormHydrationKey(
   entityKey: string | number | null | undefined,
@@ -50,6 +51,20 @@ export function beginFormHydration(
 /** Cho phép hydrate lại sau save / đổi entity từ ngoài. */
 export function markFormHydrationStale(lastKeyRef: MutableRefObject<string | null>): void {
   lastKeyRef.current = null;
+}
+
+/**
+ * Khóa hydration sau khi lưu — form giữ giá trị user vừa save, không bị ghi đè bởi cache/refetch.
+ */
+export function lockFormHydration(
+  lastKeyRef: MutableRefObject<string | null>,
+  entityKey: string | number | null | undefined,
+  locale?: string | null,
+): void {
+  const key = formHydrationKey(entityKey, locale);
+  if (key) {
+    lastKeyRef.current = key;
+  }
 }
 
 /**

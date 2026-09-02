@@ -24,7 +24,7 @@ import {
 } from '@/lib/services';
 import type { PackageFaq, PackageItineraryDay } from '@/lib/types';
 import { useEditLocale } from '@/hooks/useEditLocale';
-import { beginFormHydration, markFormHydrationStale, shouldHydrateScopedQuery, useResetFormOnProjectChange } from '@/hooks/useFormHydration';
+import { beginFormHydration, lockFormHydration, shouldHydrateScopedQuery, useResetFormOnProjectChange } from '@/hooks/useFormHydration';
 import { createScopedQueryFn, useScopedQueryKey } from '@/hooks/useScopedQueryKey';
 import { EDIT_FORM_QUERY_OPTIONS } from '@/lib/editFormQuery';
 import { StructureLockProvider } from '@/hooks/useStructureLock';
@@ -335,7 +335,7 @@ function PackageFormInner({ kind }: { kind: PackageType }) {
     };
     setForm(next);
     snapshotRef.current = JSON.stringify(next);
-  }, [detailQuery.data, detailQueryKey, projectCode, locale]);
+  }, [detailQuery.data, projectCode, id, locale]);
 
   const badgeOptions = useMemo(() => {
     const base = metaQuery.data?.discount_badges ?? [
@@ -470,9 +470,10 @@ function PackageFormInner({ kind }: { kind: PackageType }) {
     },
     onSuccess: async (data) => {
       toast.success(isNew ? copy.createdMsg : copy.savedMsg);
-      markFormHydrationStale(hydrateKeyRef);
-      await qc.invalidateQueries({ queryKey: [copy.queryKey] });
-      await qc.invalidateQueries({ queryKey: [copy.queryKey.slice(0, -1), data.id] });
+      snapshotRef.current = JSON.stringify(form);
+      lockFormHydration(hydrateKeyRef, id, locale);
+      await qc.invalidateQueries({ queryKey: detailQueryKey });
+      await qc.invalidateQueries({ queryKey: [projectCode, copy.queryKey] });
       replaceFormUrl(router, `${copy.listHref}form/?id=${data.id}&locale=${locale}`);
     },
     onError: (err: Error) => toast.error(err.message),

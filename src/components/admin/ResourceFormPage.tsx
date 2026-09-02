@@ -22,7 +22,7 @@ import { FormHeadActions } from '@/components/ui/FormHeadActions';
 import { publicPageUrl } from '@/lib/publicUrl';
 import { replaceFormUrl } from '@/lib/formNavigate';
 import { asLocaleOptions, DEFAULT_LOCALE, isDefaultLocale, type LocaleOption } from '@/lib/locale';
-import { beginFormHydration, markFormHydrationStale, shouldHydrateScopedQuery, useResetFormOnProjectChange } from '@/hooks/useFormHydration';
+import { beginFormHydration, lockFormHydration, shouldHydrateScopedQuery, useResetFormOnProjectChange } from '@/hooks/useFormHydration';
 import { createScopedQueryFn, useScopedQueryKey } from '@/hooks/useScopedQueryKey';
 import { EDIT_FORM_QUERY_OPTIONS } from '@/lib/editFormQuery';
 
@@ -191,7 +191,7 @@ function Inner(props: Props) {
     const next = { ...props.empty, ...mapped };
     setForm(next);
     snapshotRef.current = JSON.stringify(next);
-  }, [detailQuery.data, detailQueryKey, projectCode, id, locale]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [detailQuery.data, projectCode, id, locale]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const languages =
     asLocaleOptions(props.languagesFrom?.(detailQuery.data)) ??
@@ -213,8 +213,9 @@ function Inner(props: Props) {
     onSuccess: async (data) => {
       toast.success(isNew ? 'Đã tạo' : 'Đã lưu');
       snapshotRef.current = JSON.stringify(form);
-      markFormHydrationStale(hydrateKeyRef);
-      await qc.invalidateQueries({ queryKey: [props.queryKey] });
+      lockFormHydration(hydrateKeyRef, id ?? data.id, locale);
+      await qc.invalidateQueries({ queryKey: detailQueryKey });
+      await qc.invalidateQueries({ queryKey: [projectCode, props.queryKey] });
       replaceFormUrl(
         router,
         `${props.listHref.replace(/\/$/, '')}/form/?id=${data.id}&locale=${locale}`,

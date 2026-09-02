@@ -6,7 +6,7 @@ import toast from '@/lib/toast';
 import { companyProfileApi } from '@/lib/services';
 import { useAuth } from '@/lib/auth-context';
 import { useEditLocale } from '@/hooks/useEditLocale';
-import { beginFormHydration, markFormHydrationStale, shouldHydrateScopedQuery, useResetFormOnProjectChange } from '@/hooks/useFormHydration';
+import { beginFormHydration, lockFormHydration, shouldHydrateScopedQuery, useResetFormOnProjectChange } from '@/hooks/useFormHydration';
 import { createScopedQueryFn, useScopedQueryKey } from '@/hooks/useScopedQueryKey';
 import { StructureLockProvider } from '@/hooks/useStructureLock';
 import { StructureNotice } from '@/components/ui/StructureNotice';
@@ -119,7 +119,7 @@ export default function SiteSettingsPage() {
     next.show_dmca_badge = d.show_dmca_badge !== false && d.show_dmca_badge !== 0;
     setForm(next);
     snapshotRef.current = JSON.stringify(next);
-  }, [query.data, siteQueryKey, projectCode, locale]);
+  }, [query.data, projectCode, locale]);
 
   const save = useMutation({
     mutationFn: () =>
@@ -130,10 +130,9 @@ export default function SiteSettingsPage() {
       }),
     onSuccess: async () => {
       toast.success('Đã lưu thông tin dự án');
-      markFormHydrationStale(hydrateKeyRef);
-      await qc.invalidateQueries({ queryKey: ['company-profile'] });
-      await qc.invalidateQueries({ queryKey: ['company-profile-site'] });
       snapshotRef.current = JSON.stringify(form);
+      lockFormHydration(hydrateKeyRef, 'site', locale);
+      await qc.invalidateQueries({ queryKey: siteQueryKey });
     },
     onError: (err: Error) => toast.error(err.message),
   });

@@ -8,7 +8,7 @@ import toast from '@/lib/toast';
 import { useAuth } from '@/lib/auth-context';
 import { serviceCategoriesApi } from '@/lib/services';
 import { useEditLocale } from '@/hooks/useEditLocale';
-import { beginFormHydration, markFormHydrationStale, shouldHydrateScopedQuery, useResetFormOnProjectChange } from '@/hooks/useFormHydration';
+import { beginFormHydration, lockFormHydration, shouldHydrateScopedQuery, useResetFormOnProjectChange } from '@/hooks/useFormHydration';
 import { createScopedQueryFn, useScopedQueryKey } from '@/hooks/useScopedQueryKey';
 import { StructureLockProvider } from '@/hooks/useStructureLock';
 import { useRegisterAiTranslate } from '@/hooks/useAiFormTranslate';
@@ -134,7 +134,7 @@ function FormInner() {
     };
     setForm(next);
     snapshotRef.current = JSON.stringify(next);
-  }, [detailQuery.data, detailQueryKey, projectCode, locale, clusterFromUrl]);
+  }, [detailQuery.data, projectCode, locale, clusterFromUrl]);
 
   const save = useMutation({
     mutationFn: async () => {
@@ -169,9 +169,10 @@ function FormInner() {
     },
     onSuccess: async (data) => {
       toast.success(isNew ? 'Đã tạo' : 'Đã lưu');
-      markFormHydrationStale(hydrateKeyRef);
-      await qc.invalidateQueries({ queryKey: [`service-categories-${form.cluster}`] });
-      await qc.invalidateQueries({ queryKey: ['service-category', data.id] });
+      snapshotRef.current = JSON.stringify(form);
+      lockFormHydration(hydrateKeyRef, id ?? data.id, locale);
+      await qc.invalidateQueries({ queryKey: detailQueryKey });
+      await qc.invalidateQueries({ queryKey: [projectCode, `service-categories-${form.cluster}`] });
       replaceFormUrl(
         router,
         `/services/categories/form/?id=${data.id}&locale=${locale}&cluster=${form.cluster}`,

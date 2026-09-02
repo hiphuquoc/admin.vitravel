@@ -8,7 +8,7 @@ import toast from '@/lib/toast';
 import { useAuth } from '@/lib/auth-context';
 import { cruiseTypesApi } from '@/lib/services';
 import { useEditLocale } from '@/hooks/useEditLocale';
-import { beginFormHydration, markFormHydrationStale, shouldHydrateScopedQuery, useResetFormOnProjectChange } from '@/hooks/useFormHydration';
+import { beginFormHydration, lockFormHydration, shouldHydrateScopedQuery, useResetFormOnProjectChange } from '@/hooks/useFormHydration';
 import { createScopedQueryFn, useScopedQueryKey } from '@/hooks/useScopedQueryKey';
 import { StructureLockProvider } from '@/hooks/useStructureLock';
 import { useRegisterAiTranslate } from '@/hooks/useAiFormTranslate';
@@ -139,7 +139,7 @@ function CruiseTypeFormInner() {
     setForm(next);
     snapshotRef.current = JSON.stringify(next);
     setSlugTouched(true);
-  }, [detailQuery.data, detailQueryKey, projectCode, locale, metaQuery.data?.hub_seo_id]);
+  }, [detailQuery.data, projectCode, locale, metaQuery.data?.hub_seo_id]);
 
   useEffect(() => {
     if (!isNew || form.seo_parent_id || !metaQuery.data?.hub_seo_id) return;
@@ -176,9 +176,11 @@ function CruiseTypeFormInner() {
     },
     onSuccess: async (data) => {
       toast.success(isNew ? 'Đã tạo loại du thuyền' : 'Đã lưu loại du thuyền');
-      markFormHydrationStale(hydrateKeyRef);
-      await qc.invalidateQueries({ queryKey: ['cruise-types'] });
-      await qc.invalidateQueries({ queryKey: ['packages-meta'] });
+      snapshotRef.current = JSON.stringify(form);
+      lockFormHydration(hydrateKeyRef, id ?? data.id, locale);
+      await qc.invalidateQueries({ queryKey: detailQueryKey });
+      await qc.invalidateQueries({ queryKey: [projectCode, 'cruise-types'] });
+      await qc.invalidateQueries({ queryKey: ['packages-meta', locale] });
       replaceFormUrl(router, `/cruises/types/form/?id=${data.id}&locale=${locale}`);
     },
     onError: (err: Error) => toast.error(err.message),
