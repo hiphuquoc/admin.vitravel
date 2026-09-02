@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { Sparkles, Loader2 } from 'lucide-react';
 import toast from '@/lib/toast';
 import { apiRequest } from '@/lib/api';
+import { useAuth } from '@/lib/auth-context';
 import { useAiFilledActions } from '@/hooks/useAiFilledFields';
 import { applyAiFilledMarks } from '@/lib/aiTranslateFields';
 import { useFormActionsLocked } from '@/hooks/useStructureLock';
@@ -69,6 +70,7 @@ export function AiEnrichProgramButton({
 }: Props) {
   const resolvedKind: 'package' | 'service' =
     kind ?? (entityType === 'service' || entityType === 'service_product' ? 'service' : 'package');
+  const { projectCode } = useAuth();
   const actionsLocked = useFormActionsLocked();
   const progress = useBlockingProgress();
   const { mark: markAiFilled } = useAiFilledActions();
@@ -128,6 +130,7 @@ export function AiEnrichProgramButton({
 
         const res = await apiRequest<EnrichResponse>('/ai/enrich-detail-program', {
           method: 'POST',
+          projectCode,
           body: {
             entity_type: entityType,
             locale,

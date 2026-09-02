@@ -10,6 +10,7 @@ import {
   useState,
   type ReactNode,
 } from 'react';
+import { useAuth } from '@/lib/auth-context';
 
 const HOLD_MS = 14_000;
 
@@ -23,6 +24,8 @@ const AiFilledContext = createContext<AiFilledCtx | null>(null);
 
 /** Đánh dấu ô AI vừa điền — highlight tạm + xóa khi user sửa. */
 export function AiFilledFieldsProvider({ children }: { children: ReactNode }) {
+  const { projectCode } = useAuth();
+  const prevProjectRef = useRef(projectCode);
   const [keys, setKeys] = useState<Set<string>>(() => new Set());
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -54,6 +57,12 @@ export function AiFilledFieldsProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => () => clearTimer(), []);
+
+  useEffect(() => {
+    if (prevProjectRef.current === projectCode) return;
+    prevProjectRef.current = projectCode;
+    clear();
+  }, [projectCode, clear]);
 
   const value = useMemo(() => ({ keys, mark, clear }), [keys, mark, clear]);
 

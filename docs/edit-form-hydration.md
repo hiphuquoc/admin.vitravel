@@ -241,8 +241,9 @@ Query key đã có `currentProject?.code`. **Không** chỉ dựa vào `dirty` m
    - `beginFormHydration` có chạy và trả `false` lần 2 không (key phải giữ `project:entity:locale`).  
    - Query edit có `EDIT_FORM_QUERY_OPTIONS` không.
 
-3. **Sau save form không cập nhật field từ server**  
-   - Thiếu `markFormHydrationStale(hydrateKeyRef)` trong `onSuccess`.
+3. **Sau save form hiển thị lại data cũ**  
+   - `onSuccess` phải gọi `lockFormHydration(hydrateKeyRef, entityKey, locale)` — **không** `markFormHydrationStale`.  
+   - `invalidateQueries` phải dùng key scoped (`useScopedQueryKey` / `[projectCode, …]`).
 
 ---
 
@@ -258,6 +259,9 @@ Query key đã có `currentProject?.code`. **Không** chỉ dựa vào `dirty` m
 | `src/lib/editFormQuery.ts` | `EDIT_FORM_QUERY_OPTIONS` |
 | `src/components/ui/ProjectSwitcher.tsx` | UI đổi dự án + invalidate cache |
 | `src/lib/auth-context.tsx` | State `projectCode` cho UI và `useScopedQueryKey` |
+| `src/hooks/useAiFormTranslate.tsx` | Bridge AI dịch; `getSourceFields` scoped theo dự án |
+| `src/hooks/useAiFilledFields.tsx` | Badge ô AI; reset khi đổi dự án |
+| `src/components/ui/AiEnrich*.tsx` | Enrich snapshot form + `projectCode` trên API |
 
 ---
 
@@ -314,7 +318,49 @@ Gắn `X-Project-Code` từ `queryKey[0]` qua `runWithProjectScope` (`src/lib/ap
 
 ---
 
-## 14. Liên quan docs khác
+## 14. Luồng AI (enrich / dịch) — dữ liệu vào prompt
+
+### Enrich (AI chương trình / listing / lưu trú)
+
+| Bước | Nguồn dữ liệu | Ghi chú |
+|------|----------------|---------|
+| Snapshot đầu run | `getForm()` → `snapshotFormForAiRun` | Đọc form **đang mở** (kể cả chưa lưu), không đọc React Query cache |
+| Các stage tiếp theo | Biến `live` merge kết quả stage trước | Không gọi lại `getForm()` giữa chừng |
+| Request API | `fields` trong body + header `X-Project-Code` | `projectCode` từ `useAuth()` — `ai_brief` backend theo `ProjectContext` |
+
+File: `AiEnrichProgramButton`, `AiEnrichListingButton`, `AiEnrichStayButton`.
+
+### Dịch toàn trang (AI dịch)
+
+| Bước | Nguồn dữ liệu | Ghi chú |
+|------|----------------|---------|
+| Nội dung nguồn (VI) | `getSourceFields()` nếu có, else `getFields()` | `getFields` = form locale đích đang mở |
+| Fetch locale nguồn | `api.get(id, defaultLocale)` trong từng form | Tự động bọc `runWithProjectScope` trong `useRegisterAiTranslate` |
+| Áp dụng | `applyFields` → `setForm` | Chưa lưu DB — user bấm Lưu |
+
+File: `useAiFormTranslate.tsx`, `AiTranslatePageButton.tsx`, `ResourceFormPage` + các form đa ngôn ngữ.
+
+### Không bị cache/hydration ghi đè sau AI
+
+- Form edit tắt `refetchOnWindowFocus` (`EDIT_FORM_QUERY_OPTIONS`).
+- `beginFormHydration` chỉ chạy khi key `project:entity:locale` đổi — chạy AI **không** đổi key.
+- Sau **Lưu**: `lockFormHydration` giữ form (kể cả nếu chạy AI enrich tiếp trên form đã khóa).
+
+### Đổi dự án khi đang dùng AI
+
+- `AiFilledFieldsProvider` xóa badge highlight khi `projectCode` đổi.
+- `useRegisterAiTranslate` re-register khi `projectCode` đổi; `getSourceFields` luôn scope đúng dự án.
+
+### Checklist AI
+
+- [ ] Enrich: `getForm` truyền closure đọc state form hiện tại (không đọc `detailQuery.data`).
+- [ ] Dịch: có `getSourceFields` fetch locale mặc định khi edit bản dịch (`structureLocked`).
+- [ ] Không cần bọc `runWithProjectScope` thủ công trong từng `getSourceFields` — hook translate đã bọc.
+- [ ] Request `/ai/*` truyền `projectCode` vào `apiRequest` để `ai_brief` đúng dự án.
+
+---
+
+## 15. Liên quan docs khác
 
 - Multi-project API / header: `vitravel.dev/docs/11-multi-project-architecture.md`
 - Admin API tổng quan: `vitravel.dev/docs/10-admin-console-api.md`

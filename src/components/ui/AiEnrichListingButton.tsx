@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { Sparkles, Loader2 } from 'lucide-react';
 import toast, { notify } from '@/lib/toast';
 import { apiRequest } from '@/lib/api';
+import { useAuth } from '@/lib/auth-context';
 import { useAiFilledActions } from '@/hooks/useAiFilledFields';
 import { useFormActionsLocked } from '@/hooks/useStructureLock';
 import { useBlockingProgress } from '@/components/ui/BlockingProgress';
@@ -68,6 +69,7 @@ export function AiEnrichListingButton({
   className,
   label = 'AI trang listing',
 }: Props) {
+  const { projectCode } = useAuth();
   const actionsLocked = useFormActionsLocked();
   const progress = useBlockingProgress();
   const { mark: markAiFilled } = useAiFilledActions();
@@ -124,6 +126,7 @@ export function AiEnrichListingButton({
         const payload = buildListingEnrichPayload(live, entityType, stage);
         const res = await apiRequest<EnrichResponse>('/ai/enrich-listing-page', {
           method: 'POST',
+          projectCode,
           body: {
             title: String(payload.title || title),
             entity_type: entityType,

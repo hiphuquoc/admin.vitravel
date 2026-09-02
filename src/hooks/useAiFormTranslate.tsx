@@ -10,6 +10,8 @@ import {
   useState,
   type ReactNode,
 } from 'react';
+import { useAuth } from '@/lib/auth-context';
+import { runWithProjectScope } from '@/lib/apiScope';
 
 export type AiTranslateFields = Record<string, unknown>;
 
@@ -118,6 +120,9 @@ export function useRegisterAiTranslate(opts: {
   const ctx = useContext(AiFormTranslateContext);
   const register = ctx?.register;
   const unregister = ctx?.unregister;
+  const { projectCode } = useAuth();
+  const projectCodeRef = useRef(projectCode);
+  projectCodeRef.current = projectCode;
 
   const getRef = useRef(opts.getFields);
   const getSourceRef = useRef(opts.getSourceFields);
@@ -142,7 +147,8 @@ export function useRegisterAiTranslate(opts: {
       targetLocale,
       getFields: () => getRef.current(),
       getSourceFields: getSourceRef.current
-        ? async () => getSourceRef.current!()
+        ? async () =>
+            runWithProjectScope(projectCodeRef.current ?? '_', () => getSourceRef.current!())
         : undefined,
       applyFields: (f) => applyRef.current(f),
     });
@@ -150,7 +156,7 @@ export function useRegisterAiTranslate(opts: {
     return () => {
       unregister();
     };
-  }, [register, unregister, enabled, entityType, sourceLocale, targetLocale]);
+  }, [register, unregister, enabled, entityType, sourceLocale, targetLocale, projectCode]);
 }
 
 export function useAiTranslateBridge(): AiTranslateBridge | null {

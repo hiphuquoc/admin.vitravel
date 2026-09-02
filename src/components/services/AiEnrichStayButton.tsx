@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { Sparkles, Loader2 } from 'lucide-react';
 import toast from '@/lib/toast';
 import { apiRequest } from '@/lib/api';
+import { useAuth } from '@/lib/auth-context';
 import { useAiFilledActions } from '@/hooks/useAiFilledFields';
 import { applyAiFilledMarks } from '@/lib/aiTranslateFields';
 import { useFormActionsLocked } from '@/hooks/useStructureLock';
@@ -50,6 +51,7 @@ function resolveStages(selected: string[]): StayEnrichStage[] {
 }
 
 export function AiEnrichStayButton({ locale, getForm, applyFields, className }: Props) {
+  const { projectCode } = useAuth();
   const actionsLocked = useFormActionsLocked();
   const progress = useBlockingProgress();
   const { mark: markAiFilled } = useAiFilledActions();
@@ -101,6 +103,7 @@ export function AiEnrichStayButton({ locale, getForm, applyFields, className }: 
 
         const res = await apiRequest<EnrichResponse>('/ai/enrich-stay', {
           method: 'POST',
+          projectCode,
           body: {
             locale,
             stage,

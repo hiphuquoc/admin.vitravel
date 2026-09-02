@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { Languages, Loader2 } from 'lucide-react';
 import toast from '@/lib/toast';
 import { apiRequest } from '@/lib/api';
+import { useAuth } from '@/lib/auth-context';
 import { useAiTranslateBridge } from '@/hooks/useAiFormTranslate';
 import { useAiFilledActions } from '@/hooks/useAiFilledFields';
 import { applyAiFilledMarks } from '@/lib/aiTranslateFields';
@@ -21,6 +22,7 @@ type TranslateResponse = {
 
 /** Nút AI dịch toàn trang — chỉ hiện khi đang sửa bản dịch (≠ locale mặc định). */
 export function AiTranslatePageButton({ className }: { className?: string }) {
+  const { projectCode } = useAuth();
   const structureLocked = useStructureLocked();
   const actionsLocked = useFormActionsLocked();
   const bridge = useAiTranslateBridge();
@@ -77,6 +79,7 @@ export function AiTranslatePageButton({ className }: { className?: string }) {
 
       const res = await apiRequest<TranslateResponse>('/ai/translate-page', {
         method: 'POST',
+        projectCode,
         body: {
           source_locale: bridge.sourceLocale,
           target_locale: bridge.targetLocale,
