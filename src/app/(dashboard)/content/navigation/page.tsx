@@ -6,9 +6,13 @@ import { Info, LayoutList, Menu } from 'lucide-react';
 import toast from '@/lib/toast';
 import { useAuth } from '@/lib/auth-context';
 import { navigationMenuApi } from '@/lib/services';
-import { isScopedQueryForProject } from '@/lib/apiScope';
 import { useEditLocale } from '@/hooks/useEditLocale';
-import { useResetFormOnProjectChange } from '@/hooks/useFormHydration';
+import {
+  beginFormHydration,
+  lockFormHydration,
+  shouldHydrateScopedQuery,
+  useResetFormOnProjectChange,
+} from '@/hooks/useFormHydration';
 import { createScopedQueryFn, useScopedQueryKey } from '@/hooks/useScopedQueryKey';
 import { PageHeader } from '@/components/ui/Page';
 import { LocaleSwitcher } from '@/components/ui/LocaleSwitcher';
@@ -105,13 +109,15 @@ export default function NavigationMenuPage() {
   const { locale, setLocale } = useEditLocale();
   const [items, setItems] = useState<NavItem[]>([]);
   const snapshot = useRef('');
-  const scopeRef = useRef<string | null>(null);
+  const hydrateKeyRef = useRef<string | null>(null);
 
   const navQueryKey = useScopedQueryKey('navigation-menu', locale);
 
   const { data, isLoading } = useQuery({
     queryKey: navQueryKey,
     queryFn: createScopedQueryFn(() => navigationMenuApi.get(locale)),
+    refetchOnWindowFocus: false,
+    refetchInterval: false,
   });
 
   const languages = asLocaleOptions(data?.languages) ?? ([] as LocaleOption[]);
@@ -127,11 +133,12 @@ export default function NavigationMenuPage() {
     setItems([]);
     snapshot.current = '';
   }, []);
-  useResetFormOnProjectChange(scopeRef, resetForm);
+  useResetFormOnProjectChange(hydrateKeyRef, resetForm);
 
   useEffect(() => {
     if (!data) return;
-    if (!isScopedQueryForProject(navQueryKey, projectCode)) return;
+    if (!shouldHydrateScopedQuery(navQueryKey, projectCode)) return;
+    if (!beginFormHydration(hydrateKeyRef, 'navigation-menu', locale)) return;
     const rows = ((data.items as NavItem[]) || []).map((row) => ({
       ...row,
       hub_value: row.hub_value || catalogKeyForItem(row),
@@ -139,7 +146,7 @@ export default function NavigationMenuPage() {
     }));
     setItems(rows);
     snapshot.current = JSON.stringify(rows);
-  }, [data, navQueryKey, projectCode]);
+  }, [data, navQueryKey, projectCode, locale]);
 
   const dirty = useMemo(() => JSON.stringify(items) !== snapshot.current, [items]);
 
@@ -180,7 +187,9 @@ export default function NavigationMenuPage() {
     },
     onSuccess: async () => {
       toast.success('Đã lưu menu public.');
-      await qc.invalidateQueries({ queryKey: ['navigation-menu'] });
+      snapshot.current = JSON.stringify(items);
+      lockFormHydration(hydrateKeyRef, 'navigation-menu', locale);
+      await qc.invalidateQueries({ queryKey: navQueryKey });
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -189,7 +198,7 @@ export default function NavigationMenuPage() {
     mutationFn: () => navigationMenuApi.reset(),
     onSuccess: async () => {
       toast.success('Đã khôi phục menu mặc định từ seed.');
-      await qc.invalidateQueries({ queryKey: ['navigation-menu'] });
+      await qc.invalidateQueries({ queryKey: navQueryKey });
     },
     onError: (e: Error) => toast.error(e.message),
   });

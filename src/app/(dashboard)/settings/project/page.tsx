@@ -1,13 +1,18 @@
 'use client';
 
-import { FormEvent, useEffect, useRef, useState } from 'react';
+import { FormEvent, useCallback, useEffect, useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Sparkles } from 'lucide-react';
 import toast from '@/lib/toast';
 import { projectsApi } from '@/lib/services';
 import { useAuth } from '@/lib/auth-context';
+import {
+  beginFormHydration,
+  lockFormHydration,
+  shouldHydrateScopedQuery,
+  useResetFormOnProjectChange,
+} from '@/hooks/useFormHydration';
 import { createScopedQueryFn, useScopedQueryKey } from '@/hooks/useScopedQueryKey';
-import { isScopedQueryForProject } from '@/lib/apiScope';
 import { Textarea } from '@/components/ui/Field';
 import { PageHeader } from '@/components/ui/Page';
 import { FormFooter } from '@/components/ui/FormFooter';
@@ -21,15 +26,7 @@ export default function ProjectAiSettingsPage() {
   const qc = useQueryClient();
   const currentProject = projects.find((p) => p.code === projectCode) ?? null;
   const [aiBrief, setAiBrief] = useState('');
-  const [dirty, setDirty] = useState(false);
-  const prevProjectRef = useRef(projectCode);
-
-  useEffect(() => {
-    if (prevProjectRef.current === projectCode) return;
-    prevProjectRef.current = projectCode;
-    setDirty(false);
-    setAiBrief('');
-  }, [projectCode]);
+  const hydrateKeyRef = useRef<string | null>(null);
 
   const settingsQueryKey = useScopedQueryKey('project-settings');
 
@@ -37,21 +34,30 @@ export default function ProjectAiSettingsPage() {
     queryKey: settingsQueryKey,
     queryFn: createScopedQueryFn(() => projectsApi.settings()),
     enabled: !!projectCode,
+    refetchOnWindowFocus: false,
+    refetchInterval: false,
   });
 
+  const resetForm = useCallback(() => {
+    setAiBrief('');
+  }, []);
+  useResetFormOnProjectChange(hydrateKeyRef, resetForm);
+
   useEffect(() => {
-    if (!query.data || dirty) return;
-    if (!isScopedQueryForProject(settingsQueryKey, projectCode)) return;
+    if (!query.data) return;
+    if (!shouldHydrateScopedQuery(settingsQueryKey, projectCode)) return;
+    if (!beginFormHydration(hydrateKeyRef, 'project-settings', projectCode)) return;
     setAiBrief(query.data.ai_brief || '');
-  }, [query.data, dirty, settingsQueryKey, projectCode]);
+  }, [query.data, projectCode, settingsQueryKey]);
 
   const save = useMutation({
     mutationFn: () => projectsApi.updateSettings({ ai_brief: aiBrief.trim() }),
-    onSuccess: (data) => {
+    onSuccess: async (data) => {
       toast.success('Đã lưu bối cảnh AI dự án');
       setAiBrief(data.ai_brief || '');
-      setDirty(false);
-      void qc.invalidateQueries({ queryKey: ['project-settings'] });
+      lockFormHydration(hydrateKeyRef, 'project-settings', projectCode);
+      qc.setQueryData(settingsQueryKey, data);
+      await qc.invalidateQueries({ queryKey: settingsQueryKey });
     },
     onError: (e) => toast.error((e as Error).message),
   });
@@ -93,7 +99,6 @@ export default function ProjectAiSettingsPage() {
               value={aiBrief}
               disabled={!canEdit || !currentProject}
               onChange={(e) => {
-                setDirty(true);
                 setAiBrief(e.target.value.slice(0, AI_BRIEF_MAX));
               }}
             />

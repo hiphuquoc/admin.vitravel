@@ -167,7 +167,7 @@ Helper effect (ít dùng). Đã có `projectCode` trong dependency array.
 - [ ] `useEffect` hydrate: `beginFormHydration(hydrateKeyRef, id hoặc 'site', locale)` trước `setForm`.
 - [ ] `useResetFormOnProjectChange` + `resetForm` về `empty` (và `snapshotRef`, remount editor nếu có TipTap/epoch).
 - [ ] `onSuccess` save: `snapshotRef` + `lockFormHydration(hydrateKeyRef, …)` + `invalidateQueries` scoped key.
-- [ ] Form dùng pattern `dirty` thủ công (không qua `beginFormHydration`): **phải** reset state khi `projectCode` đổi (xem `settings/project/page.tsx`).
+- [ ] Form singleton (site, project AI brief, navigation…): cùng pattern `beginFormHydration` + `lockFormHydration` — **không** dùng flag `dirty` để chặn hydrate (sau save `dirty=false` sẽ ghi đè form bằng cache cũ).
 
 ### Trang dùng `ResourceFormPage`
 
@@ -200,20 +200,11 @@ Khi thêm form mới: grep `beginFormHydration` và đối chiếu checklist §6
 
 **File:** `src/app/(dashboard)/settings/project/page.tsx`
 
-Không dùng `useFormHydration`; dùng flag `dirty` để chặn hydrate khi user đang sửa.
+Dùng cùng pattern singleton như `settings/site/page.tsx`:
 
-Khi đổi dự án:
-
-```ts
-useEffect(() => {
-  if (prevProjectRef.current === projectCode) return;
-  prevProjectRef.current = projectCode;
-  setDirty(false);
-  setAiBrief('');
-}, [projectCode]);
-```
-
-Query key đã có `currentProject?.code`. **Không** chỉ dựa vào `dirty` mà quên reset khi đổi project.
+- `beginFormHydration(hydrateKeyRef, 'project-settings', projectCode)` trước `setAiBrief`
+- Sau save: `lockFormHydration` + `setQueryData(settingsQueryKey, data)` + `invalidateQueries({ queryKey: settingsQueryKey })`
+- **Không** dùng flag `dirty` — khi `setDirty(false)` sau save, effect hydrate chạy lại và ghi đè input bằng cache cũ (input trống / mất dữ liệu).
 
 ---
 
