@@ -3,6 +3,7 @@
 import { useEffect, useRef, type MutableRefObject } from 'react';
 import { useAuth } from '@/lib/auth-context';
 import { getFormHydrationProjectScope } from '@/lib/formHydrationScope';
+import { isScopedQueryForProject } from '@/lib/apiScope';
 
 /**
  * Chỉ hydrate form khi đổi entity (id), locale hoặc dự án — bỏ qua refetch nền trên list.
@@ -68,6 +69,14 @@ export function useResetFormOnProjectChange(
     markFormHydrationStale(hydrateKeyRef);
     onReset();
   }, [projectCode, hydrateKeyRef, onReset]);
+}
+
+/** Chỉ hydrate khi query key scoped khớp dự án đang chọn (chặn response cũ / cache lệch). */
+export function shouldHydrateScopedQuery(
+  queryKey: readonly unknown[],
+  activeProjectCode: string | null | undefined,
+): boolean {
+  return isScopedQueryForProject(queryKey, activeProjectCode);
 }
 
 /**

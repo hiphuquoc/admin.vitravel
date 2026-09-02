@@ -4,9 +4,10 @@ import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from 're
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import toast from '@/lib/toast';
 import { companyProfileApi } from '@/lib/services';
+import { useAuth } from '@/lib/auth-context';
 import { useEditLocale } from '@/hooks/useEditLocale';
-import { beginFormHydration, markFormHydrationStale, useResetFormOnProjectChange } from '@/hooks/useFormHydration';
-import { useScopedQueryKey } from '@/hooks/useScopedQueryKey';
+import { beginFormHydration, markFormHydrationStale, shouldHydrateScopedQuery, useResetFormOnProjectChange } from '@/hooks/useFormHydration';
+import { createScopedQueryFn, useScopedQueryKey } from '@/hooks/useScopedQueryKey';
 import { StructureLockProvider } from '@/hooks/useStructureLock';
 import { StructureNotice } from '@/components/ui/StructureNotice';
 import { DEFAULT_LOCALE, isDefaultLocale, type LocaleOption } from '@/lib/locale';
@@ -84,6 +85,7 @@ const empty: FormState = {
 /** Cài đặt thông tin dự án / liên hệ / social / footer (thay config/company.php). */
 export default function SiteSettingsPage() {
   const qc = useQueryClient();
+  const { projectCode } = useAuth();
   const { locale, setLocale } = useEditLocale();
   const [form, setForm] = useState<FormState>(empty);
   const snapshotRef = useRef(JSON.stringify(empty));
@@ -94,7 +96,7 @@ export default function SiteSettingsPage() {
 
   const query = useQuery({
     queryKey: siteQueryKey,
-    queryFn: () => companyProfileApi.get(locale),
+    queryFn: createScopedQueryFn(() => companyProfileApi.get(locale)),
     refetchOnWindowFocus: false,
     refetchInterval: false,
   });
@@ -107,6 +109,7 @@ export default function SiteSettingsPage() {
 
   useEffect(() => {
     if (!query.data) return;
+    if (!shouldHydrateScopedQuery(siteQueryKey, projectCode)) return;
     if (!beginFormHydration(hydrateKeyRef, 'site', locale)) return;
     const d = query.data as Record<string, unknown>;
     const next: FormState = { ...empty };
@@ -116,7 +119,7 @@ export default function SiteSettingsPage() {
     next.show_dmca_badge = d.show_dmca_badge !== false && d.show_dmca_badge !== 0;
     setForm(next);
     snapshotRef.current = JSON.stringify(next);
-  }, [query.data]);
+  }, [query.data, siteQueryKey, projectCode, locale]);
 
   const save = useMutation({
     mutationFn: () =>

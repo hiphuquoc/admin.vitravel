@@ -57,4 +57,10 @@ ADMIN_APP_URL=https://admin.vitravel.net
 
 Legacy URL trên domain public (`/he-thong/*`, `/loginAdmin`) redirect sang `ADMIN_APP_URL`.
 
+## Docs nội bộ
+
+| Chủ đề | File |
+|--------|------|
+| Form edit: chống live-reload & đổi dự án an toàn | [`docs/edit-form-hydration.md`](docs/edit-form-hydration.md) |
+
 Docs deploy: `vitravel` repo → `docs/13-deploy-aapanel-vps.md`.

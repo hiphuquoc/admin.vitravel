@@ -4,9 +4,10 @@ import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from 're
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import toast from '@/lib/toast';
 import { homeSectionsApi } from '@/lib/services';
+import { useAuth } from '@/lib/auth-context';
 import { useEditLocale } from '@/hooks/useEditLocale';
-import { beginFormHydration, markFormHydrationStale, useResetFormOnProjectChange } from '@/hooks/useFormHydration';
-import { useScopedQueryKey } from '@/hooks/useScopedQueryKey';
+import { beginFormHydration, markFormHydrationStale, shouldHydrateScopedQuery, useResetFormOnProjectChange } from '@/hooks/useFormHydration';
+import { createScopedQueryFn, useScopedQueryKey } from '@/hooks/useScopedQueryKey';
 import { StructureLockProvider, useStructureLocked } from '@/hooks/useStructureLock';
 import { useRegisterAiTranslate } from '@/hooks/useAiFormTranslate';
 import { pickTranslatableFields, mergeTranslatedFields } from '@/lib/aiTranslateFields';
@@ -364,6 +365,7 @@ function HomeSectionEditor({
 
 export default function HomeContentPage() {
   const qc = useQueryClient();
+  const { projectCode } = useAuth();
   const { locale, setLocale } = useEditLocale();
   const [sections, setSections] = useState<Section[]>([]);
   const [usps, setUsps] = useState<UspRow[]>([]);
@@ -379,7 +381,7 @@ export default function HomeContentPage() {
 
   const query = useQuery({
     queryKey: homeQueryKey,
-    queryFn: () => homeSectionsApi.get(locale),
+    queryFn: createScopedQueryFn(() => homeSectionsApi.get(locale)),
     refetchOnWindowFocus: false,
     refetchInterval: false,
   });
@@ -394,6 +396,7 @@ export default function HomeContentPage() {
 
   useEffect(() => {
     if (!query.data) return;
+    if (!shouldHydrateScopedQuery(homeQueryKey, projectCode)) return;
     if (!beginFormHydration(hydrateKeyRef, 'home', locale)) return;
     const d = query.data as Record<string, unknown>;
     const nextSections = ((d.sections as Record<string, unknown>[]) || []).map(mapSection);
@@ -423,7 +426,7 @@ export default function HomeContentPage() {
       usps: nextUsps,
       featured: nextFeatured,
     });
-  }, [query.data]);
+  }, [query.data, homeQueryKey, projectCode, locale]);
 
   const options = useMemo(
     (): FeaturedOptions => ({

@@ -5,10 +5,11 @@ import { useParams } from 'next/navigation';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ArrowLeft, LayoutTemplate } from 'lucide-react';
 import toast from '@/lib/toast';
+import { useAuth } from '@/lib/auth-context';
 import { listingHubsApi } from '@/lib/services';
 import { useEditLocale } from '@/hooks/useEditLocale';
-import { beginFormHydration, markFormHydrationStale, useResetFormOnProjectChange } from '@/hooks/useFormHydration';
-import { useScopedQueryKey } from '@/hooks/useScopedQueryKey';
+import { beginFormHydration, markFormHydrationStale, shouldHydrateScopedQuery, useResetFormOnProjectChange } from '@/hooks/useFormHydration';
+import { createScopedQueryFn, useScopedQueryKey } from '@/hooks/useScopedQueryKey';
 import { StructureLockProvider } from '@/hooks/useStructureLock';
 import { useRegisterAiTranslate } from '@/hooks/useAiFormTranslate';
 import { pickTranslatableFields, mergeTranslatedFields } from '@/lib/aiTranslateFields';
@@ -63,6 +64,7 @@ export default function ListingHubForm() {
   const params = useParams<{ hubKey: string }>();
   const hubKey = params.hubKey;
   const qc = useQueryClient();
+  const { projectCode } = useAuth();
   const { locale, setLocale } = useEditLocale();
   const [form, setForm] = useState<FormState>(empty);
   const [listingEditorEpoch, setListingEditorEpoch] = useState(0);
@@ -74,7 +76,7 @@ export default function ListingHubForm() {
 
   const query = useQuery({
     queryKey: hubQueryKey,
-    queryFn: () => listingHubsApi.get(hubKey, locale),
+    queryFn: createScopedQueryFn(() => listingHubsApi.get(hubKey, locale)),
     enabled: !!hubKey,
     refetchOnWindowFocus: false,
     refetchInterval: false,
@@ -89,6 +91,7 @@ export default function ListingHubForm() {
 
   useEffect(() => {
     if (!query.data) return;
+    if (!shouldHydrateScopedQuery(hubQueryKey, projectCode)) return;
     if (!beginFormHydration(hydrateKeyRef, hubKey, locale)) return;
     const d = query.data as Record<string, unknown>;
     const next: FormState = {
@@ -108,7 +111,7 @@ export default function ListingHubForm() {
     };
     setForm(next);
     snapshotRef.current = JSON.stringify(next);
-  }, [query.data]);
+  }, [query.data, hubQueryKey, projectCode, locale]);
 
   const save = useMutation({
     mutationFn: () =>

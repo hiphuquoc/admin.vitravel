@@ -5,8 +5,9 @@ import { FormEvent, Suspense, useCallback, useEffect, useMemo, useRef, useState 
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import toast from '@/lib/toast';
-import { languagesApi } from '@/lib/services';
+import { useAuth } from '@/lib/auth-context';
 import { useEditLocale } from '@/hooks/useEditLocale';
+import { useLanguagesOptions } from '@/hooks/useLanguagesOptions';
 import { StructureLockProvider } from '@/hooks/useStructureLock';
 import { useRegisterAiTranslate } from '@/hooks/useAiFormTranslate';
 import { pickTranslatableFields, mergeTranslatedFields } from '@/lib/aiTranslateFields';
@@ -21,8 +22,8 @@ import { FormHeadActions } from '@/components/ui/FormHeadActions';
 import { publicPageUrl } from '@/lib/publicUrl';
 import { replaceFormUrl } from '@/lib/formNavigate';
 import { asLocaleOptions, DEFAULT_LOCALE, isDefaultLocale, type LocaleOption } from '@/lib/locale';
-import { beginFormHydration, markFormHydrationStale, useResetFormOnProjectChange } from '@/hooks/useFormHydration';
-import { useScopedQueryKey } from '@/hooks/useScopedQueryKey';
+import { beginFormHydration, markFormHydrationStale, shouldHydrateScopedQuery, useResetFormOnProjectChange } from '@/hooks/useFormHydration';
+import { createScopedQueryFn, useScopedQueryKey } from '@/hooks/useScopedQueryKey';
 import { EDIT_FORM_QUERY_OPTIONS } from '@/lib/editFormQuery';
 
 type Field =
@@ -158,6 +159,7 @@ function Inner(props: Props) {
   const isNew = !id;
   const router = useRouter();
   const qc = useQueryClient();
+  const { projectCode } = useAuth();
   const { locale, setLocale } = useEditLocale();
   const [form, setForm] = useState<Record<string, unknown>>(props.empty);
   const snapshotRef = useRef(JSON.stringify(props.empty));
@@ -168,25 +170,12 @@ function Inner(props: Props) {
 
   const detailQuery = useQuery({
     queryKey: detailQueryKey,
-    queryFn: () => props.getFn(id!, locale),
+    queryFn: createScopedQueryFn(() => props.getFn(id!, locale)),
     enabled: !!id,
     ...EDIT_FORM_QUERY_OPTIONS,
   });
 
-  const languagesQuery = useQuery({
-    queryKey: ['languages-options'],
-    queryFn: async () => {
-      const res = await languagesApi.list();
-      return (res.items || []).map((l) => ({
-        code: String(l.code || ''),
-        name: String(l.name || l.code || ''),
-        name_native: String(l.name_native || ''),
-        is_default: !!l.is_default,
-      })) as LocaleOption[];
-    },
-    enabled: props.withLocale !== false,
-    staleTime: 60_000,
-  });
+  const { languages: languagesFromApi } = useLanguagesOptions(props.withLocale !== false);
 
   const resetForm = useCallback(() => {
     setForm(props.empty);
@@ -196,18 +185,18 @@ function Inner(props: Props) {
 
   useEffect(() => {
     if (!detailQuery.data || !id) return;
+    if (!shouldHydrateScopedQuery(detailQueryKey, projectCode)) return;
     if (!beginFormHydration(hydrateKeyRef, id, locale)) return;
     const mapped = props.mapDetail ? props.mapDetail(detailQuery.data) : detailQuery.data;
     const next = { ...props.empty, ...mapped };
     setForm(next);
     snapshotRef.current = JSON.stringify(next);
-  }, [detailQuery.data, id, locale]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [detailQuery.data, detailQueryKey, projectCode, id, locale]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const languages =
     asLocaleOptions(props.languagesFrom?.(detailQuery.data)) ??
     asLocaleOptions(detailQuery.data?.languages) ??
-    languagesQuery.data ??
-    [];
+    languagesFromApi;
 
   const defaultLocale =
     languages.find((l) => l.is_default)?.code ||

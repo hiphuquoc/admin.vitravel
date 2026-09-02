@@ -8,8 +8,8 @@ import clsx from 'clsx';
 import toast from '@/lib/toast';
 import { usersApi } from '@/lib/services';
 import { useAuth } from '@/lib/auth-context';
-import { beginFormHydration, markFormHydrationStale, useResetFormOnProjectChange } from '@/hooks/useFormHydration';
-import { useScopedQueryKey } from '@/hooks/useScopedQueryKey';
+import { beginFormHydration, markFormHydrationStale, shouldHydrateScopedQuery, useResetFormOnProjectChange } from '@/hooks/useFormHydration';
+import { createScopedQueryFn, useScopedQueryKey } from '@/hooks/useScopedQueryKey';
 import { Input, MultiSelect, Select, Switch } from '@/components/ui/Field';
 import { EmptyState, PageHeader } from '@/components/ui/Page';
 import { FormCluster, FormSection } from '@/components/ui/FormSection';
@@ -66,7 +66,7 @@ function FormInner() {
   const isNew = !id;
   const router = useRouter();
   const qc = useQueryClient();
-  const { can } = useAuth();
+  const { can, projectCode } = useAuth();
   const [form, setForm] = useState<FormState>(empty);
   const snapshotRef = useRef(JSON.stringify(empty));
   const hydrateKeyRef = useRef<string | null>(null);
@@ -82,7 +82,7 @@ function FormInner() {
 
   const detailQuery = useQuery({
     queryKey: detailQueryKey,
-    queryFn: () => usersApi.get(id!),
+    queryFn: createScopedQueryFn(() => usersApi.get(id!)),
     enabled: !!id && canManage,
     refetchOnWindowFocus: false,
     refetchInterval: false,
@@ -96,6 +96,7 @@ function FormInner() {
 
   useEffect(() => {
     if (!detailQuery.data) return;
+    if (!shouldHydrateScopedQuery(detailQueryKey, projectCode)) return;
     if (!beginFormHydration(hydrateKeyRef, id)) return;
     const d = detailQuery.data as UserDetail;
     const projects: ProjectRow[] = (d.projects ?? []).map((p, i) => ({
@@ -117,7 +118,7 @@ function FormInner() {
     };
     setForm(next);
     snapshotRef.current = JSON.stringify(next);
-  }, [detailQuery.data]);
+  }, [detailQuery.data, detailQueryKey, projectCode, id]);
 
   const save = useMutation({
     mutationFn: async () => {

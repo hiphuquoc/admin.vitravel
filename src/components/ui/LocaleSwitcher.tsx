@@ -1,19 +1,39 @@
 'use client';
 
+import { useRef } from 'react';
 import clsx from 'clsx';
 import { Languages } from 'lucide-react';
 import type { LocaleOption } from '@/lib/locale';
 import { useParentLocaleBlocked } from '@/hooks/useParentLocaleGate';
+import { useLanguagesOptions } from '@/hooks/useLanguagesOptions';
+
+/** Giữ tab cuối cùng khi prop tạm rỗng (query form đang tải lại). */
+function useStableLanguages(languages: LocaleOption[]): {
+  items: LocaleOption[];
+  showingStale: boolean;
+} {
+  const lastRef = useRef<LocaleOption[]>([]);
+
+  if (languages.length > 0) {
+    lastRef.current = languages;
+    return { items: languages, showingStale: false };
+  }
+
+  return {
+    items: lastRef.current,
+    showingStale: lastRef.current.length > 0,
+  };
+}
 
 export function LocaleSwitcher({
-  languages,
+  languages: languagesProp,
   value,
   onChange,
   disabled,
   hint,
   translatedLocales,
 }: {
-  languages: LocaleOption[];
+  languages?: LocaleOption[];
   value: string;
   onChange: (code: string) => void;
   disabled?: boolean;
@@ -21,15 +41,26 @@ export function LocaleSwitcher({
   /** Locale đã có bản dịch — thiếu sẽ hiện xám (vẫn chọn được để tạo) */
   translatedLocales?: string[] | null;
 }) {
-  const items = Array.isArray(languages) ? languages : [];
+  const fromProp = Array.isArray(languagesProp) ? languagesProp : [];
+  const { languages: cached, isFetching } = useLanguagesOptions();
+  const merged = fromProp.length > 0 ? fromProp : cached;
+  const { items, showingStale } = useStableLanguages(merged);
   const parentBlocked = useParentLocaleBlocked();
+
   if (!items.length) return null;
 
   const readySet =
     translatedLocales == null ? null : new Set(translatedLocales.map((c) => c.toLowerCase()));
+  const pending = showingStale || (isFetching && fromProp.length === 0);
 
   return (
-    <div className={clsx('ui-locale-switcher', disabled && 'ui-locale-switcher--disabled')}>
+    <div
+      className={clsx(
+        'ui-locale-switcher',
+        disabled && 'ui-locale-switcher--disabled',
+        pending && 'ui-locale-switcher--pending',
+      )}
+    >
       <div className="ui-locale-switcher__label">
         <Languages size={15} strokeWidth={2.2} aria-hidden />
         <span>Ngôn ngữ</span>
@@ -57,7 +88,7 @@ export function LocaleSwitcher({
                 !active && !ready && 'ui-locale-switcher__item--missing',
                 blockedActive && 'ui-locale-switcher__item--parent-blocked',
               )}
-              disabled={disabled}
+              disabled={disabled || pending}
               title={title}
               onClick={() => onChange(lang.code)}
             >

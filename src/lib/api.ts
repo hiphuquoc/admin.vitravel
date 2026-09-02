@@ -1,5 +1,6 @@
 import type { ApiErrorBody, ApiSuccessBody } from './types';
 import { setFormHydrationProjectScope } from './formHydrationScope';
+import { getActiveRequestProject } from './apiScope';
 
 const TOKEN_KEY = 'vt_admin_token';
 const USER_KEY = 'vt_admin_user';
@@ -106,6 +107,8 @@ type RequestOptions = {
   signal?: AbortSignal;
   /** Skip JSON Content-Type (FormData uploads). */
   formData?: boolean;
+  /** Ghi đè X-Project-Code (dùng trong scoped queryFn). */
+  projectCode?: string | null;
   /** Client abort after this many ms (Chrome crawler steps). */
   timeoutMs?: number;
 };
@@ -131,6 +134,7 @@ export async function apiRequest<T>(path: string, options: RequestOptions = {}):
     formData = false,
     headers: extraHeaders,
     timeoutMs,
+    projectCode: projectCodeOverride,
   } = options;
   const headers: Record<string, string> = {
     Accept: 'application/json',
@@ -144,7 +148,8 @@ export async function apiRequest<T>(path: string, options: RequestOptions = {}):
   if (auth) {
     const token = getToken();
     if (token) headers.Authorization = `Bearer ${token}`;
-    const projectCode = getProjectCode();
+    const projectCode =
+      projectCodeOverride ?? getActiveRequestProject() ?? getProjectCode();
     if (projectCode) headers['X-Project-Code'] = projectCode;
   }
 

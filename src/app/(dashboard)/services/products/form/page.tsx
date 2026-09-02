@@ -5,10 +5,11 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ArrowLeft, Wallet } from 'lucide-react';
 import toast from '@/lib/toast';
+import { useAuth } from '@/lib/auth-context';
 import { servicesApi } from '@/lib/services';
 import { useEditLocale } from '@/hooks/useEditLocale';
-import { beginFormHydration, markFormHydrationStale, useResetFormOnProjectChange } from '@/hooks/useFormHydration';
-import { useScopedQueryKey } from '@/hooks/useScopedQueryKey';
+import { beginFormHydration, markFormHydrationStale, shouldHydrateScopedQuery, useResetFormOnProjectChange } from '@/hooks/useFormHydration';
+import { createScopedQueryFn, useScopedQueryKey } from '@/hooks/useScopedQueryKey';
 import { StructureLockProvider } from '@/hooks/useStructureLock';
 import { useRegisterAiTranslate } from '@/hooks/useAiFormTranslate';
 import { pickTranslatableFields, mergeTranslatedFields } from '@/lib/aiTranslateFields';
@@ -126,6 +127,7 @@ function FormInner() {
   const isNew = !id;
   const router = useRouter();
   const qc = useQueryClient();
+  const { projectCode } = useAuth();
   const { locale, setLocale } = useEditLocale();
   const [form, setForm] = useState<FormState>({ ...empty, cluster: clusterFromUrl });
   const snapshotRef = useRef(JSON.stringify({ ...empty, cluster: clusterFromUrl }));
@@ -142,7 +144,7 @@ function FormInner() {
 
   const detailQuery = useQuery({
     queryKey: detailQueryKey,
-    queryFn: () => servicesApi.get(id!, locale),
+    queryFn: createScopedQueryFn(() => servicesApi.get(id!, locale)),
     enabled: !!id,
     refetchOnWindowFocus: false,
     refetchInterval: false,
@@ -160,6 +162,7 @@ function FormInner() {
 
   useEffect(() => {
     if (!detailQuery.data) return;
+    if (!shouldHydrateScopedQuery(detailQueryKey, projectCode)) return;
     if (!beginFormHydration(hydrateKeyRef, id, locale)) return;
     const d = detailQuery.data as Record<string, any>;
     const next: FormState = {
@@ -206,7 +209,7 @@ function FormInner() {
     };
     setForm(next);
     snapshotRef.current = JSON.stringify(next);
-  }, [detailQuery.data, locale, clusterFromUrl]);
+  }, [detailQuery.data, detailQueryKey, projectCode, locale, clusterFromUrl]);
 
   const save = useMutation({
     mutationFn: async () => {

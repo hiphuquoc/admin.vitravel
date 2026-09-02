@@ -5,9 +5,10 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import Link from 'next/link';
 import toast from '@/lib/toast';
 import { companyProfileApi } from '@/lib/services';
+import { useAuth } from '@/lib/auth-context';
 import { useEditLocale } from '@/hooks/useEditLocale';
-import { beginFormHydration, markFormHydrationStale, useResetFormOnProjectChange } from '@/hooks/useFormHydration';
-import { useScopedQueryKey } from '@/hooks/useScopedQueryKey';
+import { beginFormHydration, markFormHydrationStale, shouldHydrateScopedQuery, useResetFormOnProjectChange } from '@/hooks/useFormHydration';
+import { createScopedQueryFn, useScopedQueryKey } from '@/hooks/useScopedQueryKey';
 import { StructureLockProvider } from '@/hooks/useStructureLock';
 import { useRegisterAiTranslate } from '@/hooks/useAiFormTranslate';
 import { pickTranslatableFields, mergeTranslatedFields } from '@/lib/aiTranslateFields';
@@ -23,6 +24,7 @@ import { publicPageUrl } from '@/lib/publicUrl';
 /** Trang Về chúng tôi — nội dung CMS. Liên hệ/brand → /settings/site. */
 export default function CompanyPage() {
   const qc = useQueryClient();
+  const { projectCode } = useAuth();
   const { locale, setLocale } = useEditLocale();
   const [form, setForm] = useState<Record<string, string>>({});
   const snapshotRef = useRef('');
@@ -33,7 +35,7 @@ export default function CompanyPage() {
 
   const query = useQuery({
     queryKey: companyQueryKey,
-    queryFn: () => companyProfileApi.get(locale),
+    queryFn: createScopedQueryFn(() => companyProfileApi.get(locale)),
     refetchOnWindowFocus: false,
     refetchInterval: false,
   });
@@ -46,6 +48,7 @@ export default function CompanyPage() {
 
   useEffect(() => {
     if (!query.data) return;
+    if (!shouldHydrateScopedQuery(companyQueryKey, projectCode)) return;
     if (!beginFormHydration(hydrateKeyRef, 'company', locale)) return;
     const d = query.data as Record<string, unknown>;
     const next: Record<string, string> = {};
@@ -68,7 +71,7 @@ export default function CompanyPage() {
     }
     setForm(next);
     snapshotRef.current = JSON.stringify(next);
-  }, [query.data]);
+  }, [query.data, companyQueryKey, projectCode, locale]);
 
   const save = useMutation({
     mutationFn: () => companyProfileApi.update({ ...form, locale }),

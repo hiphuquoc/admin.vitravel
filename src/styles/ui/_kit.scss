@@ -5004,6 +5004,14 @@ button.ui-head-btn {
     pointer-events: none;
   }
 
+  &--pending {
+    pointer-events: none;
+
+    .ui-locale-switcher__list {
+      opacity: 0.72;
+    }
+  }
+
   &__label {
     display: inline-flex;
     align-items: center;

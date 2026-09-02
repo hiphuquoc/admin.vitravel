@@ -6,6 +6,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from 'react';
@@ -53,6 +54,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AdminUser | null>(null);
   const [ready, setReady] = useState(false);
   const [projectCode, setProjectCodeState] = useState<string | null>(null);
+  const projectSwitchGenRef = useRef(0);
 
   const applyProjects = useCallback((nextUser: AdminUser, preferred?: string | null) => {
     const projects = nextUser.projects ?? [];
@@ -124,23 +126,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setProjectCodeState(null);
   }, []);
 
-  const setActiveProject = useCallback(
-    (code: string) => {
-      setProjectCode(code);
-      setProjectCodeState(code);
-      void authApi
-        .me()
-        .then((me) => {
-          const token = getToken();
-          if (token) setSession(token, me);
-          applyProjects(me, code);
-        })
-        .catch(() => {
-          /* keep local project switch even if me fails */
-        });
-    },
-    [applyProjects],
-  );
+  const setActiveProject = useCallback((code: string) => {
+    const gen = ++projectSwitchGenRef.current;
+    setProjectCode(code);
+    setProjectCodeState(code);
+    void authApi
+      .me()
+      .then((me) => {
+        if (projectSwitchGenRef.current !== gen) return;
+        const token = getToken();
+        if (token) setSession(token, me);
+        setUser(mergeUser(me, me.projects ?? []));
+      })
+      .catch(() => {
+        /* keep local project switch even if me fails */
+      });
+  }, []);
 
   const can = useCallback(
     (permission: string) => checkPermission(user, permission, projectCode),

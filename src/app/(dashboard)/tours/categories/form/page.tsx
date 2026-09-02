@@ -5,10 +5,11 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ArrowLeft, FolderTree } from 'lucide-react';
 import toast from '@/lib/toast';
+import { useAuth } from '@/lib/auth-context';
 import { categoriesApi } from '@/lib/services';
 import { useEditLocale } from '@/hooks/useEditLocale';
-import { beginFormHydration, markFormHydrationStale, useResetFormOnProjectChange } from '@/hooks/useFormHydration';
-import { useScopedQueryKey } from '@/hooks/useScopedQueryKey';
+import { beginFormHydration, markFormHydrationStale, shouldHydrateScopedQuery, useResetFormOnProjectChange } from '@/hooks/useFormHydration';
+import { createScopedQueryFn, useScopedQueryKey } from '@/hooks/useScopedQueryKey';
 import { StructureLockProvider } from '@/hooks/useStructureLock';
 import { useRegisterAiTranslate } from '@/hooks/useAiFormTranslate';
 import { pickTranslatableFields, mergeTranslatedFields } from '@/lib/aiTranslateFields';
@@ -81,6 +82,7 @@ function CategoryFormInner() {
   const isNew = !id;
   const router = useRouter();
   const qc = useQueryClient();
+  const { projectCode } = useAuth();
   const { locale, setLocale } = useEditLocale();
   const [form, setForm] = useState<FormState>(empty);
   const [slugTouched, setSlugTouched] = useState(false);
@@ -98,7 +100,7 @@ function CategoryFormInner() {
 
   const detailQuery = useQuery({
     queryKey: detailQueryKey,
-    queryFn: () => categoriesApi.get(id!, locale),
+    queryFn: createScopedQueryFn(() => categoriesApi.get(id!, locale)),
     enabled: !!id,
     refetchOnWindowFocus: false,
     refetchInterval: false,
@@ -112,6 +114,7 @@ function CategoryFormInner() {
 
   useEffect(() => {
     if (!detailQuery.data) return;
+    if (!shouldHydrateScopedQuery(detailQueryKey, projectCode)) return;
     if (!beginFormHydration(hydrateKeyRef, id, locale)) return;
     const d = detailQuery.data;
     const next: FormState = {
@@ -135,7 +138,7 @@ function CategoryFormInner() {
     setForm(next);
     snapshotRef.current = JSON.stringify(next);
     setSlugTouched(true);
-  }, [detailQuery.data, locale]);
+  }, [detailQuery.data, detailQueryKey, projectCode, locale]);
 
   const save = useMutation({
     mutationFn: async () => {

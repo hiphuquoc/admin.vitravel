@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ArrowLeft, Images, MessageSquareQuote, Plus } from 'lucide-react';
 import toast from '@/lib/toast';
+import { useAuth } from '@/lib/auth-context';
 import { reviewsApi } from '@/lib/services';
 import { Input, Select, Switch, Textarea } from '@/components/ui/Field';
 import { PageHeader } from '@/components/ui/Page';
@@ -16,8 +17,8 @@ import { HeadActions, HeadSecondary } from '@/components/ui/HeadActions';
 import { Repeater } from '@/components/ui/Repeater';
 import { Button } from '@/components/ui/Button';
 import { replaceFormUrl } from '@/lib/formNavigate';
-import { beginFormHydration, markFormHydrationStale, useResetFormOnProjectChange } from '@/hooks/useFormHydration';
-import { useScopedQueryKey } from '@/hooks/useScopedQueryKey';
+import { beginFormHydration, markFormHydrationStale, shouldHydrateScopedQuery, useResetFormOnProjectChange } from '@/hooks/useFormHydration';
+import { createScopedQueryFn, useScopedQueryKey } from '@/hooks/useScopedQueryKey';
 
 type GalleryRow = { key: string; image: ImageFieldState };
 
@@ -72,6 +73,7 @@ function FormInner() {
   const isNew = !id;
   const router = useRouter();
   const qc = useQueryClient();
+  const { projectCode } = useAuth();
   const [form, setForm] = useState<FormState>(empty);
   const snapshotRef = useRef(JSON.stringify(empty));
   const hydrateKeyRef = useRef<string | null>(null);
@@ -85,7 +87,7 @@ function FormInner() {
 
   const detailQuery = useQuery({
     queryKey: detailQueryKey,
-    queryFn: () => reviewsApi.get(id!),
+    queryFn: createScopedQueryFn(() => reviewsApi.get(id!)),
     enabled: !!id,
     refetchOnWindowFocus: false,
     refetchInterval: false,
@@ -99,6 +101,7 @@ function FormInner() {
 
   useEffect(() => {
     if (!detailQuery.data) return;
+    if (!shouldHydrateScopedQuery(detailQueryKey, projectCode)) return;
     if (!beginFormHydration(hydrateKeyRef, id)) return;
     const d = detailQuery.data as Record<string, unknown>;
     const gallery = Array.isArray(d.gallery)
@@ -126,7 +129,7 @@ function FormInner() {
     };
     setForm(next);
     snapshotRef.current = JSON.stringify(next);
-  }, [detailQuery.data]);
+  }, [detailQuery.data, detailQueryKey, projectCode, id]);
 
   const save = useMutation({
     mutationFn: async () => {

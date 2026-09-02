@@ -5,10 +5,11 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Anchor, ArrowLeft } from 'lucide-react';
 import toast from '@/lib/toast';
+import { useAuth } from '@/lib/auth-context';
 import { cruiseTypesApi } from '@/lib/services';
 import { useEditLocale } from '@/hooks/useEditLocale';
-import { beginFormHydration, markFormHydrationStale, useResetFormOnProjectChange } from '@/hooks/useFormHydration';
-import { useScopedQueryKey } from '@/hooks/useScopedQueryKey';
+import { beginFormHydration, markFormHydrationStale, shouldHydrateScopedQuery, useResetFormOnProjectChange } from '@/hooks/useFormHydration';
+import { createScopedQueryFn, useScopedQueryKey } from '@/hooks/useScopedQueryKey';
 import { StructureLockProvider } from '@/hooks/useStructureLock';
 import { useRegisterAiTranslate } from '@/hooks/useAiFormTranslate';
 import { pickTranslatableFields, mergeTranslatedFields } from '@/lib/aiTranslateFields';
@@ -79,6 +80,7 @@ function CruiseTypeFormInner() {
   const isNew = !id;
   const router = useRouter();
   const qc = useQueryClient();
+  const { projectCode } = useAuth();
   const { locale, setLocale } = useEditLocale();
   const [form, setForm] = useState<FormState>(empty);
   const [slugTouched, setSlugTouched] = useState(false);
@@ -96,7 +98,7 @@ function CruiseTypeFormInner() {
 
   const detailQuery = useQuery({
     queryKey: detailQueryKey,
-    queryFn: () => cruiseTypesApi.get(id!, locale),
+    queryFn: createScopedQueryFn(() => cruiseTypesApi.get(id!, locale)),
     enabled: !!id,
     refetchOnWindowFocus: false,
     refetchInterval: false,
@@ -110,6 +112,7 @@ function CruiseTypeFormInner() {
 
   useEffect(() => {
     if (!detailQuery.data) return;
+    if (!shouldHydrateScopedQuery(detailQueryKey, projectCode)) return;
     if (!beginFormHydration(hydrateKeyRef, id, locale)) return;
     const d = detailQuery.data;
     const next: FormState = {
@@ -136,7 +139,7 @@ function CruiseTypeFormInner() {
     setForm(next);
     snapshotRef.current = JSON.stringify(next);
     setSlugTouched(true);
-  }, [detailQuery.data, locale, metaQuery.data?.hub_seo_id]);
+  }, [detailQuery.data, detailQueryKey, projectCode, locale, metaQuery.data?.hub_seo_id]);
 
   useEffect(() => {
     if (!isNew || form.seo_parent_id || !metaQuery.data?.hub_seo_id) return;

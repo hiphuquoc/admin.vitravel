@@ -6,6 +6,8 @@ import { Sparkles } from 'lucide-react';
 import toast from '@/lib/toast';
 import { projectsApi } from '@/lib/services';
 import { useAuth } from '@/lib/auth-context';
+import { createScopedQueryFn, useScopedQueryKey } from '@/hooks/useScopedQueryKey';
+import { isScopedQueryForProject } from '@/lib/apiScope';
 import { Textarea } from '@/components/ui/Field';
 import { PageHeader } from '@/components/ui/Page';
 import { FormFooter } from '@/components/ui/FormFooter';
@@ -29,16 +31,19 @@ export default function ProjectAiSettingsPage() {
     setAiBrief('');
   }, [projectCode]);
 
+  const settingsQueryKey = useScopedQueryKey('project-settings');
+
   const query = useQuery({
-    queryKey: ['project-settings', currentProject?.code],
-    queryFn: () => projectsApi.settings(),
-    enabled: !!currentProject?.code,
+    queryKey: settingsQueryKey,
+    queryFn: createScopedQueryFn(() => projectsApi.settings()),
+    enabled: !!projectCode,
   });
 
   useEffect(() => {
     if (!query.data || dirty) return;
+    if (!isScopedQueryForProject(settingsQueryKey, projectCode)) return;
     setAiBrief(query.data.ai_brief || '');
-  }, [query.data, dirty]);
+  }, [query.data, dirty, settingsQueryKey, projectCode]);
 
   const save = useMutation({
     mutationFn: () => projectsApi.updateSettings({ ai_brief: aiBrief.trim() }),

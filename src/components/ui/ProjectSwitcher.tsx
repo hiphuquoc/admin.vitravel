@@ -37,7 +37,14 @@ export function ProjectSwitcher() {
         onChange={(code) => {
           if (!code || code === projectCode) return;
           setActiveProject(code);
-          void qc.invalidateQueries();
+          void qc.cancelQueries({
+            predicate: (query) =>
+              !query.queryKey.some((part) => part === 'languages-options'),
+          });
+          void qc.invalidateQueries({
+            predicate: (query) =>
+              !query.queryKey.some((part) => part === 'languages-options'),
+          });
           const name = projects.find((p) => p.code === code)?.name ?? code;
           toast.success(`Đang xem: ${name}`);
         }}

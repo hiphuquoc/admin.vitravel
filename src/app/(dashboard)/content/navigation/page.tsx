@@ -4,10 +4,12 @@ import { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Info, LayoutList, Menu } from 'lucide-react';
 import toast from '@/lib/toast';
+import { useAuth } from '@/lib/auth-context';
 import { navigationMenuApi } from '@/lib/services';
+import { isScopedQueryForProject } from '@/lib/apiScope';
 import { useEditLocale } from '@/hooks/useEditLocale';
 import { useResetFormOnProjectChange } from '@/hooks/useFormHydration';
-import { useScopedQueryKey } from '@/hooks/useScopedQueryKey';
+import { createScopedQueryFn, useScopedQueryKey } from '@/hooks/useScopedQueryKey';
 import { PageHeader } from '@/components/ui/Page';
 import { LocaleSwitcher } from '@/components/ui/LocaleSwitcher';
 import { FormFooter } from '@/components/ui/FormFooter';
@@ -99,6 +101,7 @@ function normalizeCategorySlugsForSave(
 
 export default function NavigationMenuPage() {
   const qc = useQueryClient();
+  const { projectCode } = useAuth();
   const { locale, setLocale } = useEditLocale();
   const [items, setItems] = useState<NavItem[]>([]);
   const snapshot = useRef('');
@@ -108,7 +111,7 @@ export default function NavigationMenuPage() {
 
   const { data, isLoading } = useQuery({
     queryKey: navQueryKey,
-    queryFn: () => navigationMenuApi.get(locale),
+    queryFn: createScopedQueryFn(() => navigationMenuApi.get(locale)),
   });
 
   const languages = asLocaleOptions(data?.languages) ?? ([] as LocaleOption[]);
@@ -128,6 +131,7 @@ export default function NavigationMenuPage() {
 
   useEffect(() => {
     if (!data) return;
+    if (!isScopedQueryForProject(navQueryKey, projectCode)) return;
     const rows = ((data.items as NavItem[]) || []).map((row) => ({
       ...row,
       hub_value: row.hub_value || catalogKeyForItem(row),
@@ -135,7 +139,7 @@ export default function NavigationMenuPage() {
     }));
     setItems(rows);
     snapshot.current = JSON.stringify(rows);
-  }, [data]);
+  }, [data, navQueryKey, projectCode]);
 
   const dirty = useMemo(() => JSON.stringify(items) !== snapshot.current, [items]);
 

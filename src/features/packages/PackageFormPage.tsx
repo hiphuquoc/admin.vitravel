@@ -14,6 +14,7 @@ import {
   Wallet,
 } from 'lucide-react';
 import toast from '@/lib/toast';
+import { useAuth } from '@/lib/auth-context';
 import {
   categoriesApi,
   cruisePackagesApi,
@@ -23,8 +24,8 @@ import {
 } from '@/lib/services';
 import type { PackageFaq, PackageItineraryDay } from '@/lib/types';
 import { useEditLocale } from '@/hooks/useEditLocale';
-import { beginFormHydration, markFormHydrationStale, useResetFormOnProjectChange } from '@/hooks/useFormHydration';
-import { useScopedQueryKey } from '@/hooks/useScopedQueryKey';
+import { beginFormHydration, markFormHydrationStale, shouldHydrateScopedQuery, useResetFormOnProjectChange } from '@/hooks/useFormHydration';
+import { createScopedQueryFn, useScopedQueryKey } from '@/hooks/useScopedQueryKey';
 import { EDIT_FORM_QUERY_OPTIONS } from '@/lib/editFormQuery';
 import { StructureLockProvider } from '@/hooks/useStructureLock';
 import { useRegisterAiTranslate } from '@/hooks/useAiFormTranslate';
@@ -219,6 +220,7 @@ function PackageFormInner({ kind }: { kind: PackageType }) {
   const isNew = !id;
   const router = useRouter();
   const qc = useQueryClient();
+  const { projectCode } = useAuth();
   const { locale, setLocale } = useEditLocale();
   const [form, setForm] = useState<FormState>(empty);
   const snapshotRef = useRef<string>(JSON.stringify(empty));
@@ -252,7 +254,7 @@ function PackageFormInner({ kind }: { kind: PackageType }) {
 
   const detailQuery = useQuery({
     queryKey: detailQueryKey,
-    queryFn: () => api.get(id!, locale),
+    queryFn: createScopedQueryFn(() => api.get(id!, locale)),
     enabled: !!id,
     ...EDIT_FORM_QUERY_OPTIONS,
   });
@@ -268,6 +270,7 @@ function PackageFormInner({ kind }: { kind: PackageType }) {
 
   useEffect(() => {
     if (!detailQuery.data) return;
+    if (!shouldHydrateScopedQuery(detailQueryKey, projectCode)) return;
     if (!beginFormHydration(hydrateKeyRef, id, locale)) return;
     const d = detailQuery.data;
     const next: FormState = {
@@ -332,7 +335,7 @@ function PackageFormInner({ kind }: { kind: PackageType }) {
     };
     setForm(next);
     snapshotRef.current = JSON.stringify(next);
-  }, [detailQuery.data, locale]);
+  }, [detailQuery.data, detailQueryKey, projectCode, locale]);
 
   const badgeOptions = useMemo(() => {
     const base = metaQuery.data?.discount_badges ?? [
