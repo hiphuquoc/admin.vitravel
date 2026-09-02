@@ -1,6 +1,6 @@
 import type { ApiErrorBody, ApiSuccessBody } from './types';
 import { setFormHydrationProjectScope } from './formHydrationScope';
-import { getActiveRequestProject } from './apiScope';
+import { getScopedFetchProjectCode } from './apiScope';
 
 const TOKEN_KEY = 'vt_admin_token';
 const USER_KEY = 'vt_admin_user';
@@ -148,8 +148,10 @@ export async function apiRequest<T>(path: string, options: RequestOptions = {}):
   if (auth) {
     const token = getToken();
     if (token) headers.Authorization = `Bearer ${token}`;
+    const isRead = method === 'GET' || method === 'HEAD';
     const projectCode =
-      projectCodeOverride ?? getActiveRequestProject() ?? getProjectCode();
+      projectCodeOverride ??
+      (isRead ? getScopedFetchProjectCode() ?? getProjectCode() : getProjectCode());
     if (projectCode) headers['X-Project-Code'] = projectCode;
   }
 

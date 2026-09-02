@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, type MutableRefObject } from 'react';
+import { useEffect, useLayoutEffect, useRef, type MutableRefObject } from 'react';
 import { useAuth } from '@/lib/auth-context';
 import { getFormHydrationProjectScope } from '@/lib/formHydrationScope';
 import { isScopedQueryForProject } from '@/lib/apiScope';
@@ -78,7 +78,8 @@ export function useResetFormOnProjectChange(
   const { projectCode } = useAuth();
   const prevProjectRef = useRef(projectCode);
 
-  useEffect(() => {
+  // useLayoutEffect: xóa form trước paint — tránh 1 frame hiển thị/lưu nhầm data dự án cũ.
+  useLayoutEffect(() => {
     if (prevProjectRef.current === projectCode) return;
     prevProjectRef.current = projectCode;
     markFormHydrationStale(hydrateKeyRef);

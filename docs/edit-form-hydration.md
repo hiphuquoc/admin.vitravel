@@ -245,7 +245,8 @@ Dùng cùng pattern singleton như `settings/site/page.tsx`:
 | `src/lib/formHydrationScope.ts` | Module ref `currentProjectCode` |
 | `src/lib/api.ts` | `setProjectCode` / `clearSession` → sync scope |
 | `src/hooks/useFormHydration.ts` | `beginFormHydration`, `markFormHydrationStale`, `useResetFormOnProjectChange` |
-| `src/lib/apiScope.ts` | `runWithProjectScope`, `isScopedQueryForProject` |
+| `src/lib/apiScope.ts` | `runWithProjectScope`, `getScopedFetchProjectCode`, `isScopedQueryForProject` |
+| `src/hooks/useProjectScope.ts` | `useProjectMutationScope`, `assertProjectResponse` |
 | `src/hooks/useScopedQueryKey.ts` | `useScopedQueryKey`, `createScopedQueryFn` |
 | `src/lib/editFormQuery.ts` | `EDIT_FORM_QUERY_OPTIONS` |
 | `src/components/ui/ProjectSwitcher.tsx` | UI đổi dự án + invalidate cache |
@@ -286,7 +287,14 @@ Dùng cùng pattern singleton như `settings/site/page.tsx`:
 | 2 | `setActiveProject` → `authApi.me()` không hủy request cũ | `applyProjects(me, codeCũ)` đặt lại project đã bỏ chọn |
 | 3 | Hydrate form khi `query.data` tới nhưng không khớp `projectCode` hiện tại | Form nạp data lệch |
 
+| 4 | Mutation (PUT/POST) kế thừa `scopedFetchProjectCode` từ query cũ còn in-flight | Lưu nhầm sang dự án trước (header `X-Project-Code` sai) |
+
 ### Giải pháp
+
+**`apiRequest`** (`src/lib/api.ts`) — tách scope đọc/ghi:
+
+- **GET/HEAD** (scoped query): `projectCodeOverride ?? scopedFetchProjectCode ?? getProjectCode()`
+- **PUT/POST/PATCH/DELETE** (mutation): `projectCodeOverride ?? getProjectCode()` — **không** đọc scope fetch đang chạy
 
 **`createScopedQueryFn`** (`src/hooks/useScopedQueryKey.ts`) — bọc mọi scoped `queryFn`:
 
@@ -306,6 +314,8 @@ Gắn `X-Project-Code` từ `queryKey[0]` qua `runWithProjectScope` (`src/lib/ap
 
 - [ ] Scoped query **bắt buộc** `createScopedQueryFn`, không `queryFn: () => api...` thuần.
 - [ ] Hydrate effect có `shouldHydrateScopedQuery` + deps gồm `queryKey` và `projectCode`.
+- [ ] Mutation form singleton: `useProjectMutationScope().withProject(...)` hoặc truyền `projectCode` vào `apiRequest` — không dựa scope query in-flight.
+- [ ] `useResetFormOnProjectChange` dùng `useLayoutEffect` (reset trước paint khi đổi dự án).
 
 ---
 
