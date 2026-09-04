@@ -10,6 +10,7 @@ import type {
   CruiseTypeOption,
   Country,
   CountryDetail,
+  DeleteImpact,
   MediaFolder,
   MediaImage,
   Option,
@@ -128,6 +129,8 @@ export const categoriesApi = {
   update: (id: number, body: Record<string, unknown>) =>
     apiRequest<TourCategoryDetail>(`/tour-categories/${id}`, { method: 'PUT', body }),
   remove: (id: number) => apiRequest<null>(`/tour-categories/${id}`, { method: 'DELETE' }),
+  deleteImpact: (id: number, locale = 'vi') =>
+    apiRequest<DeleteImpact>(`/tour-categories/${id}/delete-impact`, { query: { locale } }),
   meta: (locale = 'vi') =>
     apiRequest<{
       countries: Option[];
@@ -150,6 +153,8 @@ export const themesApi = {
   update: (id: number, body: Record<string, unknown>) =>
     apiRequest<TravelStyleDetail>(`/travel-styles/${id}`, { method: 'PUT', body }),
   remove: (id: number) => apiRequest<null>(`/travel-styles/${id}`, { method: 'DELETE' }),
+  deleteImpact: (id: number, locale = 'vi') =>
+    apiRequest<DeleteImpact>(`/travel-styles/${id}/delete-impact`, { query: { locale } }),
 };
 
 export const cruiseTypesApi = {
@@ -164,6 +169,8 @@ export const cruiseTypesApi = {
   update: (id: number, body: Record<string, unknown>) =>
     apiRequest<CruiseTypeDetail>(`/cruise-types/${id}`, { method: 'PUT', body }),
   remove: (id: number) => apiRequest<null>(`/cruise-types/${id}`, { method: 'DELETE' }),
+  deleteImpact: (id: number, locale = 'vi') =>
+    apiRequest<DeleteImpact>(`/cruise-types/${id}/delete-impact`, { query: { locale } }),
   meta: (locale = 'vi') =>
     apiRequest<{
       languages: LocaleOption[];
@@ -183,6 +190,8 @@ export const countriesApi = {
   update: (id: number, body: Record<string, unknown>) =>
     apiRequest<CountryDetail>(`/countries/${id}`, { method: 'PUT', body }),
   remove: (id: number) => apiRequest<null>(`/countries/${id}`, { method: 'DELETE' }),
+  deleteImpact: (id: number, locale = 'vi') =>
+    apiRequest<DeleteImpact>(`/countries/${id}/delete-impact`, { query: { locale } }),
   setActive: (id: number, is_active: boolean) =>
     apiRequest<{ id: number; is_active: boolean }>(`/countries/${id}/active`, {
       method: 'PATCH',
@@ -208,6 +217,8 @@ export const serviceCategoriesApi = {
   update: (id: number, body: Record<string, unknown>) =>
     apiRequest<ServiceCategoryDetail>(`/service-categories/${id}`, { method: 'PUT', body }),
   remove: (id: number) => apiRequest<null>(`/service-categories/${id}`, { method: 'DELETE' }),
+  deleteImpact: (id: number, locale = 'vi') =>
+    apiRequest<DeleteImpact>(`/service-categories/${id}/delete-impact`, { query: { locale } }),
   meta: (locale = 'vi', cluster?: string) =>
     apiRequest<{
       languages: LocaleOption[];
@@ -691,6 +702,8 @@ export const blogCategoriesApi = {
   ...crudApi<CrudRecord>('/blog-categories'),
   meta: (locale = 'vi') =>
     apiRequest<Record<string, unknown>>('/blog-categories/meta', { query: { locale } }),
+  deleteImpact: (id: number, locale = 'vi') =>
+    apiRequest<DeleteImpact>(`/blog-categories/${id}/delete-impact`, { query: { locale } }),
 };
 
 export const articlesApi = {
@@ -808,4 +821,6 @@ export const priceGuestTypesApi = {
   update: (id: number, body: Record<string, unknown>) =>
     apiRequest<PriceGuestType>(`/price-guest-types/${id}`, { method: 'PUT', body }),
   remove: (id: number) => apiRequest<null>(`/price-guest-types/${id}`, { method: 'DELETE' }),
+  deleteImpact: (id: number, locale = 'vi') =>
+    apiRequest<DeleteImpact>(`/price-guest-types/${id}/delete-impact`, { query: { locale } }),
 };

@@ -21,6 +21,8 @@ import {
   EntityThumb,
 } from '@/components/ui/EntityList';
 import { publicPageUrl } from '@/lib/publicUrl';
+import { useDeleteWithImpact } from '@/hooks/useDeleteWithImpact';
+import type { DeleteImpact } from '@/lib/types';
 
 type Row = Record<string, unknown> & { id: number };
 
@@ -39,6 +41,10 @@ type Props = {
     meta?: { current_page: number; last_page: number; per_page: number; total: number };
   }>;
   removeFn?: (id: number) => Promise<unknown>;
+  /** Khi có: hiện modal liệt kê trang liên kết trước khi xóa. */
+  deleteImpactFn?: (id: number) => Promise<DeleteImpact>;
+  /** Nhãn entity trong modal (vd. «điểm đến»). */
+  deleteEntityLabel?: string;
   titleOf: (row: Row) => string;
   /** Slug hiển thị trên list; nếu có → tự gắn link mở trang public (giống list tour). */
   slugOf?: (row: Row) => string | null | undefined;
@@ -72,6 +78,8 @@ export function ResourceListPage({
   unitLabel = 'mục',
   listFn,
   removeFn,
+  deleteImpactFn,
+  deleteEntityLabel,
   titleOf,
   slugOf,
   publicHrefOf,
@@ -107,6 +115,14 @@ export function ResourceListPage({
       }),
   });
 
+  const linkedDelete = useDeleteWithImpact({
+    queryKey,
+    removeFn: removeFn || (async () => undefined),
+    impactFn: deleteImpactFn || (async () => ({ linked_count: 0, groups: [], warning: '' })),
+    entityLabel: deleteEntityLabel || unitLabel,
+    successMessage: 'Đã xóa',
+  });
+
   const remove = useMutation({
     mutationFn: (id: number) => (removeFn ? removeFn(id) : Promise.resolve()),
     onSuccess: async () => {
@@ -128,6 +144,7 @@ export function ResourceListPage({
 
   const items = listQuery.data?.items ?? [];
   const meta = listQuery.data?.meta;
+  const useImpactModal = !!removeFn && !!deleteImpactFn;
 
   return (
     <div>
@@ -266,6 +283,13 @@ export function ResourceListPage({
                 onDelete={
                   removeFn
                     ? () => {
+                        if (useImpactModal) {
+                          linkedDelete.requestDelete({
+                            id: row.id,
+                            title: titleOf(row),
+                          });
+                          return;
+                        }
                         if (confirm('Xóa mục này?')) remove.mutate(row.id);
                       }
                     : undefined
@@ -275,6 +299,8 @@ export function ResourceListPage({
           );
         })}
       </EntityList>
+
+      {useImpactModal ? linkedDelete.modal : null}
     </div>
   );
 }

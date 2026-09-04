@@ -440,6 +440,29 @@ export type PriceGuestType = {
   rates_count?: number;
 };
 
+/** Kết quả GET …/delete-impact — danh sách trang đang liên kết trước khi xóa. */
+export type DeleteImpactItem = {
+  id: number;
+  title: string;
+  type: string;
+  admin_href?: string | null;
+  slug?: string | null;
+};
+
+export type DeleteImpactGroup = {
+  key: string;
+  label: string;
+  action_hint?: string;
+  total: number;
+  items: DeleteImpactItem[];
+};
+
+export type DeleteImpact = {
+  linked_count: number;
+  groups: DeleteImpactGroup[];
+  warning: string;
+};
+
 export type PriceTableAdmin = {
   id?: number | null;
   currency: string;

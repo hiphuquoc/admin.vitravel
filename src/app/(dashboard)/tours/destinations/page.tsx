@@ -14,8 +14,10 @@ export default function DestinationsPage() {
       editHref={(id) => `/tours/destinations/form/?id=${id}`}
       createLabel="Thêm điểm đến"
       unitLabel="điểm đến"
+      deleteEntityLabel="điểm đến"
       listFn={(q) => countriesApi.list(q)}
       removeFn={(id) => countriesApi.remove(id)}
+      deleteImpactFn={(id) => countriesApi.deleteImpact(id)}
       titleOf={(r) => String(r.name || r.code || `#${r.id}`)}
       slugOf={(r) => (r.seo as { slug_full?: string } | undefined)?.slug_full}
       thumbOf={(r) => {

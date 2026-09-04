@@ -2,9 +2,8 @@
 
 import Link from 'next/link';
 import { useMemo, useState } from 'react';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { Plus } from 'lucide-react';
-import toast from '@/lib/toast';
 import { cruiseTypesApi } from '@/lib/services';
 import { Button } from '@/components/ui/Button';
 import { Input, Select } from '@/components/ui/Field';
@@ -21,9 +20,9 @@ import {
   EntityThumb,
 } from '@/components/ui/EntityList';
 import { publicPageUrl } from '@/lib/publicUrl';
+import { useDeleteWithImpact } from '@/hooks/useDeleteWithImpact';
 
 export default function CruiseTypesPage() {
-  const qc = useQueryClient();
   const [search, setSearch] = useState('');
   const [isActive, setIsActive] = useState('');
   const [page, setPage] = useState(1);
@@ -45,14 +44,12 @@ export default function CruiseTypesPage() {
       }),
   });
 
-  const remove = useMutation({
-    mutationFn: (id: number) => cruiseTypesApi.remove(id),
-    onSuccess: async () => {
-      toast.success('Đã xóa danh mục du thuyền');
-      await qc.invalidateQueries({ queryKey: ['cruise-types'] });
-      await qc.invalidateQueries({ queryKey: ['packages-meta'] });
-    },
-    onError: (err: Error) => toast.error(err.message),
+  const linkedDelete = useDeleteWithImpact({
+    queryKey: ['cruise-types', 'packages-meta'],
+    removeFn: (id) => cruiseTypesApi.remove(id),
+    impactFn: (id) => cruiseTypesApi.deleteImpact(id),
+    entityLabel: 'danh mục du thuyền',
+    successMessage: 'Đã xóa danh mục du thuyền',
   });
 
   const items = listQuery.data?.items ?? [];
@@ -167,12 +164,17 @@ export default function CruiseTypesPage() {
             <EntityActions
               editHref={`/cruises/types/form/?id=${item.id}`}
               onDelete={() => {
-                if (confirm('Xóa danh mục du thuyền này?')) remove.mutate(item.id);
+                linkedDelete.requestDelete({
+                  id: item.id,
+                  title: item.name || `#${item.id}`,
+                });
               }}
             />
           </EntityRow>
         ))}
       </EntityList>
+
+      {linkedDelete.modal}
 
       {meta && meta.last_page > 1 ? (
         <EntityPagination

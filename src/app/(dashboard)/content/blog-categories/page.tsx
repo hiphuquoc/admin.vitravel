@@ -15,6 +15,8 @@ export default function BlogCategoriesPage() {
       createLabel="Thêm danh mục"
       listFn={(q) => blogCategoriesApi.list(q)}
       removeFn={(id) => blogCategoriesApi.remove(id)}
+      deleteImpactFn={(id) => blogCategoriesApi.deleteImpact(id)}
+      deleteEntityLabel="danh mục blog"
       titleOf={(r) => String(r.name || `#${r.id}`)}
       slugOf={(r) => (r.seo as { slug_full?: string } | undefined)?.slug_full}
       badgeOf={(r) => (

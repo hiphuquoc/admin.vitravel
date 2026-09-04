@@ -18,6 +18,7 @@ import {
 } from '@/components/ui/EntityList';
 import { LocaleSwitcher } from '@/components/ui/LocaleSwitcher';
 import { metaApi } from '@/lib/services';
+import { useDeleteWithImpact } from '@/hooks/useDeleteWithImpact';
 
 export default function PriceGuestTypesPage() {
   const qc = useQueryClient();
@@ -42,6 +43,14 @@ export default function PriceGuestTypesPage() {
     () => items.find((row) => row.id === editingId) || null,
     [items, editingId],
   );
+
+  const linkedDelete = useDeleteWithImpact({
+    queryKey: 'price-guest-types',
+    removeFn: (id) => priceGuestTypesApi.remove(id),
+    impactFn: (id) => priceGuestTypesApi.deleteImpact(id, locale),
+    entityLabel: 'đối tượng khách',
+    successMessage: 'Đã xóa',
+  });
 
   const save = useMutation({
     mutationFn: async () => {
@@ -77,15 +86,6 @@ export default function PriceGuestTypesPage() {
         locale,
       }),
     onSuccess: async () => {
-      await qc.invalidateQueries({ queryKey: ['price-guest-types'] });
-    },
-    onError: (err: Error) => toast.error(err.message),
-  });
-
-  const remove = useMutation({
-    mutationFn: (id: number) => priceGuestTypesApi.remove(id),
-    onSuccess: async () => {
-      toast.success('Đã xóa');
       await qc.invalidateQueries({ queryKey: ['price-guest-types'] });
     },
     onError: (err: Error) => toast.error(err.message),
@@ -187,7 +187,10 @@ export default function PriceGuestTypesPage() {
             />
             <EntityActions
               onDelete={() => {
-                if (confirm('Xóa đối tượng khách này?')) remove.mutate(row.id);
+                linkedDelete.requestDelete({
+                  id: row.id,
+                  title: row.name || row.code || `#${row.id}`,
+                });
               }}
             >
               <button
@@ -213,6 +216,7 @@ export default function PriceGuestTypesPage() {
           </EntityRow>
         ))}
       </EntityList>
+      {linkedDelete.modal}
     </div>
   );
 }

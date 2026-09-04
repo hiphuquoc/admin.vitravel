@@ -155,11 +155,6 @@ function FormInner() {
     snapshotRef.current = JSON.stringify(next);
   }, [detailQuery.data, projectCode, locale, metaQuery.data?.hub_seo_id]);
 
-  useEffect(() => {
-    if (!isNew || form.seo_parent_id || !metaQuery.data?.hub_seo_id) return;
-    setForm((prev) => ({ ...prev, seo_parent_id: String(metaQuery.data!.hub_seo_id) }));
-  }, [isNew, form.seo_parent_id, metaQuery.data?.hub_seo_id]);
-
   const save = useMutation({
     mutationFn: async () => {
       const slug = form.seo_slug || slugify(form.name);

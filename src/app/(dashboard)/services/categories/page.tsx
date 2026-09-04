@@ -50,6 +50,8 @@ function Inner() {
       extraQuery={cluster ? { cluster } : undefined}
       listFn={(q) => serviceCategoriesApi.list(q)}
       removeFn={(id) => serviceCategoriesApi.remove(id)}
+      deleteImpactFn={(id) => serviceCategoriesApi.deleteImpact(id)}
+      deleteEntityLabel="danh mục dịch vụ"
       titleOf={(r) => String(r.name || `#${r.id}`)}
       slugOf={(r) => (r.seo as { slug_full?: string } | undefined)?.slug_full}
       thumbOf={(r) => {

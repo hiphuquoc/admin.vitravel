@@ -2,9 +2,8 @@
 
 import Link from 'next/link';
 import { useMemo, useState } from 'react';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { Plus } from 'lucide-react';
-import toast from '@/lib/toast';
 import { themesApi } from '@/lib/services';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Field';
@@ -20,9 +19,9 @@ import {
   EntityPagination,
   EntityRow,
 } from '@/components/ui/EntityList';
+import { useDeleteWithImpact } from '@/hooks/useDeleteWithImpact';
 
 export default function TourThemesPage() {
-  const qc = useQueryClient();
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
   const [perPage, setPerPage] = useState(DEFAULT_LIST_PER_PAGE);
@@ -42,13 +41,12 @@ export default function TourThemesPage() {
       }),
   });
 
-  const remove = useMutation({
-    mutationFn: (id: number) => themesApi.remove(id),
-    onSuccess: async () => {
-      toast.success('Đã xóa chủ đề');
-      await qc.invalidateQueries({ queryKey: ['travel-styles'] });
-    },
-    onError: (err: Error) => toast.error(err.message),
+  const linkedDelete = useDeleteWithImpact({
+    queryKey: 'travel-styles',
+    removeFn: (id) => themesApi.remove(id),
+    impactFn: (id) => themesApi.deleteImpact(id),
+    entityLabel: 'phong cách du lịch',
+    successMessage: 'Đã xóa phong cách',
   });
 
   const items = listQuery.data?.items ?? [];
@@ -147,12 +145,17 @@ export default function TourThemesPage() {
             <EntityActions
               editHref={`/tours/themes/form/?id=${item.id}`}
               onDelete={() => {
-                if (confirm('Xóa phong cách này?')) remove.mutate(item.id);
+                linkedDelete.requestDelete({
+                  id: item.id,
+                  title: item.name || item.code || `#${item.id}`,
+                });
               }}
             />
           </EntityRow>
         ))}
       </EntityList>
+
+      {linkedDelete.modal}
 
       {meta && meta.last_page > 1 ? (
         <EntityPagination
