@@ -38,9 +38,15 @@ export default function DashboardPage() {
       icon: Ship,
     },
     {
-      href: '/tours/destinations/',
+      href: '/tours/categories/',
       title: 'Danh mục Tour',
-      desc: 'Quốc gia / điểm đến.',
+      desc: 'Thời lượng / vùng / tính chất.',
+      icon: FolderTree,
+    },
+    {
+      href: '/tours/destinations/',
+      title: 'Điểm đến',
+      desc: 'Khu vực / điểm đến tour.',
       icon: Globe2,
     },
     {
@@ -49,7 +55,6 @@ export default function DashboardPage() {
       desc: 'Phân nhóm cruise.',
       icon: Anchor,
     },
-    { href: '/tours/categories/', title: 'Chủ đề Tour', desc: 'Nhóm lọc tour.', icon: FolderTree },
     ...serviceCards,
     {
       href: '/content/slides/',

@@ -158,7 +158,7 @@ export function PackageListPage({ kind }: { kind: PackageType }) {
         </div>
         <div className="ui-toolbar__select">
           <Select
-            label="Quốc gia"
+            label="Điểm đến"
             value={countryId}
             onChange={(v) => {
               setPage(1);

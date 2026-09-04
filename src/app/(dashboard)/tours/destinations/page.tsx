@@ -6,14 +6,14 @@ import { ResourceListPage } from '@/components/admin/ResourceListPage';
 export default function DestinationsPage() {
   return (
     <ResourceListPage
-      eyebrow="Tour"
-      title="Danh mục Tour"
-      description="Quốc gia / điểm đến — SEO parent cho chi tiết tour."
+      eyebrow="Thông tin"
+      title="Điểm đến"
+      description="Khu vực / điểm đến — trang cha listing tour. Không gắn vé tàu / máy bay."
       queryKey="countries"
       createHref="/tours/destinations/form/"
       editHref={(id) => `/tours/destinations/form/?id=${id}`}
-      createLabel="Thêm danh mục"
-      unitLabel="quốc gia"
+      createLabel="Thêm điểm đến"
+      unitLabel="điểm đến"
       listFn={(q) => countriesApi.list(q)}
       removeFn={(id) => countriesApi.remove(id)}
       titleOf={(r) => String(r.name || r.code || `#${r.id}`)}

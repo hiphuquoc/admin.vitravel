@@ -615,7 +615,7 @@ function PackageFormInner({ kind }: { kind: PackageType }) {
           description={
             isCruise
               ? 'Chọn hub Du thuyền hoặc loại du thuyền → URL = {parent}/{slug}.'
-              : 'Chọn hub Tour, điểm đến hoặc chủ đề tour → URL = {parent}/{slug}.'
+              : 'Chọn hub Tour, điểm đến hoặc danh mục tour → URL = {parent}/{slug}.'
           }
         />
 
@@ -643,7 +643,7 @@ function PackageFormInner({ kind }: { kind: PackageType }) {
 
           <FormCluster title="Điểm đến & trạng thái">
             <Select
-              label="Quốc gia"
+              label="Điểm đến"
               value={form.country_id}
               onChange={(v) => {
                 set('country_id', v);
@@ -654,7 +654,7 @@ function PackageFormInner({ kind }: { kind: PackageType }) {
                   if (parent) set('seo_parent_id', String(parent.id));
                 }
               }}
-              placeholder="Chọn quốc gia"
+              placeholder="Chọn điểm đến"
               searchable
               required
               disabled={structureLocked}
@@ -1015,7 +1015,7 @@ function PackageFormInner({ kind }: { kind: PackageType }) {
           description={
             isCruise
               ? 'Gắn phong cách du lịch (tuỳ chọn).'
-              : 'Gắn chủ đề & danh mục để lọc trên site.'
+              : 'Gắn danh mục tour để lọc trên site.'
           }
         >
           <MultiSelect
@@ -1037,7 +1037,7 @@ function PackageFormInner({ kind }: { kind: PackageType }) {
           />
           {!isCruise ? (
             <MultiSelect
-              label="Chủ đề Tour"
+              label="Danh mục Tour"
               placeholder="Chọn một hoặc nhiều danh mục…"
               searchable
               disabled={structureLocked}

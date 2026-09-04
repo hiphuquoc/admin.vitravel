@@ -247,9 +247,9 @@ function FormInner() {
     <div>
       <PageHeader
         eyebrow="Tour"
-        title={isNew ? 'Thêm danh mục Tour' : 'Chỉnh sửa danh mục Tour'}
+        title={isNew ? 'Thêm điểm đến' : 'Chỉnh sửa điểm đến'}
         id={isNew ? null : id}
-        description={isNew ? 'Quốc gia / điểm đến — SEO parent cho gói tour.' : undefined}
+        description={isNew ? 'Khu vực / điểm đến — trang cha listing tour.' : undefined}
         actions={
           <HeadActions
             primary={
@@ -315,8 +315,8 @@ function FormInner() {
 
           <FormSection
             icon={Globe2}
-            title="Thông tin danh mục"
-            description="Quốc gia / điểm đến — SEO parent cho gói tour."
+            title="Thông tin điểm đến"
+            description="Khu vực / điểm đến — trang cha listing tour (không gắn vé tàu / máy bay)."
           >
             <FormCluster title="Định danh">
               <Input

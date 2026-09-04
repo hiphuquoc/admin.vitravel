@@ -224,12 +224,6 @@ export const NAV_GROUPS: NavGroup[] = [
       { label: 'Chi tiết Tour', href: '/tours/packages/', icon: Map, match: '/tours/packages' },
       {
         label: 'Danh mục Tour',
-        href: '/tours/destinations/',
-        icon: Globe2,
-        match: '/tours/destinations',
-      },
-      {
-        label: 'Chủ đề Tour',
         href: '/tours/categories/',
         icon: FolderTree,
         match: '/tours/categories',
@@ -304,8 +298,15 @@ export const NAV_GROUPS: NavGroup[] = [
   })),
   {
     key: 'content',
-    title: 'Nội dung',
+    title: 'Nội dung / Thông tin',
     items: [
+      {
+        label: 'Điểm đến',
+        pageTitle: 'Điểm đến / khu vực',
+        href: '/tours/destinations/',
+        icon: Globe2,
+        match: '/tours/destinations',
+      },
       {
         label: 'Slider trang chủ',
         href: '/content/slides/',

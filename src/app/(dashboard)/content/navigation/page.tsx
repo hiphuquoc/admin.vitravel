@@ -389,7 +389,7 @@ export default function NavigationMenuPage() {
                       </FormCluster>
                     ) : (
                       <p className="text-sm text-gray-500">
-                        Chưa có danh mục CMS cho hub này — thêm quốc gia / loại du thuyền / danh mục dịch vụ trước.
+                        Chưa có danh mục CMS cho hub này — thêm danh mục tour / loại du thuyền / danh mục dịch vụ trước.
                       </p>
                     )}
 

@@ -69,15 +69,15 @@ export default function TourCategoriesPage() {
     <div>
       <PageHeader
         eyebrow="Tour"
-        title="Chủ đề Tour"
-        description="Phân nhóm tour theo thời lượng, vùng miền, chủ đề và combo."
+        title="Danh mục Tour"
+        description="Phân nhóm tour theo thời lượng, vùng miền và tính chất — dùng cho listing & drawer menu Tour."
         actions={
           <HeadActions
             primary={
               <HeadCta
                 href="/tours/categories/form/"
                 icon={Plus}
-                title="Thêm chủ đề"
+                title="Thêm danh mục"
                 subtitle="Nhóm lọc tour"
               />
             }
@@ -111,7 +111,7 @@ export default function TourCategoriesPage() {
         </div>
         <div className="ui-toolbar__select">
           <Select
-            label="Quốc gia"
+            label="Điểm đến"
             value={countryId}
             onChange={(v) => {
               setPage(1);
@@ -146,13 +146,13 @@ export default function TourCategoriesPage() {
         empty={
           items.length === 0 ? (
             <EmptyState
-              title="Chưa có chủ đề"
-              description="Tạo chủ đề để tổ chức gói tour."
+              title="Chưa có danh mục"
+              description="Tạo danh mục để tổ chức gói tour."
               action={
                 <Link href="/tours/categories/form/">
                   <Button>
                     <Plus size={16} />
-                    Thêm chủ đề
+                    Thêm danh mục
                   </Button>
                 </Link>
               }

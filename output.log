@@ -13,10 +13,21 @@ nohup: ignoring input
    - Environments: .env.local
 
  ✓ Starting...
- ✓ Ready in 2.6s
- ○ Compiling /services/stay-crawler/create ...
- ✓ Compiled /services/stay-crawler/create in 3.6s (913 modules)
- GET /services/stay-crawler/create 200 in 4360ms
- ○ Compiling /services/stay-crawler/detail ...
- ✓ Compiled /services/stay-crawler/detail in 1908ms (946 modules)
- GET /services/stay-crawler/detail/?id=43&live=true 200 in 2134ms
+ ✓ Ready in 3.2s
+ ○ Compiling / ...
+ ✓ Compiled / in 8.2s (909 modules)
+ GET / 200 in 10645ms
+ ○ Compiling /login ...
+ ✓ Compiled /login in 2.4s (1727 modules)
+ GET /login?next=%2F 200 in 2568ms
+ GET / 200 in 104ms
+ GET / 200 in 59ms
+ GET / 200 in 317ms
+ ✓ Compiled in 1594ms (1727 modules)
+ ✓ Compiled in 749ms (1727 modules)
+ ✓ Compiled in 1036ms (1727 modules)
+ ○ Compiling /tours/destinations ...
+ ✓ Compiled /tours/destinations in 10.7s (1752 modules)
+ GET /tours/destinations/ 200 in 12322ms
+ GET /login/?next=%2Ftours%2Fdestinations%2F 200 in 1632ms
+ GET /login/?next=%2Ftours%2Fdestinations%2F 200 in 396ms

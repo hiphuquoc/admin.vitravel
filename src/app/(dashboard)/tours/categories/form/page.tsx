@@ -223,9 +223,9 @@ function CategoryFormInner() {
     <div>
         <PageHeader
           eyebrow="Tour"
-        title={isNew ? 'Thêm chủ đề' : 'Chỉnh sửa chủ đề'}
+        title={isNew ? 'Thêm danh mục Tour' : 'Chỉnh sửa danh mục Tour'}
         id={isNew ? null : id}
-        description={isNew ? 'Tạo chủ đề lọc cho listing tour.' : undefined}
+        description={isNew ? 'Tạo danh mục lọc cho listing & drawer menu Tour.' : undefined}
         actions={
           <HeadActions
             primary={
@@ -280,13 +280,13 @@ function CategoryFormInner() {
             setForm((prev) => ({ ...prev, [key]: v }));
           }}
           parents={metaQuery.data?.seo_parents ?? []}
-          description="Chọn hub Tour làm trang cha (không chọn điểm đến / chủ đề khác — cùng cấp). URL = {hub}/{slug}."
+          description="Chọn hub Tour làm trang cha (không chọn điểm đến / danh mục khác — cùng cấp). URL = {hub}/{slug}."
         />
 
         <FormSection
           icon={FolderTree}
-          title="Thông tin chủ đề"
-          description="Tên, loại và gắn quốc gia (select đơn)."
+          title="Thông tin danh mục"
+          description="Tên, loại và gắn điểm đến (select đơn)."
         >
           <FormCluster title="Định danh">
             <Input
@@ -313,7 +313,7 @@ function CategoryFormInner() {
               }))}
             />
             <Select
-              label="Quốc gia (lọc taxonomy, không phải trang cha SEO)"
+              label="Điểm đến (lọc taxonomy, không phải trang cha SEO)"
               value={form.country_id}
               onChange={(v) => set('country_id', v)}
               placeholder="Không gắn quốc gia"
