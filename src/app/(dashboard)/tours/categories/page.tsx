@@ -68,7 +68,7 @@ export default function TourCategoriesPage() {
       <PageHeader
         eyebrow="Tour"
         title="Danh mục Tour"
-        description="Phân nhóm tour theo thời lượng, vùng miền và tính chất — dùng cho listing & drawer menu Tour."
+        description="Drawer menu Tour lấy đủ danh mục type theme + duration (đang bật, có điểm đến). Region / package không vào drawer — chúng là trang theo khu vực hoặc gói combo."
         actions={
           <HeadActions
             primary={
@@ -173,6 +173,15 @@ export default function TourCategoriesPage() {
               badges={
                 <>
                   <Badge tone="primary">{item.type_label}</Badge>
+                  {item.type === 'theme' || item.type === 'duration' ? (
+                    <Badge tone="success" title="Hiện trong mega menu Tour trên site">
+                      Menu Tour
+                    </Badge>
+                  ) : item.type === 'region' ? (
+                    <Badge tone="neutral" title="Trang listing theo điểm đến — không vào drawer menu Tour">
+                      Theo điểm đến
+                    </Badge>
+                  ) : null}
                   <Badge tone={item.is_active ? 'success' : 'neutral'}>
                     {item.is_active ? 'Đang bật' : 'Tắt'}
                   </Badge>

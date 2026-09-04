@@ -139,11 +139,7 @@ function FormInner() {
       seo_title: d.seo?.title || '',
       seo_description: d.seo?.description || '',
       seo_keywords: d.seo?.keywords || '',
-      seo_parent_id: d.seo?.parent_id
-        ? String(d.seo.parent_id)
-        : metaQuery.data?.hub_seo_id
-          ? String(metaQuery.data.hub_seo_id)
-          : '',
+      seo_parent_id: d.seo?.parent_id ? String(d.seo.parent_id) : '',
       rating_aggregate_star:
         d.seo?.rating_aggregate_star != null ? String(d.seo.rating_aggregate_star) : '',
       rating_aggregate_count:
@@ -151,9 +147,16 @@ function FormInner() {
       banner: emptyImageField(d.banner),
       listing_banner: emptyImageField(d.listing_banner),
     };
+    // Điểm đến = trang gốc: bỏ parent không còn trong danh sách chọn (vd. hub tour cũ).
+    const allowedParents = new Set(
+      (metaQuery.data?.seo_parents ?? []).map((p) => String(p.id)),
+    );
+    if (next.seo_parent_id && !allowedParents.has(next.seo_parent_id)) {
+      next.seo_parent_id = '';
+    }
     setForm(next);
     snapshotRef.current = JSON.stringify(next);
-  }, [detailQuery.data, projectCode, locale, metaQuery.data?.hub_seo_id]);
+  }, [detailQuery.data, projectCode, locale, metaQuery.data?.seo_parents]);
 
   const save = useMutation({
     mutationFn: async () => {
@@ -244,7 +247,7 @@ function FormInner() {
         eyebrow="Tour"
         title={isNew ? 'Thêm điểm đến' : 'Chỉnh sửa điểm đến'}
         id={isNew ? null : id}
-        description={isNew ? 'Khu vực / điểm đến — trang cha listing tour.' : undefined}
+        description={isNew ? 'Khu vực / điểm đến — URL gốc /{slug}, không gắn hub Tour.' : undefined}
         actions={
           <HeadActions
             primary={
@@ -303,15 +306,16 @@ function FormInner() {
             }}
             onChange={(key, v) => setForm((prev) => ({ ...prev, [key]: v }))}
             parents={metaQuery.data?.seo_parents ?? []}
+            showParent={(metaQuery.data?.seo_parents ?? []).length > 0}
             locale={locale}
             defaultLocale={defaultLocale}
-            description="Chọn Hub Tour làm trang cha → URL = /tours/{slug}."
+            description="Điểm đến là trang gốc: URL = /{slug}. Không gắn dưới hub Tour."
           />
 
           <FormSection
             icon={Globe2}
             title="Thông tin điểm đến"
-            description="Khu vực / điểm đến — trang cha listing tour (không gắn vé tàu / máy bay)."
+            description="Khu vực / điểm đến — trang SEO gốc (không gắn vé tàu / máy bay)."
           >
             <FormCluster title="Định danh">
               <Input

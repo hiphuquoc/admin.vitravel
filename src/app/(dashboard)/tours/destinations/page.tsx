@@ -8,7 +8,7 @@ export default function DestinationsPage() {
     <ResourceListPage
       eyebrow="Thông tin"
       title="Điểm đến"
-      description="Khu vực / điểm đến — trang cha listing tour. Không gắn vé tàu / máy bay."
+      description="Khu vực / điểm đến — URL gốc /{slug}. Không gắn vé tàu / máy bay."
       queryKey="countries"
       createHref="/tours/destinations/form/"
       editHref={(id) => `/tours/destinations/form/?id=${id}`}

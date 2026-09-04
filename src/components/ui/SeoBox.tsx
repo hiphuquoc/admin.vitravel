@@ -42,15 +42,15 @@ type Props = {
 
 function normalizeParentSlug(parentSlugFull?: string | null): string {
   const raw = (parentSlugFull || '').trim().replace(/\/+$/, '');
-  if (!raw) return '/';
+  if (!raw) return '';
   return raw.startsWith('/') ? raw : `/${raw}`;
 }
 
 function buildSlugFullPreview(slug: string, parentSlugFull?: string | null): string {
   const segment = slug.trim().replace(/^\/+/, '');
-  if (!segment) return normalizeParentSlug(parentSlugFull) === '/' ? '—' : normalizeParentSlug(parentSlugFull);
   const prefix = normalizeParentSlug(parentSlugFull);
-  if (prefix === '/') return `/${segment}`;
+  if (!segment) return prefix || '—';
+  if (!prefix) return `/${segment}`;
   return `${prefix}/${segment}`;
 }
 
@@ -64,17 +64,16 @@ function UrlParentPrefix({
   publicHref: string | null;
 }) {
   const parentPath = normalizeParentSlug(parentSlugFull);
-  const empty = !parentSlugFull?.trim();
+  // Không chọn trang cha → không hiện badge /.../ hay /.
+  if (!parentPath) return null;
+
   const className = clsx(
     'ui-field__url-prefix',
     publicHref && 'ui-field__url-prefix--link',
-    empty && 'ui-field__url-prefix--empty',
   );
   const title = publicHref
     ? `Mở trang public: ${fullPreview}`
-    : empty
-      ? 'Chưa chọn trang cha — URL gốc'
-      : `Tiền tố URL cha: ${parentPath}`;
+    : `Tiền tố URL cha: ${parentPath}`;
 
   const inner = (
     <>
@@ -122,11 +121,13 @@ export function SeoBox({
 }: Props) {
   const structureLocked = useStructureLocked();
   const selectedParent = parents.find((p) => String(p.id) === String(value.seo_parent_id || ''));
-  const preview = buildSlugFullPreview(value.seo_slug || '', selectedParent?.slug_full);
+  const parentSlugFull = selectedParent?.slug_full ?? null;
+  const preview = buildSlugFullPreview(value.seo_slug || '', parentSlugFull);
   const publicHref =
     value.seo_slug.trim()
       ? publicPageUrl(preview === '—' ? null : preview, locale, defaultLocale)
       : null;
+  const showPrefix = Boolean(showParent && parentSlugFull?.trim());
 
   return (
     <FormSection
@@ -180,9 +181,9 @@ export function SeoBox({
           }
           placeholder="vd: thai-lan-10-ngay"
           leading={
-            showParent ? (
+            showPrefix ? (
               <UrlParentPrefix
-                parentSlugFull={selectedParent?.slug_full}
+                parentSlugFull={parentSlugFull}
                 fullPreview={preview}
                 publicHref={publicHref}
               />
