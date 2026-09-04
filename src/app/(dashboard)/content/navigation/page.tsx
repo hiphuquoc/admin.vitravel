@@ -395,8 +395,14 @@ export default function NavigationMenuPage() {
 
                     <Switch
                       label="Hiển thị trên header"
-                      checked={row.is_active}
-                      onChange={(checked) => update({ is_active: checked })}
+                      checked={row.is_active !== false && row.show_in_main_bar !== false}
+                      onChange={(checked) =>
+                        update({
+                          is_active: checked,
+                          show_in_main_bar: checked,
+                          config: { ...(row.config ?? {}), show_in_main_bar: checked },
+                        })
+                      }
                     />
                   </div>
                 );
