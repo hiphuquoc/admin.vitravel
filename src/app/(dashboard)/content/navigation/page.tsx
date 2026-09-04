@@ -17,8 +17,8 @@ import { createScopedQueryFn, useScopedQueryKey } from '@/hooks/useScopedQueryKe
 import { PageHeader } from '@/components/ui/Page';
 import { LocaleSwitcher } from '@/components/ui/LocaleSwitcher';
 import { FormFooter } from '@/components/ui/FormFooter';
-import { FormSection, FormCluster } from '@/components/ui/FormSection';
-import { Input, Switch, Textarea, Select } from '@/components/ui/Field';
+import { FormSection } from '@/components/ui/FormSection';
+import { Input, Switch, Select } from '@/components/ui/Field';
 import { Button } from '@/components/ui/Button';
 import { Repeater } from '@/components/ui/Repeater';
 import { StructureLockProvider } from '@/hooks/useStructureLock';
@@ -308,7 +308,7 @@ export default function NavigationMenuPage() {
           <FormSection
             icon={Menu}
             title="Thanh menu chính"
-            description="Mỗi mục = một nhãn trên header. Chọn hub tương ứng, đặt tên hiển thị và tick danh mục con trong drawer."
+            description="Mỗi mục = một nhãn trên header. Sắp xếp bằng nút bên trái; chỉnh hub, nhãn và danh mục drawer bên trong."
           >
             <Repeater
               items={mainItems}
@@ -334,16 +334,43 @@ export default function NavigationMenuPage() {
                 const catalogKey = catalogKeyForItem(row);
                 const categories = categoryCatalog[catalogKey] ?? [];
                 const hubValue = row.hub_value || catalogKey;
+                const visible =
+                  row.is_active !== false && row.show_in_main_bar !== false;
+                const selectedCount = categories.filter((cat) =>
+                  isCategoryChecked(row, cat.slug),
+                ).length;
 
                 return (
-                  <div className="flex flex-col gap-4">
-                    <FormCluster cols={2}>
+                  <div className="nav-menu-editor">
+                    <div className="nav-menu-editor__primary">
                       <Select
                         label="Hub / loại menu"
                         options={hubSelectOptions}
                         value={hubValue}
                         onChange={(value) => applyHub(row, value, update)}
                       />
+                      <div className="nav-menu-editor__visibility">
+                        <span className="nav-menu-editor__visibility-label">
+                          Trên header
+                        </span>
+                        <Switch
+                          label={visible ? 'Đang hiện' : 'Đang ẩn'}
+                          checked={visible}
+                          onChange={(checked) =>
+                            update({
+                              is_active: checked,
+                              show_in_main_bar: checked,
+                              config: {
+                                ...(row.config ?? {}),
+                                show_in_main_bar: checked,
+                              },
+                            })
+                          }
+                        />
+                      </div>
+                    </div>
+
+                    <div className="nav-menu-editor__labels">
                       <Input
                         label="Nhãn trên thanh menu"
                         value={row.label || ''}
@@ -351,59 +378,80 @@ export default function NavigationMenuPage() {
                         placeholder="VD: Tour trọn gói, Lưu trú…"
                       />
                       <Input
-                        label="Dòng dẫn hub (Tất cả …)"
+                        label="Dòng dẫn hub"
                         value={row.lead_label || ''}
                         onChange={(e) => update({ lead_label: e.target.value })}
                         placeholder="VD: Tất cả tour"
                       />
-                      <Textarea
-                        label="Mô tả phụ trong drawer"
-                        rows={2}
-                        value={row.meta || ''}
-                        onChange={(e) => update({ meta: e.target.value })}
-                        placeholder="Một dòng mô tả dưới link hub"
-                      />
-                    </FormCluster>
+                    </div>
 
-                    {categories.length > 0 ? (
-                      <FormCluster title="Danh mục hiển thị trong drawer" cols={1} variant="picker">
-                        <p className="ui-field__hint ui-field__hint--block">
-                          Bỏ tick để ẩn danh mục. Không chọn gì (= tất cả đang tick) sẽ hiện toàn bộ danh mục hiện có.
-                        </p>
-                        <div className="nav-menu-category-grid">
-                          {categories.map((cat) => (
-                            <label key={cat.slug} className="nav-menu-category-chip">
-                              <input
-                                type="checkbox"
-                                className="nav-menu-category-chip__input"
-                                checked={isCategoryChecked(row, cat.slug)}
-                                onChange={() => toggleCategory(row, cat.slug, update)}
-                              />
-                              <span className="nav-menu-category-chip__label">{cat.label}</span>
-                              {cat.count > 0 ? (
-                                <span className="nav-menu-category-chip__count">{cat.count}</span>
-                              ) : null}
-                            </label>
-                          ))}
-                        </div>
-                      </FormCluster>
-                    ) : (
-                      <p className="text-sm text-gray-500">
-                        Chưa có danh mục CMS cho hub này — thêm danh mục tour / loại du thuyền / danh mục dịch vụ trước.
-                      </p>
-                    )}
-
-                    <Switch
-                      label="Hiển thị trên header"
-                      checked={row.is_active !== false && row.show_in_main_bar !== false}
-                      onChange={(checked) =>
-                        update({
-                          is_active: checked,
-                          show_in_main_bar: checked,
-                          config: { ...(row.config ?? {}), show_in_main_bar: checked },
-                        })
-                      }
+                    <Input
+                      label="Mô tả phụ trong drawer"
+                      value={row.meta || ''}
+                      onChange={(e) => update({ meta: e.target.value })}
+                      placeholder="Một dòng mô tả dưới link hub"
                     />
+
+                    <div className="nav-menu-editor__cats">
+                      <div className="nav-menu-editor__cats-head">
+                        <div>
+                          <p className="nav-menu-editor__cats-title">
+                            Danh mục trong drawer
+                          </p>
+                          <p className="nav-menu-editor__cats-hint">
+                            Bỏ chọn để ẩn. Để trống (= tất cả đang chọn) sẽ hiện toàn bộ
+                            danh mục hiện có.
+                          </p>
+                        </div>
+                        {categories.length > 0 ? (
+                          <span className="nav-menu-editor__cats-count">
+                            {selectedCount}/{categories.length}
+                          </span>
+                        ) : null}
+                      </div>
+
+                      {categories.length > 0 ? (
+                        <div className="nav-menu-editor__cat-grid" role="group">
+                          {categories.map((cat) => {
+                            const checked = isCategoryChecked(row, cat.slug);
+                            return (
+                              <label
+                                key={cat.slug}
+                                className={
+                                  checked
+                                    ? 'nav-menu-editor__cat is-checked'
+                                    : 'nav-menu-editor__cat'
+                                }
+                              >
+                                <input
+                                  type="checkbox"
+                                  className="nav-menu-editor__cat-input"
+                                  checked={checked}
+                                  onChange={() =>
+                                    toggleCategory(row, cat.slug, update)
+                                  }
+                                />
+                                <span className="nav-menu-editor__cat-body">
+                                  <span className="nav-menu-editor__cat-label">
+                                    {cat.label}
+                                  </span>
+                                  {cat.count > 0 ? (
+                                    <span className="nav-menu-editor__cat-meta">
+                                      {cat.count}
+                                    </span>
+                                  ) : null}
+                                </span>
+                              </label>
+                            );
+                          })}
+                        </div>
+                      ) : (
+                        <p className="nav-menu-editor__cats-empty">
+                          Chưa có danh mục CMS cho hub này — thêm danh mục tour / loại du
+                          thuyền / danh mục dịch vụ trước.
+                        </p>
+                      )}
+                    </div>
                   </div>
                 );
               }}

@@ -4688,6 +4688,185 @@ button.ui-head-btn {
   }
 }
 
+.nav-menu-editor {
+  display: grid;
+  gap: 1rem;
+  min-width: 0;
+
+  &__primary,
+  &__labels {
+    display: grid;
+    grid-template-columns: minmax(0, 1.4fr) minmax(11rem, 0.85fr);
+    gap: 0.85rem 1rem;
+    align-items: end;
+    min-width: 0;
+
+    @media (max-width: 860px) {
+      grid-template-columns: 1fr;
+      align-items: stretch;
+    }
+  }
+
+  &__visibility {
+    display: grid;
+    gap: 0.35rem;
+    min-width: 0;
+    padding: 0.55rem 0.75rem;
+    border: 1px solid color-mix(in srgb, var(--admin-line) 78%, transparent);
+    border-radius: 0.7rem;
+    background: color-mix(in srgb, var(--admin-surface) 70%, var(--admin-page-soft, #f6f5f1));
+  }
+
+  &__visibility-label {
+    font-size: 0.72rem;
+    font-weight: var(--admin-fw-extrabold);
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--admin-muted);
+    line-height: 1.2;
+  }
+
+  &__visibility .ui-switch-wrap {
+    margin: 0;
+  }
+
+  &__visibility .ui-switch {
+    width: 100%;
+  }
+
+  &__cats {
+    display: grid;
+    gap: 0.7rem;
+    min-width: 0;
+    padding: 0.85rem 0.9rem 0.95rem;
+    border: 1px solid color-mix(in srgb, var(--admin-line) 78%, transparent);
+    border-radius: 0.75rem;
+    background: color-mix(in srgb, var(--admin-surface) 88%, white);
+  }
+
+  &__cats-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 0.75rem;
+  }
+
+  &__cats-title {
+    margin: 0;
+    font-size: 0.82rem;
+    font-weight: var(--admin-fw-extrabold);
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+    color: var(--admin-primary-700);
+    line-height: 1.25;
+  }
+
+  &__cats-hint {
+    margin: 0.2rem 0 0;
+    font-size: var(--admin-fs-xs);
+    line-height: 1.4;
+    color: var(--admin-muted);
+  }
+
+  &__cats-count {
+    flex-shrink: 0;
+    padding: 0.2rem 0.5rem;
+    border-radius: 999px;
+    border: 1px solid color-mix(in srgb, var(--admin-line) 80%, transparent);
+    background: var(--admin-surface);
+    font-size: 0.72rem;
+    font-weight: 650;
+    font-variant-numeric: tabular-nums;
+    color: var(--admin-ink-soft);
+    line-height: 1.2;
+  }
+
+  &__cats-empty {
+    margin: 0;
+    padding: 0.65rem 0.75rem;
+    border-radius: 0.55rem;
+    border: 1px dashed color-mix(in srgb, var(--admin-line) 85%, transparent);
+    background: color-mix(in srgb, var(--admin-page-soft, #f6f5f1) 55%, transparent);
+    color: var(--admin-muted);
+    font-size: var(--admin-fs-sm);
+    line-height: 1.45;
+  }
+
+  &__cat-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.4rem;
+
+    @media (min-width: 1100px) {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    @media (max-width: 640px) {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  &__cat {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: start;
+    gap: 0.5rem;
+    min-width: 0;
+    margin: 0;
+    padding: 0.55rem 0.65rem;
+    border: 1px solid color-mix(in srgb, var(--admin-line) 82%, transparent);
+    border-radius: 0.55rem;
+    background: var(--admin-surface);
+    cursor: pointer;
+    transition:
+      border-color 0.15s ease,
+      background-color 0.15s ease,
+      box-shadow 0.15s ease;
+
+    &:hover {
+      border-color: color-mix(in srgb, var(--admin-primary-400) 45%, var(--admin-line));
+    }
+
+    &.is-checked {
+      border-color: color-mix(in srgb, var(--admin-accent, #567834) 50%, var(--admin-line));
+      background: color-mix(in srgb, var(--admin-accent, #567834) 8%, var(--admin-surface));
+      box-shadow: inset 0 0 0 1px
+        color-mix(in srgb, var(--admin-accent, #567834) 12%, transparent);
+    }
+  }
+
+  &__cat-input {
+    margin: 0.15rem 0 0;
+    accent-color: var(--admin-accent, #567834);
+  }
+
+  &__cat-body {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 0.5rem;
+    min-width: 0;
+  }
+
+  &__cat-label {
+    min-width: 0;
+    font-size: 0.84rem;
+    font-weight: 600;
+    line-height: 1.3;
+    color: var(--admin-ink);
+    overflow-wrap: anywhere;
+  }
+
+  &__cat-meta {
+    flex-shrink: 0;
+    font-size: 0.72rem;
+    font-weight: 650;
+    font-variant-numeric: tabular-nums;
+    color: var(--admin-muted);
+  }
+}
+
+/* Legacy chip styles — giữ nếu còn chỗ khác dùng */
 .nav-menu-category-grid {
   display: flex;
   flex-wrap: wrap;
