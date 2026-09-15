@@ -16,6 +16,12 @@ import {
   Newspaper,
   Plane,
   ScanSearch,
+  Layers,
+  MapPin,
+  RefreshCw,
+  Tags,
+  Link2,
+  Library,
   Ship,
   SlidersHorizontal,
   Sparkles,
@@ -278,16 +284,6 @@ export const NAV_GROUPS: NavGroup[] = [
         match: '/services/categories',
         matchQuery: { cluster: cluster.key },
       },
-      ...(cluster.key === 'stay'
-        ? [
-            {
-              label: 'Crawler Booking',
-              href: '/services/stay-crawler/',
-              icon: ScanSearch,
-              match: '/services/stay-crawler',
-            } as NavItem,
-          ]
-        : []),
       {
         label: `Hub ${cluster.title}`,
         href: `/settings/hubs/${cluster.hubKey}/`,
@@ -296,6 +292,20 @@ export const NAV_GROUPS: NavGroup[] = [
       },
     ] as NavItem[],
   })),
+  {
+    key: 'catalog',
+    title: 'Catalog chỗ nghỉ',
+    items: [
+      { label: 'Tổng quan', href: '/catalog/', icon: LayoutDashboard, match: '/catalog' },
+      { label: 'Khu vực', href: '/catalog/areas/', icon: MapPin, match: '/catalog/areas' },
+      { label: 'Cào filter', href: '/catalog/discover/', icon: ScanSearch, match: '/catalog/discover' },
+      { label: 'Hàng cào', href: '/catalog/jobs/', icon: Layers, match: '/catalog/jobs' },
+      { label: 'Kho chỗ nghỉ', href: '/catalog/properties/', icon: Library, match: '/catalog/properties' },
+      { label: 'Tái xây', href: '/catalog/rebuild/', icon: RefreshCw, match: '/catalog/rebuild' },
+      { label: 'Taxon', href: '/catalog/taxons/', icon: Tags, match: '/catalog/taxons' },
+      { label: 'Bind dự án', href: '/catalog/bindings/', icon: Link2, match: '/catalog/bindings' },
+    ],
+  },
   {
     key: 'content',
     title: 'Nội dung / Thông tin',

@@ -13,6 +13,8 @@ import {
   X,
 } from 'lucide-react';
 import toast from '@/lib/toast';
+import { SuperAdminOnly } from '@/components/catalog/SuperAdminOnly';
+import { RedirectLegacyStayCrawler } from '@/components/catalog/RedirectLegacyStayCrawler';
 import { useAuth } from '@/lib/auth-context';
 
 import { PageHeader } from '@/components/ui/Page';
@@ -157,7 +159,7 @@ function CreateCrawlerInner() {
 
       toast.success(`Đã khởi tạo Job #${jobId} thành công!`);
       setTimeout(() => {
-        router.push(`/services/stay-crawler/detail/?id=${jobId}&live=true`);
+        router.push(`/catalog/jobs/detail/?id=${jobId}&live=true`);
       }, 1200);
     } catch (e: any) {
       clearInterval(progressTimer);
@@ -179,7 +181,7 @@ function CreateCrawlerInner() {
         title="Khởi tạo phiên Crawler mới"
         description="Nhập liên kết danh mục hoặc chỗ nghỉ Booking.com để hệ thống tự động bóc tách dữ liệu và đồng bộ vào website."
         actions={
-          <Link href="/services/stay-crawler/">
+          <Link href="/catalog/jobs/">
             <Button variant="ghost" size="sm">
               <ArrowLeft size={14} /> Danh sách Job
             </Button>
@@ -376,8 +378,11 @@ function CreateCrawlerInner() {
 
 export default function CreateStayCrawlerPage() {
   return (
-    <Suspense fallback={<div style={{ padding: '2rem' }}>Đang tải...</div>}>
-      <CreateCrawlerInner />
-    </Suspense>
+    <SuperAdminOnly>
+      <RedirectLegacyStayCrawler />
+      <Suspense fallback={<div style={{ padding: '2rem' }}>Đang tải...</div>}>
+        <CreateCrawlerInner />
+      </Suspense>
+    </SuperAdminOnly>
   );
 }

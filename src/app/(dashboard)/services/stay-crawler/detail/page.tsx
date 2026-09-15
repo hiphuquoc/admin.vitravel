@@ -4,6 +4,8 @@ import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'rea
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { SuperAdminOnly } from '@/components/catalog/SuperAdminOnly';
+import { RedirectLegacyStayCrawler } from '@/components/catalog/RedirectLegacyStayCrawler';
 import {
   Activity,
   AlertCircle,
@@ -350,7 +352,7 @@ function JobDetailInner() {
     mutationFn: () => stayCrawlsApi.deleteJob(jobId!),
     onSuccess: () => {
       toast.success(`Đã xóa thành công Job #${jobId}`);
-      router.push('/services/stay-crawler/');
+      router.push('/catalog/jobs/');
     },
     onError: (e) => toast.error((e as Error).message),
   });
@@ -394,7 +396,7 @@ function JobDetailInner() {
     return (
       <div style={{ padding: '3rem', textAlign: 'center' }}>
         <p style={{ color: 'var(--admin-danger-500, #ef4444)', fontWeight: 600 }}>Không tìm thấy mã Job hợp lệ.</p>
-        <Link href="/services/stay-crawler/">
+        <Link href="/catalog/jobs/">
           <Button variant="secondary" size="sm" style={{ marginTop: '1rem' }}>
             <ArrowLeft size={14} /> Quay lại danh sách Job
           </Button>
@@ -432,7 +434,7 @@ function JobDetailInner() {
         }
         actions={
           <div className="flex items-center gap-2 flex-wrap">
-            <Link href="/services/stay-crawler/">
+            <Link href="/catalog/jobs/">
               <Button variant="ghost" size="sm">
                 <ArrowLeft size={14} /> Tất cả Job
               </Button>
@@ -1449,8 +1451,11 @@ function JobDetailInner() {
 
 export default function StayCrawlerDetailPage() {
   return (
-    <Suspense fallback={<div style={{ padding: '2rem' }}>Đang tải chi tiết Job...</div>}>
-      <JobDetailInner />
-    </Suspense>
+    <SuperAdminOnly>
+      <RedirectLegacyStayCrawler />
+      <Suspense fallback={<div style={{ padding: '2rem' }}>Đang tải chi tiết Job...</div>}>
+        <JobDetailInner />
+      </Suspense>
+    </SuperAdminOnly>
   );
 }

@@ -28,6 +28,7 @@ export const NAV_PERMISSIONS: Record<string, string | null> = {
   '/settings/ai-prompts': 'ai.manage',
   '/settings/media': 'media.view',
   '/settings/users': 'users.view',
+  '/catalog': 'stays.catalog.view',
   '/account': null,
 };
 

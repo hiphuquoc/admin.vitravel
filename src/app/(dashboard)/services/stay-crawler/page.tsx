@@ -42,6 +42,8 @@ import {
 import { useAuth } from '@/lib/auth-context';
 import { useAppRouter } from '@/hooks/useAppRouter';
 import { CrawlerTerminalLog } from '@/components/services/CrawlerTerminalLog';
+import { SuperAdminOnly } from '@/components/catalog/SuperAdminOnly';
+import { RedirectLegacyStayCrawler } from '@/components/catalog/RedirectLegacyStayCrawler';
 
 function statusTone(status: string): 'success' | 'warning' | 'danger' | 'neutral' | 'primary' {
   if (status === 'done' || status === 'imported' || status === 'ai_done') return 'success';
@@ -53,6 +55,7 @@ function statusTone(status: string): 'success' | 'warning' | 'danger' | 'neutral
 
 function statusLabel(status: string): string {
   const map: Record<string, string> = {
+    review: 'Chờ review filter',
     pending: 'Đang chờ xử lý',
     crawling: 'Đang quét dữ liệu',
     running: 'Đang chạy đa luồng',
@@ -225,7 +228,7 @@ function StayCrawlerListPageInner() {
         actions={
           <div className="flex items-center gap-2 flex-wrap">
             {canCreate && (
-              <Link href={selectedCategory ? `/services/stay-crawler/create/?category_id=${selectedCategory}` : '/services/stay-crawler/create/'}>
+              <Link href={selectedCategory ? `/catalog/jobs/create/?category_id=${selectedCategory}` : '/catalog/jobs/create/'}>
                 <Button variant="primary" size="sm">
                   <Plus size={15} /> Khởi tạo Crawler mới
                 </Button>
@@ -427,7 +430,7 @@ function StayCrawlerListPageInner() {
           description="Hãy tạo một phiên crawler Booking.com mới để hệ thống tự động bóc tách và đồng bộ khách sạn."
           action={
             canCreate ? (
-              <Link href="/services/stay-crawler/create/">
+              <Link href="/catalog/jobs/create/">
                 <Button variant="primary">
                   <Plus size={16} /> Khởi tạo Crawler mới
                 </Button>
@@ -462,7 +465,7 @@ function StayCrawlerListPageInner() {
                   <div className="ui-crawler-job-card__title-area">
                     <span className="ui-crawler-job-card__id-badge">#{job.id}</span>
                     <Link
-                      href={`/services/stay-crawler/detail/?id=${job.id}`}
+                      href={`/catalog/jobs/detail/?id=${job.id}`}
                       className="ui-crawler-job-card__name"
                     >
                       {hotelLabel(job.list_url || '')}
@@ -552,7 +555,7 @@ function StayCrawlerListPageInner() {
                   </span>
 
                   <div className="ui-crawler-job-card__actions">
-                    <Link href={`/services/stay-crawler/detail/?id=${job.id}`}>
+                    <Link href={`/catalog/jobs/detail/?id=${job.id}`}>
                       <Button size="sm" variant="secondary">
                         <Building2 size={13} /> Quản lý khách sạn ({total})
                       </Button>
@@ -682,7 +685,7 @@ function StayCrawlerListPageInner() {
               />
             </div>
             <footer className="ui-crawler-modal__foot">
-              <Link href={`/services/stay-crawler/detail/?id=${liveLogJob.id}&live=true`}>
+              <Link href={`/catalog/jobs/detail/?id=${liveLogJob.id}&live=true`}>
                 <Button type="button" variant="primary" size="sm">
                   <Maximize2 size={13} /> Mở trang chi tiết Job
                 </Button>
@@ -700,8 +703,11 @@ function StayCrawlerListPageInner() {
 
 export default function StayCrawlerListPage() {
   return (
-    <Suspense fallback={<div style={{ padding: '2rem' }}>Đang tải danh sách Job Crawler...</div>}>
-      <StayCrawlerListPageInner />
-    </Suspense>
+    <SuperAdminOnly>
+      <RedirectLegacyStayCrawler />
+      <Suspense fallback={<div style={{ padding: '2rem' }}>Đang tải danh sách Job Crawler...</div>}>
+        <StayCrawlerListPageInner />
+      </Suspense>
+    </SuperAdminOnly>
   );
 }

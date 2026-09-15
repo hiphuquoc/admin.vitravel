@@ -824,3 +824,46 @@ export const priceGuestTypesApi = {
   deleteImpact: (id: number, locale = 'vi') =>
     apiRequest<DeleteImpact>(`/price-guest-types/${id}/delete-impact`, { query: { locale } }),
 };
+
+export const catalogApi = {
+  dashboard: () => apiRequest<{ stats: Record<string, unknown>; orchestrator?: Record<string, unknown>; recent_jobs: unknown[]; review_count: number }>('/catalog'),
+  discover: (body: { url: string; use_proxy?: boolean; stay_area_id?: number }) =>
+    apiRequest<{ job: Record<string, unknown>; spawned_list: boolean }>('/catalog/discover', { method: 'POST', body }),
+  showDiscover: (id: number) => apiRequest<{ job: Record<string, unknown> }>(`/catalog/discover/${id}`),
+  rerunDiscover: (id: number, use_proxy = false) =>
+    apiRequest<{ job: Record<string, unknown> }>(`/catalog/discover/${id}/rerun`, { method: 'POST', body: { use_proxy } }),
+  saveDiscoverReview: (id: number, body: Record<string, unknown>) =>
+    apiRequest<{ job: Record<string, unknown> }>(`/catalog/discover/${id}/review`, { method: 'PUT', body }),
+  confirmDiscover: (id: number, filters?: unknown[]) =>
+    apiRequest<{ job: Record<string, unknown>; pages: number; lists: number; spawned_now?: number; queued?: number }>(
+      `/catalog/discover/${id}/confirm`,
+      { method: 'POST', body: filters ? { filters } : {} },
+    ),
+  rebuildStats: () => apiRequest<Record<string, unknown>>('/catalog/rebuild'),
+  rebuild: (body: { layer: string; dry_run?: boolean; limit?: number }) =>
+    apiRequest<Record<string, unknown>>('/catalog/rebuild', { method: 'POST', body, timeoutMs: 300_000 }),
+  areas: () => apiRequest<{ items: Record<string, unknown>[] }>('/catalog/areas'),
+  seedAreas: () => apiRequest<Record<string, unknown>>('/catalog/areas/seed', { method: 'POST' }),
+  storeArea: (body: Record<string, unknown>) =>
+    apiRequest<{ area: Record<string, unknown> }>('/catalog/areas', { method: 'POST', body }),
+  updateArea: (id: number, body: Record<string, unknown>) =>
+    apiRequest<{ area: Record<string, unknown> }>(`/catalog/areas/${id}`, { method: 'PUT', body }),
+  taxons: (query?: Record<string, string | number | undefined>) =>
+    apiRequest<{ items: Record<string, unknown>[]; meta: Record<string, number> }>('/catalog/taxons', { query }),
+  publicAreas: () => apiRequest<{ items: Record<string, unknown>[] }>('/stay-areas'),
+  publicTaxons: (query?: Record<string, string | number | undefined>) =>
+    apiRequest<{ items: Record<string, unknown>[]; meta: Record<string, number> }>('/stay-taxons', { query }),
+  updateTaxon: (id: number, body: Record<string, unknown>) =>
+    apiRequest<{ taxon: Record<string, unknown> }>(`/catalog/taxons/${id}`, { method: 'PUT', body }),
+  properties: (query?: Record<string, string | number | undefined>) =>
+    apiRequest<{ items: Record<string, unknown>[]; meta: Record<string, number> }>('/catalog/properties', { query }),
+  bindings: (query?: Record<string, string | number | undefined>) =>
+    apiRequest<{ items: Record<string, unknown>[] }>('/catalog/bindings', { query }),
+  categoryBindings: (id: number) =>
+    apiRequest<{ items: Record<string, unknown>[] }>(`/service-categories/${id}/catalog-bindings`),
+  bindCategory: (id: number, body: Record<string, unknown>) =>
+    apiRequest<{ binding: Record<string, unknown> }>(`/service-categories/${id}/bind-area`, { method: 'POST', body }),
+  syncBinding: (id: number) =>
+    apiRequest<Record<string, unknown>>(`/service-category-bindings/${id}/sync`, { method: 'POST' }),
+  unbind: (id: number) => apiRequest<null>(`/service-category-bindings/${id}`, { method: 'DELETE' }),
+};

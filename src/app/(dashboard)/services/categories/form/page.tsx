@@ -30,6 +30,7 @@ import { HeadActions, HeadSecondary } from '@/components/ui/HeadActions';
 import { publicPageUrl } from '@/lib/publicUrl';
 import { replaceFormUrl } from '@/lib/formNavigate';
 import { serviceClusterTitle } from '@/lib/nav';
+import { StayCategoryBind } from '@/components/services/StayCategoryBind';
 type FormState = {
   cluster: string;
   name: string;
@@ -317,6 +318,10 @@ function FormInner() {
               onChange={(v) => set('is_active', v)}
             />
           </FormSection>
+
+          {form.cluster === 'stay' && (
+            <StayCategoryBind categoryId={Number(id) || 0} />
+          )}
 
           <FormFooter
             cancelHref={

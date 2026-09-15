@@ -173,10 +173,11 @@ export default function NavigationMenuPage() {
             zone: 'main',
             sort: index + 1,
             category_slugs,
+            show_in_main_bar: true,
             config: {
               ...(row.config ?? {}),
               category_slugs,
-              show_in_main_bar: row.show_in_main_bar !== false,
+              show_in_main_bar: true,
             },
           };
         }),
@@ -334,8 +335,6 @@ export default function NavigationMenuPage() {
                 const catalogKey = catalogKeyForItem(row);
                 const categories = categoryCatalog[catalogKey] ?? [];
                 const hubValue = row.hub_value || catalogKey;
-                const visible =
-                  row.is_active !== false && row.show_in_main_bar !== false;
                 const selectedCount = categories.filter((cat) =>
                   isCategoryChecked(row, cat.slug),
                 ).length;
@@ -354,15 +353,15 @@ export default function NavigationMenuPage() {
                           Trên header
                         </span>
                         <Switch
-                          label={visible ? 'Đang hiện' : 'Đang ẩn'}
-                          checked={visible}
+                          label={row.is_active !== false ? 'Đang hiện' : 'Đang ẩn'}
+                          checked={row.is_active !== false}
                           onChange={(checked) =>
                             update({
                               is_active: checked,
-                              show_in_main_bar: checked,
+                              show_in_main_bar: true,
                               config: {
                                 ...(row.config ?? {}),
-                                show_in_main_bar: checked,
+                                show_in_main_bar: true,
                               },
                             })
                           }
