@@ -30,23 +30,27 @@ export default function CatalogDashboardPage() {
         }
       />
       <div className="ui-stat-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(160px,1fr))', gap: 12 }}>
-        {[
-          ['Chỗ nghỉ', stats.stays],
-          ['Có identity', stats.with_identity],
-          ['Có toạ độ', stats.with_geo],
-          ['Có area', stats.with_area],
-          ['Chưa gán area', stats.unmatched_area],
-          ['Completeness TB', stats.avg_completeness],
-          ['Property catalog', stats.properties],
-          ['Chờ review', q.data?.review_count ?? orch.discover_review],
-          ['List đang cào', orch.list_crawling],
-          ['List chờ spawn', orch.list_pending_spawn],
-          ['Skip trùng (gần đây)', orch.recent_skipped_existing],
-          ['Gắn taxon (gần đây)', orch.recent_taxon_attached],
-        ].map(([label, value]) => (
-          <div key={String(label)} className="ui-card" style={{ padding: 16 }}>
+        {(
+          [
+            ['Chỗ nghỉ', stats.stays],
+            ['Có identity', stats.with_identity],
+            ['Có toạ độ', stats.with_geo],
+            ['Có area', stats.with_area],
+            ['Chưa gán area', stats.unmatched_area],
+            ['Completeness TB', stats.avg_completeness],
+            ['Property catalog', stats.properties],
+            ['Chờ review', q.data?.review_count ?? orch.discover_review],
+            ['List đang cào', orch.list_crawling],
+            ['List chờ spawn', orch.list_pending_spawn],
+            ['Skip trùng (gần đây)', orch.recent_skipped_existing],
+            ['Gắn taxon (gần đây)', orch.recent_taxon_attached],
+          ] as [string, unknown][]
+        ).map(([label, value]) => (
+          <div key={label} className="ui-card" style={{ padding: 16 }}>
             <div className="ui-muted">{label}</div>
-            <div style={{ fontSize: 22, fontWeight: 600 }}>{value ?? '—'}</div>
+            <div style={{ fontSize: 22, fontWeight: 600 }}>
+              {value == null || value === '' ? '—' : String(value)}
+            </div>
           </div>
         ))}
       </div>
