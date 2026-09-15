@@ -1,1 +1,1 @@
-export { default } from '../../../../services/stay-crawler/create/page';
+export { default } from '../../../services/stay-crawler/create/page';
