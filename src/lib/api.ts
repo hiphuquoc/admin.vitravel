@@ -89,13 +89,20 @@ export class ApiClientError extends Error {
 
 function formatValidationMessage(message?: string, details?: unknown): string {
   const base = (message || '').trim();
-  if (details && typeof details === 'object' && !Array.isArray(details)) {
-    const first = Object.values(details as Record<string, unknown>)
-      .flatMap((v) => (Array.isArray(v) ? v : [v]))
-      .find((v) => typeof v === 'string' && v.trim() !== '' && !String(v).startsWith('validation.'));
-    if (typeof first === 'string') return first;
+  // Ưu tiên message tổng hợp từ API (đã gắn nhãn trường + lý do).
+  if (base && !base.startsWith('validation.') && !/^giá trị không cho phép\.?$/i.test(base)) {
+    return base;
   }
-  return base;
+  if (details && typeof details === 'object' && !Array.isArray(details)) {
+    const lines = Object.entries(details as Record<string, unknown>).flatMap(([key, v]) => {
+      const msgs = (Array.isArray(v) ? v : [v]).filter(
+        (m): m is string => typeof m === 'string' && m.trim() !== '' && !m.startsWith('validation.'),
+      );
+      return msgs.map((m) => (key && !m.toLowerCase().includes(key.toLowerCase()) ? `${key}: ${m}` : m));
+    });
+    if (lines.length > 0) return lines.slice(0, 4).join(' ');
+  }
+  return base || 'Dữ liệu không hợp lệ.';
 }
 
 type RequestOptions = {

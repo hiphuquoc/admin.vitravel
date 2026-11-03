@@ -13,13 +13,14 @@ import { useRegisterAiTranslate } from '@/hooks/useAiFormTranslate';
 import { pickTranslatableFields, mergeTranslatedFields } from '@/lib/aiTranslateFields';
 import { StructureNotice } from '@/components/ui/StructureNotice';
 import { DEFAULT_LOCALE, isDefaultLocale } from '@/lib/locale';
-import { Input, Switch, Textarea } from '@/components/ui/Field';
+import { Input, Select, Switch, Textarea } from '@/components/ui/Field';
 import { PageHeader } from '@/components/ui/Page';
 import { FormSection } from '@/components/ui/FormSection';
 import { LocaleSwitcher } from '@/components/ui/LocaleSwitcher';
 import { FormFooter } from '@/components/ui/FormFooter';
 import { FormMediaAside, FormMediaCard } from '@/components/ui/FormMediaAside';
 import { emptyImageField, ImageField, type ImageFieldState } from '@/components/ui/ImageField';
+import { Repeater } from '@/components/ui/Repeater';
 import { publicPageUrl } from '@/lib/publicUrl';
 import type { LocaleOption } from '@/lib/locale';
 import type { MediaImage } from '@/lib/types';
@@ -49,11 +50,47 @@ type Section = {
 };
 
 type UspRow = {
+  key: string;
   id?: number;
   icon: string;
   title?: string | null;
   description?: string | null;
 };
+
+const USP_MAX = 8;
+let uspRowSeq = 0;
+
+function newUspRow(partial?: Partial<UspRow>): UspRow {
+  uspRowSeq += 1;
+  return {
+    key: `usp-${Date.now()}-${uspRowSeq}`,
+    icon: 'expert',
+    title: '',
+    description: '',
+    ...partial,
+  };
+}
+
+function mapUspRows(rows: UspRow[] | undefined): UspRow[] {
+  return (rows || []).map((row, i) =>
+    newUspRow({
+      key: `usp-${String(row.id ?? i)}-${i}`,
+      id: typeof row.id === 'number' ? row.id : undefined,
+      icon: row.icon || 'expert',
+      title: row.title ?? '',
+      description: row.description ?? '',
+    }),
+  );
+}
+
+function uspPayload(rows: UspRow[]) {
+  return rows.map((u) => ({
+    ...(u.id ? { id: u.id } : {}),
+    icon: u.icon,
+    title: u.title,
+    description: u.description,
+  }));
+}
 
 type FeaturedState = {
   tours: FeaturedIdRow[];
@@ -400,7 +437,7 @@ export default function HomeContentPage() {
     if (!beginFormHydration(hydrateKeyRef, 'home', locale)) return;
     const d = query.data as Record<string, unknown>;
     const nextSections = ((d.sections as Record<string, unknown>[]) || []).map(mapSection);
-    const nextUsps = (d.usps as UspRow[]) || [];
+    const nextUsps = mapUspRows(d.usps as UspRow[]);
     const nextFeatured: FeaturedState = {
       tours: mapFeaturedRows(d.featured_tours as Record<string, unknown>[], 'package_id'),
       cruises: mapFeaturedRows(d.featured_cruises as Record<string, unknown>[], 'package_id'),
@@ -457,12 +494,17 @@ export default function HomeContentPage() {
     setFeaturedState((prev) => ({ ...prev, ...patch }));
   };
 
+  const uspIconOptions = useMemo(
+    () => asSelectOptions((query.data as Record<string, unknown> | undefined)?.usp_icon_options),
+    [query.data],
+  );
+
   const save = useMutation({
     mutationFn: () =>
       homeSectionsApi.update({
         locale,
         sections: sections.map(sectionPayload),
-        usps,
+        usps: uspPayload(usps),
         pills: (query.data as { pills?: unknown[] })?.pills || [],
         featured_tours: featuredPayload(featured.tours, 'package_id'),
         featured_cruises: featuredPayload(featured.cruises, 'package_id'),
@@ -500,7 +542,7 @@ export default function HomeContentPage() {
           string,
           unknown
         >[],
-        usps: usps as unknown as Record<string, unknown>[],
+        usps: uspPayload(usps) as unknown as Record<string, unknown>[],
       } as Record<string, unknown>),
     getSourceFields: async () => {
       const d = (await homeSectionsApi.get(defaultLocale)) as {
@@ -512,15 +554,19 @@ export default function HomeContentPage() {
           const { image: _img, ...rest } = mapSection(raw);
           return rest;
         }) as unknown as Record<string, unknown>[],
-        usps: (d.usps || []) as unknown as Record<string, unknown>[],
+        usps: uspPayload(mapUspRows(d.usps)) as unknown as Record<string, unknown>[],
       } as Record<string, unknown>);
     },
     applyFields: (fields) => {
       const stripped = sections.map(({ image, ...rest }) => rest);
+      const uspForMerge = uspPayload(usps);
       const merged = mergeTranslatedFields(
-        { sections: stripped, usps } as unknown as Record<string, unknown>,
+        { sections: stripped, usps: uspForMerge } as unknown as Record<string, unknown>,
         fields,
-      ) as { sections: Omit<Section, 'image'>[]; usps: UspRow[] };
+      ) as {
+        sections: Omit<Section, 'image'>[];
+        usps: Array<{ id?: number; icon?: string; title?: string | null; description?: string | null }>;
+      };
       if (merged.sections) {
         setSections((prev) =>
           merged.sections.map((row, i) => ({
@@ -529,7 +575,19 @@ export default function HomeContentPage() {
           })),
         );
       }
-      if (merged.usps) setUsps(merged.usps);
+      if (merged.usps) {
+        setUsps((prev) =>
+          merged.usps.map((row, i) =>
+            newUspRow({
+              key: prev[i]?.key,
+              id: row.id ?? prev[i]?.id,
+              icon: row.icon || prev[i]?.icon || 'expert',
+              title: row.title ?? '',
+              description: row.description ?? '',
+            }),
+          ),
+        );
+      }
     },
   });
 
@@ -582,39 +640,47 @@ export default function HomeContentPage() {
               onChange={setSectionField}
             />
           ))}
-          <FormSection title="Điểm nổi bật (USP)" description="4 cam kết dịch vụ dưới hero.">
-            {usps.map((u, idx) => (
-              <div key={u.id || idx} className="ui-form-substack">
-                <Input
-                  label="Mã icon"
-                  value={u.icon}
-                  onChange={(e) =>
-                    setUsps((prev) =>
-                      prev.map((x, i) => (i === idx ? { ...x, icon: e.target.value } : x)),
-                    )
-                  }
-                  disabled={structureLocked}
-                />
-                <Input
-                  label="Tiêu đề"
-                  value={u.title || ''}
-                  onChange={(e) =>
-                    setUsps((prev) =>
-                      prev.map((x, i) => (i === idx ? { ...x, title: e.target.value } : x)),
-                    )
-                  }
-                />
-                <Textarea
-                  label="Mô tả"
-                  value={u.description || ''}
-                  onChange={(e) =>
-                    setUsps((prev) =>
-                      prev.map((x, i) => (i === idx ? { ...x, description: e.target.value } : x)),
-                    )
-                  }
-                />
-              </div>
-            ))}
+          <FormSection
+            title="Điểm nổi bật (USP)"
+            description="Cam kết dịch vụ dưới hero — thêm/bớt box tự do (tối đa 8)."
+          >
+            <Repeater
+              items={usps}
+              onChange={(next) => setUsps(next.slice(0, USP_MAX))}
+              createItem={() => newUspRow()}
+              addLabel={usps.length >= USP_MAX ? `Đã đủ ${USP_MAX} mục` : 'Thêm điểm nổi bật'}
+              emptyHint="Chưa có USP. Bấm thêm để bắt đầu."
+              maxItems={USP_MAX}
+              keyOf={(row) => row.key}
+              renderItem={(u, _idx, { update, structureLocked: locked }) => (
+                <div className="ui-form-substack">
+                  <Select
+                    label="Icon"
+                    searchable
+                    disabled={locked}
+                    value={u.icon}
+                    options={
+                      uspIconOptions.length > 0
+                        ? uspIconOptions
+                        : [{ value: u.icon || 'expert', label: u.icon || 'expert' }]
+                    }
+                    onChange={(v) => update({ icon: v })}
+                    placeholder="— Chọn icon —"
+                    hint="Chọn icon từ danh sách — mã ngoài danh sách sẽ bị từ chối khi lưu."
+                  />
+                  <Input
+                    label="Tiêu đề"
+                    value={u.title || ''}
+                    onChange={(e) => update({ title: e.target.value })}
+                  />
+                  <Textarea
+                    label="Mô tả"
+                    value={u.description || ''}
+                    onChange={(e) => update({ description: e.target.value })}
+                  />
+                </div>
+              )}
+            />
           </FormSection>
           <FormFooter loading={save.isPending} viewHref={publicPageUrl('/', locale)} />
         </form>
